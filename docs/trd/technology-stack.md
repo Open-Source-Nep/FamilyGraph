@@ -8,8 +8,9 @@ Proposed baseline; versions and supporting dependencies must be verified before 
 
 | Area | Proposed direction | Status / notes |
 |---|---|---|
-| Backend runtime | .NET 10 LTS / ASP.NET Core | Recommended; verify current SDK and template availability before setup |
-| Frontend | Angular 22, standalone components | Recommended; verify Angular's current Node.js and TypeScript compatibility |
+| Backend runtime | .NET 10 LTS / ASP.NET Core | Agreed; SDK pinned in `global.json` (D-001) |
+| Frontend | Angular 22, standalone components | Agreed (D-001); TypeScript 6.0, Node 24 LTS (`.nvmrc`) |
+| Styling | Plain CSS (component-scoped styles + CSS custom properties) | Agreed (D-001); no Tailwind or UI component library |
 | Backend language | C# | Intended |
 | Frontend language | TypeScript | Intended |
 | API style | REST with JSON | Recommended baseline |
@@ -29,12 +30,14 @@ Proposed baseline; versions and supporting dependencies must be verified before 
 
 ## Versioning and reproducibility
 
-Before implementation, agree and record:
-- Exact .NET SDK version or feature band in `global.json`.
-- Exact target framework.
-- Exact Angular CLI and Angular package versions.
-- Compatible Node.js and TypeScript versions.
+Agreed (D-001):
+- `global.json` pins the .NET SDK feature band `10.0.1xx` (`rollForward: latestPatch`). Target framework `net10.0`.
+- Angular CLI and packages `^22.2`, TypeScript `~6.0`.
+- `.nvmrc` selects Node 24 LTS; `package.json` `engines` allows `^22.22.3 || ^24.15.0` (Angular 22's supported range).
+- `package-lock.json` is committed; CI uses `npm ci`.
+
+Still to agree:
 - EF Core provider and package versions.
-- Package-lock and restore/build commands used in CI.
+- Restore/build commands used in CI.
 
 Do not assume that template defaults are current or that all package major versions are mutually compatible.

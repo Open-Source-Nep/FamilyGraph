@@ -50,26 +50,28 @@ Modular monolith: ASP.NET Core backend, Angular SPA, one relational database.
 | `Client` | Angular SPA, organized by feature, with lazy routes and standalone components |
 
 Rules:
-- Proposed references: Server → Application, Infrastructure. Application → Business. Infrastructure → Business, plus Application only to implement Application-owned abstractions. **Business references nothing.**
+- References (D-002): Server → Application, Infrastructure. Application → Business. Infrastructure → Business, plus Application only to implement Application-owned interfaces. **Business references nothing.**
+- Application owns all store and query interfaces. Business defines none, and its domain services are pure. Writes go through focused per-aggregate stores plus `IUnitOfWork`, with audit events in the same transaction. Reads go through query services that return read models and take required depth and node limits. Derivation is a pure Business service over a bounded set of active links.
 - Business must not depend on ASP.NET Core, HTTP types, EF Core, Angular, or Infrastructure.
 - Never expose `DbContext` or EF entities as API contracts.
 - Identity framework types are not the domain model. Keep user accounts separate from person profiles.
 - Enforce privacy, consent, and permissions **server-side** on every read and write path, including traversal and derived queries. The Client is never authoritative.
 - Graph queries must be bounded and must never load the whole graph.
-- Don't create a repository per entity by default. Choose repository, query abstraction, or neither per use case.
+- Don't create a repository per entity by default. Add a store interface only when a use case needs it.
 - The Angular SPA Proxy is for local development only, not production hosting.
 
 ## Current state of the repo
 
-Fresh template scaffolding with no commits and no domain code yet. Some of it differs from the TRDs; resolve these with the user rather than "fixing" them unasked:
+Template scaffolding with no domain code yet. Layout and toolchain are agreed (D-001 in `docs/trd/open-decisions.md`):
 
-- Solution file is `FamilyGraph.slnx` (the TRD says `.sln`). All projects live under `src/` (the TRD layout puts them at the root). The Angular project folder is `src/client` (lowercase, `client.esproj`).
-- Client uses **Angular 21** with TypeScript 5.9, Vitest, Prettier, and **Tailwind CSS 4**. The TRD proposes Angular 22 and says to avoid UI libraries by default, so Tailwind's inclusion should be confirmed.
+- Solution `FamilyGraph.slnx`, all projects under `src/`. The Angular project folder is `src/client` (`client.esproj`).
+- `global.json` pins the .NET SDK 10.0.1xx. `.nvmrc` selects Node 24.
+- Client uses **Angular 22** with TypeScript 6.0, Vitest, and Prettier. Styling is plain CSS: no Tailwind or UI component library.
 - `Server` targets `net10.0` with only `Microsoft.AspNetCore.OpenApi`. `Program.cs` is still the weatherforecast template. The SPA Proxy is **not** configured yet.
 - No project references between the class libraries yet. Each contains only a placeholder `Class1.cs`.
-- No `global.json`, tests, `deploy/`, database provider, or EF Core packages yet.
+- No tests, `deploy/`, database provider, or EF Core packages yet.
 
-Open technical decisions, in order (see `docs/trd/open-decisions.md`): project references and persistence abstractions, identity approach, database and graph query patterns (PostgreSQL is provisional), API conventions, testing strategy, production hosting, CI/CD and configuration.
+Open technical decisions, in order (see `docs/trd/open-decisions.md`): identity approach, database and graph query patterns (PostgreSQL is provisional), API conventions, testing strategy, production hosting, CI/CD and configuration.
 
 ## Commands
 
