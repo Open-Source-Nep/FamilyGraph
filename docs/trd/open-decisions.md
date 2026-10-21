@@ -16,23 +16,22 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 - Keep a modular monolith initially and avoid unnecessary abstraction.
 - Do not write application code until the technical specification is sufficiently agreed.
 - Repository layout, toolchain versions, and styling approach (D-001 below).
+- Project references and persistence abstractions (D-002 below).
 
 ## Proposed, not yet finalized
 
 - PostgreSQL as the relational database.
 - EF Core for persistence and migrations.
 - Microsoft `dotnet new angular` template as the starting point, subject to checking its current structure and compatibility.
-- Repository/query abstraction ownership split between Business and Application based on responsibility.
 
 ## Decisions to discuss next
 
-1. **Project references and persistence abstractions:** Confirm whether the proposed reference graph is acceptable and when repository/query interfaces belong to Business versus Application.
-2. **Identity approach:** Decide supported sign-in methods, identity provider strategy, account lifecycle, and whether ASP.NET Core Identity is the chosen foundation.
-3. **Database and graph queries:** Confirm PostgreSQL and define initial traversal/query patterns, limits, and indexing approach.
-4. **API conventions:** Decide endpoint style, DTO placement, validation, pagination, and error format.
-5. **Testing:** Decide test frameworks and integration-test database strategy.
-6. **Production hosting:** Decide whether Client assets are served by Server or hosted separately, while keeping local development on the SPA Proxy.
-7. **CI/CD and configuration:** Decide build pipeline, migration deployment policy, secrets management, and supported deployment configuration.
+1. **Identity approach:** Decide supported sign-in methods, identity provider strategy, account lifecycle, and whether ASP.NET Core Identity is the chosen foundation.
+2. **Database and graph queries:** Confirm PostgreSQL and define initial traversal/query patterns, limits, and indexing approach.
+3. **API conventions:** Decide endpoint style, DTO placement, validation, pagination, and error format.
+4. **Testing:** Decide test frameworks and integration-test database strategy.
+5. **Production hosting:** Decide whether Client assets are served by Server or hosted separately, while keeping local development on the SPA Proxy.
+6. **CI/CD and configuration:** Decide build pipeline, migration deployment policy, secrets management, and supported deployment configuration.
 
 ## Decision-record convention
 
@@ -59,3 +58,22 @@ For each major decision, record:
   - Remove Tailwind CSS (and the PostCSS config). Use plain component-scoped CSS and CSS custom properties.
   - Pin toolchains: `global.json` (.NET SDK 10.0.1xx, `latestPatch`), `.nvmrc` (Node 24), and `engines` in `package.json`.
 - **Consequences:** Contributors need .NET SDK 10.0.1xx and Node 22.22.3+ or 24.15+. Any later styling dependency needs a separate agreement.
+
+### D-002: Project references and persistence abstractions
+
+- **Status:** agreed (2026-10-21). Issue #3.
+- **Context:** The TRD draft allowed persistence interfaces in either Business or Application, and an optional Infrastructure → Application reference. Graph reads must be bounded, and the consent and derivation rules must be testable in isolation.
+- **Options considered:**
+  - Infrastructure → Business only (all interfaces in Business), or Infrastructure → Application + Business.
+  - Mixed interface ownership, or Application-only ownership.
+  - EF Core used directly in Application, or focused store interfaces.
+  - Graph reads through domain objects, or dedicated query services.
+  - Derivation done in SQL, or in a Business service.
+- **Trade-offs:** Mixed ownership needs case-by-case judgement and drifts. EF Core in Application leaks persistence concerns. Walking domain objects in memory is hard to keep bounded at 10k+ people. Derivation in SQL puts product rules where they are hard to test.
+- **Decision:**
+  - References: Server → Application, Infrastructure; Application → Business; Infrastructure → Business, Application; Business → nothing.
+  - Application owns all persistence and query interfaces. Business has none.
+  - Write side: focused per-aggregate store interfaces plus `IUnitOfWork`. Audit events are saved in the same transaction.
+  - Read side: Application-owned query services that return read models, with depth and node limits as required parameters.
+  - Derived relationships: a pure Business service computes them from a bounded set of active links fetched by a query service.
+- **Consequences:** Wiring and the architecture test are done in #8. Limit values depend on the database decision (#5). The audit-in-same-transaction rule shapes #10.

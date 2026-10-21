@@ -1,6 +1,6 @@
 # Project References and Persistence Boundaries
 
-## Proposed project references
+## Project references (agreed, D-002)
 
 ```text
 Server
@@ -12,7 +12,7 @@ FamilyGraph.Application
 
 FamilyGraph.Infrastructure
  ├──> FamilyGraph.Business
- └──> FamilyGraph.Application  (only if needed to implement Application-owned abstractions)
+ └──> FamilyGraph.Application  (only to implement Application-owned interfaces)
 
 FamilyGraph.Business
  └──> no project references to Application, Infrastructure, or Server
@@ -21,18 +21,32 @@ Client
  └──> communicates with Server through HTTP APIs
 ```
 
-The exact reference graph should be kept as small as practical. If Infrastructure references Application, keep that dependency for implementing infrastructure-facing abstractions only; do not place application logic in Infrastructure.
+Infrastructure references Application only to implement Application-owned interfaces; do not place application logic in Infrastructure. An architecture test enforces the graph (#8).
 
-## Persistence boundary
+## Persistence boundary (agreed, D-002)
 
-The preferred direction is:
-- Business owns domain rules and domain types.
-- Application coordinates use cases and may own interfaces that exist specifically to support those use cases.
-- Business may own repository abstractions when they express domain-oriented persistence needs.
-- Infrastructure implements persistence abstractions and contains EF Core details.
-- Server is the composition root that registers concrete implementations.
+- **Business** owns domain types, invariants, and pure domain services. It defines **no** persistence or query interfaces. Domain services operate on objects passed to them.
+- **Application** owns every persistence and query interface, shaped by its use cases.
+- **Infrastructure** implements them with EF Core (or SQL where needed). EF types never leave Infrastructure.
+- **Server** is the composition root that registers the implementations.
 
-Avoid creating repositories automatically for every entity. Decide per use case whether a repository abstraction, a focused query abstraction, or direct use of a suitable application-facing persistence abstraction is justified.
+### Write side
+
+- Use focused store interfaces per aggregate, created only when a use case needs them (e.g. `IRelationshipStore.GetAsync/Add`).
+- One `IUnitOfWork.SaveChangesAsync` commits a use case's changes and its audit events in the same transaction.
+- No generic repository and no repository per entity by default.
+
+### Read side
+
+- Use dedicated, Application-owned query services that return flat read models, not domain entities (e.g. `IGraphQueries.GetNeighbourhood(personId, depth, maxNodes)`).
+- Depth and node limits are **required parameters**, so an unbounded query cannot be expressed. The limit values come from the database decision.
+- Privacy projection (`Private`/`Deleted` placeholders) is applied in Application before results leave the use case.
+
+### Derived relationships
+
+- Query services fetch a bounded set of **active** links.
+- A pure Business service derives relationships, path explanations, and adoption indicators from that set.
+- SQL fetches data; it never encodes what a relationship label means.
 
 ## Identity boundary
 
