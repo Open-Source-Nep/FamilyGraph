@@ -31,10 +31,6 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 - CI/CD, configuration and releases (D-012 below).
 - Business contains no DTOs or API contracts (D-010 places API models in Server).
 
-## Proposed, not yet finalized
-
-- Microsoft `dotnet new angular` template as the starting point, subject to checking its current structure and compatibility.
-
 ## Decisions to discuss next
 
 1. **Identity approach:** agreed (D-008). Sessions use cookies (D-011).
