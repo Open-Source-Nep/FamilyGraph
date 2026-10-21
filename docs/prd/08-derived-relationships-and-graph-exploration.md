@@ -24,7 +24,7 @@ Enable people to explore a large interconnected family graph without treating de
 
 ## Open details
 
-- Cycle prevention and validation rules need finalization.
+- Cycle prevention rules are decided in PRD 02. Traversal must still tolerate cycles defensively.
 - How to present multiple valid paths between two people is undecided.
 - Which derived relationship labels to support initially needs a product/UI decision.
 - Unknown or undisclosed parents without a person profile are not yet specified.

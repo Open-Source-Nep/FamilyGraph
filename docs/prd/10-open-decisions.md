@@ -8,7 +8,7 @@ This file is intentionally unresolved. Claude Code must not silently invent deci
 
 ## Relationships
 - **Decided (initial invariant, 2026-10-21):** a person cannot be their own parent. A direct two-person cycle (A parent of B and B parent of A) is rejected.
-- Still open: how to prevent or handle deeper cycles (A → B → C → A).
+- **Decided (2026-10-21):** deeper cycles (A → B → C → A) are rejected when a link is created or reactivated, if the proposed child is already an ancestor of the proposed parent. The check counts active, pending, and inactive links (not deleted ones). If the bounded check hits its limit, the link is rejected with an explanation that it could not be verified as cycle-free. Rejected alternatives: allow and flag for review; defer to the database/traversal decisions. See PRD 02.
 - What happens when a merge produces duplicate or contradictory relationships?
 - **Decided (2026-10-21):** at most one parent–child link per ordered pair (parent, child), so the same pair cannot have both a biological and an adoptive link.
 - **Decided (2026-10-21):** no limit on the number of parents, of either type.
