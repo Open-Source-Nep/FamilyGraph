@@ -20,10 +20,11 @@ This file is intentionally unresolved. Claude Code must not silently invent deci
 - How long is submitted evidence retained, and who can access it?
 
 ## Privacy and deletion
-- Can a profile be permanently deleted, or only hidden behind a `Deleted` placeholder?
-- Which audit metadata must remain if personal data is removed?
-- Can relationship categories be shown when an endpoint is private?
-- What is the privacy behavior for an account/profile that is abandoned?
+- **Decided (2026-10-21):** deletion permanently erases personal data and leaves a `Deleted` placeholder. It is not reversible. The maintainer or an administrator may delete. No new links to a deleted profile. See PRD 05.
+- **Decided (2026-10-21):** audit history keeps event types, timestamps, account, profile and relationship IDs. Erased personal data is replaced with `[erased]`.
+- **Decided (2026-10-21):** a relationship's biological or adoptive type may be shown next to a placeholder.
+- **Decided (2026-10-21):** abandonment changes nothing automatically.
+- **Decided (2026-10-21):** profiles are Public (default) or Private. The graph is visible only to signed-in users. Maintainers and administrators see through `Private`.
 
 ## Merging
 - Who can initiate and approve a merge involving claimed profiles?
