@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="src/client/client.esproj" />
+  <Project Path="src/FamilyGraph.Application/FamilyGraph.Application.csproj" />
+  <Project Path="src/FamilyGraph.Business/FamilyGraph.Business.csproj" />
+  <Project Path="src/FamilyGraph.Infrastructure/FamilyGraph.Infrastructure.csproj" />
+  <Project Path="src/Server/Server.csproj" />
+</Solution>

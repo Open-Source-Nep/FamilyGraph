@@ -1,0 +1,14 @@
+<Project>
+  <Sdk Name="Microsoft.VisualStudio.JavaScript.SDK" Version="1.0.2752196" />
+
+  <PropertyGroup>
+    <StartupCommand>npm start</StartupCommand>
+    <ShouldRunBuildScript>false</ShouldRunBuildScript>
+    <BuildOutputFolder>$(MSBuildProjectDirectory)\dist\client\browser\</BuildOutputFolder>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <TypeScriptConfiguration Remove="**\jsconfig.json" />
+    <TypeScriptConfiguration Remove="**\tsconfig.json" />
+  </ItemGroup>
+</Project>
