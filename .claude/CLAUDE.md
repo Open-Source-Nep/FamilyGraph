@@ -62,14 +62,14 @@ Rules:
 
 ## Current state of the repo
 
-Foundation wired (#8), no domain code yet. Layout and toolchain are agreed (D-001 in `docs/trd/open-decisions.md`):
+Foundation wired (#8). Domain core in progress: `FamilyGraph.Business/People` has `Person`, `PersonName`, `PersonId`, `AccountId` (#12); domain errors derive from `DomainException` (D-007). Layout and toolchain are agreed (D-001 in `docs/trd/open-decisions.md`):
 
 - Solution `FamilyGraph.slnx`, production projects under `src/`, test projects under `tests/` (D-004). The Angular project folder is `src/client` (`client.esproj`).
 - `global.json` pins the .NET SDK 10.0.1xx and selects the Microsoft.Testing.Platform test runner. `.nvmrc` selects Node 24.
 - Client uses **Angular 22** with TypeScript 6.0, Vitest, and Prettier. Styling is plain CSS: no Tailwind or UI component library.
-- Project references follow D-002. The class libraries contain no code yet.
+- Project references follow D-002. Application and Infrastructure contain no code yet.
 - `Server` has `Microsoft.AspNetCore.OpenApi` and `Microsoft.AspNetCore.SpaProxy`. `Program.cs` only maps OpenAPI in Development. The SPA Proxy is enabled only via `launchSettings.json`: `dotnet run` starts `npm start` and redirects to `http://localhost:4200`. No Angular dev-server proxy to the API yet (waits for API conventions).
-- Tests: xUnit v3 with built-in `Assert` (D-003), tagged with PRD `AC` IDs (D-005). `FamilyGraph.ArchitectureTests` enforces D-002. `Server.IntegrationTests` uses `WebApplicationFactory`. The unit-test projects are empty and accept "zero tests ran" until their first test lands.
+- Tests: xUnit v3 with built-in `Assert` (D-003), tagged with PRD `AC` IDs (D-005). `FamilyGraph.ArchitectureTests` enforces D-002. `Server.IntegrationTests` uses `WebApplicationFactory`. `FamilyGraph.Business.Tests` has the #12 tests; the other unit-test projects are empty and accept "zero tests ran" until their first test lands.
 - No `deploy/`, database provider, or EF Core packages yet.
 
 Agreed since: identity (D-008: Google sign-in, ASP.NET Core Identity, config-defined admins) and database (D-009: PostgreSQL + EF Core, Testcontainers, recursive CTEs with limits). API conventions (D-010: MVC controllers, API models in Server, ProblemDetails with error codes, graph expansion instead of pagination). Hosting (D-011: Server serves the Client, cookie sessions, Docker image + compose, migration bundle). CI/CD (D-012: GitHub Actions, env-var configuration, tagged releases to GHCR). No open technical decisions remain in `docs/trd/open-decisions.md`.
