@@ -24,8 +24,8 @@ Read the relevant PRD/TRD files before proposing behavior or design. These docs 
 
 ## Core product invariants (summary, see PRDs for detail)
 
-- **People are not accounts.** A `Person` can exist without a `UserAccount`. One account can maintain many profiles. A new person needs only a name.
-- **One maintainer per profile.** Before a claim, the contributor is the maintainer. After an approved claim, the claimant is.
+- **People are not accounts.** A `Person` can exist without a `UserAccount`. One account can maintain many profiles. A new person needs only a first name (middle and last are optional).
+- **One maintainer per profile.** Before a claim, the contributor is the maintainer. After an approved claim, the claimant is. After the maintainer's account is deleted, one administrator account inherits it.
 - **Direct facts are parent–child only.** The only types are biological and adoptive. Siblings, grandparents, cousins, and other relationships are *derived* from active links and are never stored as authoritative facts.
 - **Consent is tracked per endpoint**, not as a single `Active` flag. When both endpoints are claimed, both must approve. A claimed person's disagreement deactivates the link immediately. Withdrawing the disagreement reactivates it if the other approval is still valid.
 - **Inactive links** are excluded from the active graph, traversal, and derivation, but stay in audit history.
@@ -72,7 +72,7 @@ Foundation wired (#8), no domain code yet. Layout and toolchain are agreed (D-00
 - Tests: xUnit v3 with built-in `Assert` (D-003), tagged with PRD `AC` IDs (D-005). `FamilyGraph.ArchitectureTests` enforces D-002. `Server.IntegrationTests` uses `WebApplicationFactory`. The unit-test projects are empty and accept "zero tests ran" until their first test lands.
 - No `deploy/`, database provider, or EF Core packages yet.
 
-Open technical decisions, in order (see `docs/trd/open-decisions.md`): identity approach, database and graph query patterns (PostgreSQL is provisional), API conventions, integration-test database (with the database decision), production hosting, CI/CD and configuration.
+Agreed since: identity (D-008: Google sign-in, ASP.NET Core Identity, config-defined admins) and database (D-009: PostgreSQL + EF Core, Testcontainers, recursive CTEs with limits). API conventions (D-010: MVC controllers, API models in Server, ProblemDetails with error codes, graph expansion instead of pagination). Hosting (D-011: Server serves the Client, cookie sessions, Docker image + compose, migration bundle). CI/CD (D-012: GitHub Actions, env-var configuration, tagged releases to GHCR). No open technical decisions remain in `docs/trd/open-decisions.md`.
 
 ## Commands
 

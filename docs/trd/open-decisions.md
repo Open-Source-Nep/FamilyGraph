@@ -23,22 +23,22 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 - Test project layout (D-004 below).
 - Mapping PRD acceptance criteria to tests (D-005 below).
 - Client end-to-end smoke tests with Playwright (D-006 below).
-- Business contains no DTOs or API contracts. Account and user DTOs wait for the identity and API-convention decisions.
-
-## Proposed, not yet finalized
-
-- PostgreSQL as the relational database.
-- EF Core for persistence and migrations.
-- Microsoft `dotnet new angular` template as the starting point, subject to checking its current structure and compatibility.
+- Domain rule enforcement and error reporting (D-007 below).
+- Identity approach and account model (D-008 below).
+- Database, integration-test database and bounded graph queries (D-009 below).
+- API conventions (D-010 below).
+- Production hosting and deployment (D-011 below).
+- CI/CD, configuration and releases (D-012 below).
+- Business contains no DTOs or API contracts (D-010 places API models in Server).
 
 ## Decisions to discuss next
 
-1. **Identity approach:** Decide supported sign-in methods, identity provider strategy, account lifecycle, and whether ASP.NET Core Identity is the chosen foundation.
-2. **Database and graph queries:** Confirm PostgreSQL and define initial traversal/query patterns, limits, and indexing approach. Settle the integration-test database strategy alongside it (see item 4).
-3. **API conventions:** Decide endpoint style, DTO placement, validation, pagination, and error format.
-4. **Testing (#7):** xUnit v3, built-in `Assert` (D-003), the test project layout (D-004), acceptance-criteria mapping (D-005) and Playwright e2e smoke tests (D-006) are agreed. Deferred until the database decision (item 2, #5): the integration-test database strategy. Testcontainers is the leading option if PostgreSQL is confirmed; in-memory and SQLite providers were rejected because they do not reproduce PostgreSQL constraints, transactions or recursive queries.
-5. **Production hosting:** Decide whether Client assets are served by Server or hosted separately, while keeping local development on the SPA Proxy.
-6. **CI/CD and configuration:** Decide build pipeline, migration deployment policy, secrets management, and supported deployment configuration.
+1. **Identity approach:** agreed (D-008). Sessions use cookies (D-011).
+2. **Database and graph queries:** agreed (D-009).
+3. **API conventions:** agreed (D-010).
+4. **Testing (#7):** xUnit v3, built-in `Assert` (D-003), the test project layout (D-004), acceptance-criteria mapping (D-005) and Playwright e2e smoke tests (D-006) are agreed. The integration-test database is Testcontainers with PostgreSQL (D-009).
+5. **Production hosting:** agreed (D-011).
+6. **CI/CD and configuration:** agreed (D-012).
 
 ## Decision-record convention
 
@@ -126,3 +126,101 @@ For each major decision, record:
 - **Trade-offs:** Playwright adds an npm dependency, browser binaries in CI, and run time. Its tests need a running Server and database, so they depend on the hosting and database decisions. Skipping e2e leaves UI wiring regressions to manual checks.
 - **Decision:** Use Playwright (`@playwright/test`) for a small set of smoke tests over key user flows in the first release. Keep them in `src/client/e2e/`, sharing the client's `package.json`. Component and logic tests stay in Vitest.
 - **Consequences:** The dependency and configuration are added with the first UI flow worth covering, not before. The CI decision must provide browsers plus a running Server and database. Smoke tests follow D-005 using Playwright tags, e.g. `test('shows a local subgraph view', { tag: '@AC-08.4' }, ...)`.
+
+### D-007: Domain rule enforcement and error reporting
+
+- **Status:** agreed (2026-10-21). Issue #12.
+- **Context:** The domain core (#12, #14, #15, #16) must reject invalid operations, such as an empty first name, a rename by someone other than the maintainer, or a link that would create a cycle. Callers need to know which rule failed and why.
+- **Options considered:** a result type returned from domain operations; custom exceptions; checking permissions only in Application.
+- **Trade-offs:** A result type makes failures explicit in signatures but adds plumbing to every call. Exceptions keep domain signatures simple and stop execution at the violated rule, at the cost of being invisible in signatures. Permission checks only in Application would let a code path bypass the rules.
+- **Decision:**
+  - Domain entities enforce their own invariants and authority rules. For example, `Person` refuses a rename from anyone other than its maintainer.
+  - Rule violations throw custom exceptions with a clear error message and a stable error code (e.g. `link.cycle_detected`, see D-010). Business defines a base domain exception plus specific subclasses per rule. Application defines its own exceptions for application-level failures (e.g. not found). Neither depends on HTTP types.
+  - Exceptions are for rule violations, not normal control flow. Domain code does not catch and swallow them.
+- **Consequences:** Unit tests assert the exception type thrown for each rule. Mapping exceptions to HTTP responses belongs to the API-conventions decision (#6). Message localization is not decided.
+
+### D-008: Identity approach and account model
+
+- **Status:** agreed (2026-10-21). Issue #4.
+- **Context:** `UserAccount` must stay separate from `Person` (PRD 01). Admins are needed for claim review (PRD 04) and investigations (PRD 07). The product is self-hostable, so setup cost matters.
+- **Options considered:** local passwords, external OIDC, or both; ASP.NET Core Identity or an external identity server (e.g. Keycloak); shared or separate `DbContext`; first-sign-in admin, admin granted in the database, or admin named in configuration.
+- **Trade-offs:** Google-only sign-in stores no passwords and is quick to build, but every instance needs its own Google OAuth client and users need a Google account. An external identity server is one more service for every self-hoster. Separate contexts would need cross-context transactions for writes that touch accounts and audit records.
+- **Decision:**
+  - **Sign-in:** Google only for the first release. Email/password, usernames and phone numbers may be added later.
+  - **Foundation:** ASP.NET Core Identity, with its types kept in Infrastructure. Business never sees them; the domain refers to accounts by an opaque account ID.
+  - **Database:** one shared database and one EF Core context derived from `IdentityDbContext`, so domain writes, account data and audit events can commit in one transaction.
+  - **Roles:** `User` and `Administrator`. Every new account gets `User`. "Maintainer" is not a role; it is tracked per profile in the domain.
+  - **Admin assignment:** configuration holds a list of admin email addresses (e.g. `Admin:Emails`). On each sign-in, an account whose Google-verified email is on the list gets `Administrator`. An account not on the list loses it. Unverified emails never match. There is no in-app promote or demote.
+  - **First-release account scope:** sign up and sign in with Google, sign out, view own account. Account deletion waits for #32.
+- **Consequences:**
+  - New NuGet packages (Microsoft, first-party): `Microsoft.AspNetCore.Authentication.Google` and `Microsoft.AspNetCore.Identity.EntityFrameworkCore`, added with #11.
+  - Self-host docs must explain creating a Google OAuth client. Secrets handling belongs to #34.
+  - Cookie or token sessions for the SPA are decided with API conventions (#6) and hosting (#33).
+
+### D-009: Database, integration-test database and bounded graph queries
+
+- **Status:** agreed (2026-10-21). Issue #5 (also closes the deferred part of #7).
+- **Context:** The graph must support more than 10,000 people without loading the whole graph (PRD 08, PRD 09). Only active links take part in traversal and derivation (PRD 03). The cycle check counts all non-deleted links (PRD 02).
+- **Options considered:** PostgreSQL, SQL Server or SQLite; Testcontainers or a shared local database for integration tests; recursive CTEs or per-generation expansion in Application; a stored status column, a database-computed status, or status derived from per-endpoint approval columns; a hard depth limit or a node cap for finding how two people are related.
+- **Trade-offs:** PostgreSQL is free, easy to self-host and supports recursive CTEs. Testcontainers tests the real engine but requires Docker locally and in CI. Recursive CTEs need hand-written SQL but take one round trip per query. Deriving state from the two approval columns keeps a single source of truth, at the cost of a slightly longer filter predicate.
+- **Decision:**
+  - **Database:** PostgreSQL with EF Core, via `Npgsql.EntityFrameworkCore.PostgreSQL`.
+  - **Integration tests:** Testcontainers (`Testcontainers.PostgreSql`, test projects only) starts a disposable PostgreSQL for the run. In-memory and SQLite providers are rejected because they do not reproduce PostgreSQL constraints, transactions or recursive queries.
+  - **Traversal:** recursive CTEs with depth and row limits inside the query, hand-written behind Application's query interfaces.
+  - **Link state storage:** the relationship row stores the parent-side and child-side approval (approved, pending or disagreed) and a nullable deletion timestamp. No separate status column. A link is active when both sides are approved and it is not deleted. When one user maintains both endpoints, both sides start approved.
+  - **Limits** (configurable per instance; the maximums are enforced in code):
+
+    | Query | Default | Maximum |
+    |---|---|---|
+    | Local view around a person, generations each way | 2 | 4 |
+    | Local view or "load more" from an edge person, people returned | 10 | 500 |
+    | How two people are related | no generation limit; at most 10,000 people examined | configurable |
+    | Cycle check at link creation or reactivation | 5,000 ancestors / 50 generations | same |
+
+    All graph queries also run under a query timeout. A query that hits a limit returns what it found and says it was cut short. "How two people are related" reports "no connection found within the search limit" rather than "not related". The cycle check rejects the link instead (PRD 02).
+  - **Indexes:** a unique index on (parent, child) for non-deleted links; parent and child lookup indexes filtered to active links; a child lookup index over all non-deleted links for the cycle check.
+- **Consequences:**
+  - Docker is required to run integration tests locally and in CI (#34).
+  - Future maintainer checkpoints may change the people-examined cap for relationship search.
+  - Package versions are pinned when #9 adds them.
+
+### D-010: API conventions
+
+- **Status:** agreed (2026-10-21). Issue #6.
+- **Context:** The Client shows graphs, mainly fan charts centred on one person, not tables. Privacy must be enforced on every read path (PRD 05). Domain rules throw custom exceptions (D-007).
+- **Options considered:** minimal APIs or MVC controllers; API models in Application or Server; built-in validation or FluentValidation; page-number, cursor or no pagination; ProblemDetails or a custom error shape; one privacy component or per-query privacy filtering.
+- **Trade-offs:** Controllers are more ceremony than minimal APIs but familiar to contributors. Separate API models duplicate some types and need mapping, but keep HTTP-specific validation out of Application. Skipping pagination is simpler but needs a limit on every list. One privacy component can't be skipped by a new endpoint, while per-query filtering repeats the rule in every query.
+- **Decision:**
+  - **Endpoints:** MVC controllers with `[ApiController]`, one controller per feature. Routes are plural and lowercase under `/api` with no version prefix (e.g. `/api/people`, `/api/relationships`).
+  - **API models:** request and response models live in Server and carry API-specific validation. Server maps them to and from Application's use-case inputs and read models. EF entities and domain objects are never API contracts.
+  - **Validation:** built-in data annotations on the Server API models, checked automatically by `[ApiController]` (400). Business rules stay in the domain (D-007). No validation library.
+  - **Graph reads, no pagination:** a view request returns the centre person plus up to N related people (default 10, configurable, hard maximum 500, see D-009). Edge people whose further relatives were not loaded are flagged "has more", and a "load more" request around an edge person returns up to the same limit.
+  - **Lists, no pagination for now:** person search returns the top 20 matches and says when there are more ("refine your search"). Other lists (e.g. profiles I maintain, audit history) return everything up to a configurable limit and say when they were cut short. Pagination is added only when a real list needs it.
+  - **Errors:** ProblemDetails (RFC 9457), with each custom exception's stable error code as an extension so the Client can choose wording or translations. Status codes: 400 invalid request shape, 403 not permitted (e.g. not the maintainer), 404 not found, 409 conflict with current state (e.g. duplicate link), 422 domain rule violated (e.g. cycle, missing first name).
+  - **Privacy projection:** one Application component turns hidden profiles into `Private` or `Deleted` placeholders. Query services return person references that only this component can produce, so a read path cannot skip it. Integration tests cover every read endpoint. What is hidden is decided in #17.
+- **Consequences:** Every custom exception carries an error code (D-007). A global exception handler in Server maps exceptions to ProblemDetails. The "has more" flag needs a cheap existence check per edge person in the traversal query. The fan-chart presentation is decided with #19 and #23.
+
+### D-011: Production hosting and deployment
+
+- **Status:** agreed (2026-10-21). Issue #33 (decision part; the implementation stays in #33).
+- **Context:** Self-hosting without a specific provider is a product goal (PRD 09). Sign-in is Google via ASP.NET Core Identity (D-008). The SPA Proxy is for development only.
+- **Options considered:** Server serves the built Client, or the Client is hosted separately with token auth; one image plus a compose file, or the image only; a separate migration step, or migrations at app startup.
+- **Trade-offs:** Serving the Client from Server is one process and one origin, so no CORS and cookie sessions work naturally, but the frontend cannot scale separately. A compose file is one more file to maintain, but gives self-hosters a one-command setup. A separate migration step is one more container, but migrations run once and fail cleanly.
+- **Decision:**
+  - **Client hosting:** Server serves the production Angular build as static files from the same origin, with a fallback to `index.html` for client routes. The SPA Proxy stays development-only.
+  - **Sessions:** ASP.NET Core Identity cookie authentication. The cookie is `HttpOnly`, `Secure` and `SameSite=Lax`, and state-changing API requests are protected against CSRF (antiforgery). No bearer tokens in the browser.
+  - **Artifact:** one Docker image containing Server and the built Client, plus `deploy/docker-compose.yml` that runs the app, PostgreSQL and the migration step. Configuration (Google client, admin emails, connection string, limits) comes from environment variables.
+  - **Migrations:** an EF Core migration bundle runs as a separate one-off step before the app starts; the app does not migrate at startup. A failed migration stops the deploy.
+- **Consequences:** #33 adds the Dockerfile, `deploy/` and self-hosting docs. HTTPS is terminated by the operator's reverse proxy or host; the docs explain this. #34 builds and publishes the image.
+
+### D-012: CI/CD, configuration and releases
+
+- **Status:** agreed (2026-10-21). Issue #34 (decision part; the implementation stays in #34).
+- **Context:** The repository is on GitHub. Integration tests need Docker (D-009). Self-hosters deploy a Docker image (D-011) and must supply their own Google client and admin emails (D-008).
+- **Options considered:** GitHub Actions or another CI service; environment variables or committed per-instance config; tagged semantic-version releases to a container registry, or build-from-source only.
+- **Trade-offs:** GitHub Actions keeps CI next to the code and its hosted runners include Docker. Publishing images means maintaining a release process, but self-hosters can pin versions instead of building.
+- **Decision:**
+  - **CI:** one GitHub Actions workflow on every PR and on pushes to `main`. Backend: `dotnet build` and `dotnet test` (architecture, unit and Testcontainers integration tests). Client: `npm ci`, Prettier check, `npm test`, `npm run build`. Playwright smoke tests join when the first UI flow exists (D-006).
+  - **Configuration:** standard ASP.NET Core configuration. `appsettings.json` holds safe defaults only. Instance-specific values (Google client ID and secret, admin emails, connection string, query limits) come from environment variables, listed in a documented `deploy/.env.example`. Secrets are never committed. Local development uses `dotnet user-secrets`.
+  - **Releases:** semantic versions from Git tags (`vX.Y.Z`). A pushed tag builds the Docker image and publishes it to GitHub Container Registry (`ghcr.io/open-source-nep/familygraph`). Self-hosters pin a version in the compose file.
+- **Consequences:** #34 adds the CI workflow first and the release workflow after #33's Dockerfile. Required status checks on `main` are a repository setting for the maintainers.
