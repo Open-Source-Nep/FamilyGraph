@@ -22,6 +22,7 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 - Assertions use xUnit's built-in `Assert` (D-003 below).
 - Test project layout (D-004 below).
 - Mapping PRD acceptance criteria to tests (D-005 below).
+- Client end-to-end smoke tests with Playwright (D-006 below).
 - Business contains no DTOs or API contracts. Account and user DTOs wait for the identity and API-convention decisions.
 
 ## Proposed, not yet finalized
@@ -35,7 +36,7 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 1. **Identity approach:** Decide supported sign-in methods, identity provider strategy, account lifecycle, and whether ASP.NET Core Identity is the chosen foundation.
 2. **Database and graph queries:** Confirm PostgreSQL and define initial traversal/query patterns, limits, and indexing approach.
 3. **API conventions:** Decide endpoint style, DTO placement, validation, pagination, and error format.
-4. **Testing (#7):** xUnit v3, built-in `Assert` (D-003) the test project layout (D-004) and acceptance-criteria mapping (D-005) are agreed. Still to decide: client e2e for the first release, and the integration-test database strategy.
+4. **Testing (#7):** xUnit v3, built-in `Assert` (D-003) the test project layout (D-004) and acceptance-criteria mapping (D-005) and Playwright e2e smoke tests (D-006) are agreed. Still to decide: the integration-test database strategy.
 5. **Production hosting:** Decide whether Client assets are served by Server or hosted separately, while keeping local development on the SPA Proxy.
 6. **CI/CD and configuration:** Decide build pipeline, migration deployment policy, secrets management, and supported deployment configuration.
 
@@ -116,3 +117,12 @@ For each major decision, record:
   - A test that verifies a criterion carries `[Trait("AC", "AC-03.1")]`, with one trait per criterion it covers.
   - Test names still describe the behaviour, e.g. `Disagreement_deactivates_link_immediately`.
 - **Consequences:** `dotnet test --filter "AC=AC-03.1"` selects a criterion's tests. Tests for TRD-level rules (e.g. architecture tests) carry no `AC` trait.
+
+### D-006: Client end-to-end tests
+
+- **Status:** agreed (2026-10-21). Issue #7.
+- **Context:** Server-side integration tests cover privacy, consent and permission rules. Browser tests mainly guard UI wiring and key user flows. Vitest already covers component tests.
+- **Options considered:** no browser e2e for the first release; Playwright smoke tests; defer the decision.
+- **Trade-offs:** Playwright adds an npm dependency, browser binaries in CI, and run time. Its tests need a running Server and database, so they depend on the hosting and database decisions. Skipping e2e leaves UI wiring regressions to manual checks.
+- **Decision:** Use Playwright (`@playwright/test`) for a small set of smoke tests over key user flows in the first release. Keep them in `src/client/e2e/`, sharing the client's `package.json`. Component and logic tests stay in Vitest.
+- **Consequences:** The dependency and configuration are added with the first UI flow worth covering, not before. The CI decision must provide browsers plus a running Server and database. Smoke tests follow D-005 using Playwright tags, e.g. `test('shows a local subgraph view', { tag: '@AC-08.4' }, ...)`.
