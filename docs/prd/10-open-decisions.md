@@ -37,9 +37,10 @@ This file is intentionally unresolved. Claude Code must not silently invent deci
 - Can administrators suspend contributors for abuse, and what effect does suspension have on existing contributions?
 
 ## Graph exploration
-- How should multiple paths between the same two people be presented?
-- Which derived relationship types are in the initial release?
-- How are unknown or undisclosed parents represented, if at all?
+- **Decided (2026-10-21):** show the shortest path, with "There are more connections between these people" listing up to 5 more (configurable). See PRD 08.
+- **Decided (2026-10-21):** no derived relationship labels in the first release; explanations show the path. Admin-defined label rules are planned for later.
+- **Decided (2026-10-21):** unknown parents are ordinary profiles with the first name `UNKNOWN`; no special state.
+- **Decided (2026-10-21):** adoptive steps read "adoptive parent"/"adopted child"; adoptive links are drawn differently with a legend.
 
 ## General rule
 When work depends on an unresolved item:
