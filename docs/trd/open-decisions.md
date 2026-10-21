@@ -19,6 +19,7 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 - Project references and persistence abstractions (D-002 below).
 - **First implementation slice (agreed 2026-10-21):** domain core only, in `FamilyGraph.Business`. It covers people, maintainers, parent–child links, per-endpoint consent and audit events, with unit tests. It uses no persistence, identity or HTTP, so it is not blocked by the decisions below.
 - **Unit-test framework (agreed 2026-10-21):** xUnit v3. The integration-test database strategy is still open (see Testing below).
+- Assertions use xUnit's built-in `Assert` (D-003 below).
 - Business contains no DTOs or API contracts. Account and user DTOs wait for the identity and API-convention decisions.
 
 ## Proposed, not yet finalized
@@ -32,7 +33,7 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 1. **Identity approach:** Decide supported sign-in methods, identity provider strategy, account lifecycle, and whether ASP.NET Core Identity is the chosen foundation.
 2. **Database and graph queries:** Confirm PostgreSQL and define initial traversal/query patterns, limits, and indexing approach.
 3. **API conventions:** Decide endpoint style, DTO placement, validation, pagination, and error format.
-4. **Testing:** xUnit v3 is agreed for unit tests. Still to decide: the integration-test database strategy.
+4. **Testing (#7):** xUnit v3 and built-in `Assert` are agreed (D-003). Still to decide: test project layout, mapping PRD acceptance criteria to tests, client e2e for the first release, and the integration-test database strategy.
 5. **Production hosting:** Decide whether Client assets are served by Server or hosted separately, while keeping local development on the SPA Proxy.
 6. **CI/CD and configuration:** Decide build pipeline, migration deployment policy, secrets management, and supported deployment configuration.
 
@@ -80,3 +81,12 @@ For each major decision, record:
   - Read side: Application-owned query services that return read models, with depth and node limits as required parameters.
   - Derived relationships: a pure Business service computes them from a bounded set of active links fetched by a query service.
 - **Consequences:** Wiring and the architecture test are done in #8. Limit values depend on the database decision (#5). The audit-in-same-transaction rule shapes #10.
+
+### D-003: Assertion library
+
+- **Status:** agreed (2026-10-21). Issue #7.
+- **Context:** Every test uses the assertion library, so switching later means rewriting tests. Consent and audit tests mostly compare states and event sequences. New dependencies need agreement.
+- **Options considered:** xUnit built-in `Assert`; Shouldly; AwesomeAssertions. FluentAssertions v8+ was excluded because of its commercial licence.
+- **Trade-offs:** `Assert` adds no dependency, but its object-graph comparison is weaker. Shouldly gives clearer messages for one small dependency. AwesomeAssertions is the most expressive, but has the largest API and dependency.
+- **Decision:** Use xUnit's built-in `Assert`. Add no assertion library.
+- **Consequences:** Prefer records and value equality in Business so that `Assert.Equal` is enough. If messages prove inadequate, moving to Shouldly is a mechanical change that needs a new agreement.
