@@ -16,7 +16,7 @@ Proposed baseline; versions and supporting dependencies must be verified before 
 | API style | REST with JSON | Recommended baseline |
 | Relational database | PostgreSQL | Provisional; finalize during data design |
 | ORM and migrations | Entity Framework Core | Recommended baseline |
-| Identity persistence | ASP.NET Core Identity with EF Core, if suitable | Infrastructure may use `IdentityDbContext`; exact identity approach remains to be specified |
+| Identity persistence | ASP.NET Core Identity with EF Core, Google sign-in | Agreed (D-008). One shared `IdentityDbContext`-derived context |
 | Development integration | ASP.NET Core Angular SPA Proxy | Configured (#8); enabled only through `launchSettings.json` |
 | Testing | xUnit v3 (built-in `Assert`), Microsoft.Testing.Platform; Vitest; Playwright smoke tests | Agreed (D-003–D-006); integration-test database deferred |
 | Packaging | Docker | Intended for self-hosting |

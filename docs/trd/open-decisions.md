@@ -24,6 +24,7 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 - Mapping PRD acceptance criteria to tests (D-005 below).
 - Client end-to-end smoke tests with Playwright (D-006 below).
 - Domain rule enforcement and error reporting (D-007 below).
+- Identity approach and account model (D-008 below).
 - Business contains no DTOs or API contracts. Account and user DTOs wait for the identity and API-convention decisions.
 
 ## Proposed, not yet finalized
@@ -34,7 +35,7 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 
 ## Decisions to discuss next
 
-1. **Identity approach:** Decide supported sign-in methods, identity provider strategy, account lifecycle, and whether ASP.NET Core Identity is the chosen foundation.
+1. **Identity approach:** agreed (D-008). Still open, with API conventions (item 3) and hosting (item 5): cookie or token sessions for the SPA.
 2. **Database and graph queries:** Confirm PostgreSQL and define initial traversal/query patterns, limits, and indexing approach. Settle the integration-test database strategy alongside it (see item 4).
 3. **API conventions:** Decide endpoint style, DTO placement, validation, pagination, and error format.
 4. **Testing (#7):** xUnit v3, built-in `Assert` (D-003), the test project layout (D-004), acceptance-criteria mapping (D-005) and Playwright e2e smoke tests (D-006) are agreed. Deferred until the database decision (item 2, #5): the integration-test database strategy. Testcontainers is the leading option if PostgreSQL is confirmed; in-memory and SQLite providers were rejected because they do not reproduce PostgreSQL constraints, transactions or recursive queries.
@@ -139,3 +140,21 @@ For each major decision, record:
   - Rule violations throw custom exceptions with a clear error message. Business defines a base domain exception plus specific subclasses per rule. Application defines its own exceptions for application-level failures (e.g. not found). Neither depends on HTTP types.
   - Exceptions are for rule violations, not normal control flow. Domain code does not catch and swallow them.
 - **Consequences:** Unit tests assert the exception type thrown for each rule. Mapping exceptions to HTTP responses belongs to the API-conventions decision (#6). Message localization is not decided.
+
+### D-008: Identity approach and account model
+
+- **Status:** agreed (2026-10-21). Issue #4.
+- **Context:** `UserAccount` must stay separate from `Person` (PRD 01). Admins are needed for claim review (PRD 04) and investigations (PRD 07). The product is self-hostable, so setup cost matters.
+- **Options considered:** local passwords, external OIDC, or both; ASP.NET Core Identity or an external identity server (e.g. Keycloak); shared or separate `DbContext`; first-sign-in admin, admin granted in the database, or admin named in configuration.
+- **Trade-offs:** Google-only sign-in stores no passwords and is quick to build, but every instance needs its own Google OAuth client and users need a Google account. An external identity server is one more service for every self-hoster. Separate contexts would need cross-context transactions for writes that touch accounts and audit records.
+- **Decision:**
+  - **Sign-in:** Google only for the first release. Email/password, usernames and phone numbers may be added later.
+  - **Foundation:** ASP.NET Core Identity, with its types kept in Infrastructure. Business never sees them; the domain refers to accounts by an opaque account ID.
+  - **Database:** one shared database and one EF Core context derived from `IdentityDbContext`, so domain writes, account data and audit events can commit in one transaction.
+  - **Roles:** `User` and `Administrator`. Every new account gets `User`. "Maintainer" is not a role; it is tracked per profile in the domain.
+  - **Admin assignment:** configuration holds a list of admin email addresses (e.g. `Admin:Emails`). On each sign-in, an account whose Google-verified email is on the list gets `Administrator`. An account not on the list loses it. Unverified emails never match. There is no in-app promote or demote.
+  - **First-release account scope:** sign up and sign in with Google, sign out, view own account. Account deletion waits for #32.
+- **Consequences:**
+  - New NuGet packages (Microsoft, first-party): `Microsoft.AspNetCore.Authentication.Google` and `Microsoft.AspNetCore.Identity.EntityFrameworkCore`, added with #11.
+  - Self-host docs must explain creating a Google OAuth client. Secrets handling belongs to #34.
+  - Cookie or token sessions for the SPA are decided with API conventions (#6) and hosting (#33).
