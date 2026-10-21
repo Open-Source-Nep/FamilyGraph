@@ -34,9 +34,9 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 ## Decisions to discuss next
 
 1. **Identity approach:** Decide supported sign-in methods, identity provider strategy, account lifecycle, and whether ASP.NET Core Identity is the chosen foundation.
-2. **Database and graph queries:** Confirm PostgreSQL and define initial traversal/query patterns, limits, and indexing approach.
+2. **Database and graph queries:** Confirm PostgreSQL and define initial traversal/query patterns, limits, and indexing approach. Settle the integration-test database strategy alongside it (see item 4).
 3. **API conventions:** Decide endpoint style, DTO placement, validation, pagination, and error format.
-4. **Testing (#7):** xUnit v3, built-in `Assert` (D-003) the test project layout (D-004) and acceptance-criteria mapping (D-005) and Playwright e2e smoke tests (D-006) are agreed. Still to decide: the integration-test database strategy.
+4. **Testing (#7):** xUnit v3, built-in `Assert` (D-003), the test project layout (D-004), acceptance-criteria mapping (D-005) and Playwright e2e smoke tests (D-006) are agreed. Deferred until the database decision (item 2, #5): the integration-test database strategy. Testcontainers is the leading option if PostgreSQL is confirmed; in-memory and SQLite providers were rejected because they do not reproduce PostgreSQL constraints, transactions or recursive queries.
 5. **Production hosting:** Decide whether Client assets are served by Server or hosted separately, while keeping local development on the SPA Proxy.
 6. **CI/CD and configuration:** Decide build pipeline, migration deployment policy, secrets management, and supported deployment configuration.
 
