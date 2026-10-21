@@ -14,10 +14,10 @@ This file is intentionally unresolved. Claude Code must not silently invent deci
 - **Decided (2026-10-21):** no limit on the number of parents, of either type.
 
 ## Claims and identity
-- How is original-maintainer unavailability determined?
-- How are competing claims to one profile handled?
-- What is the retry/appeal policy after a claim rejection?
-- How long is submitted evidence retained, and who can access it?
+- **Decided (2026-10-21):** a maintainer is unavailable after 30 days without response (configurable) or when their account no longer exists. See PRD 04.
+- **Decided (2026-10-21):** parallel claims are allowed; with more than one open claim, an administrator decides them together.
+- **Decided (2026-10-21):** one appeal per claim; after an administrator rejection, a new claim is allowed after 90 days (configurable) with new evidence. Claims on already-claimed profiles go to an administrator, and the current maintainer is notified.
+- **Decided (2026-10-21):** evidence is visible to the claimant, reviewing administrators and the deciding maintainer, and is deleted 90 days after the final decision (configurable). Audit keeps the decision and rationale.
 
 ## Privacy and deletion
 - **Decided (2026-10-21):** deletion permanently erases personal data and leaves a `Deleted` placeholder. It is not reversible. The maintainer or an administrator may delete. No new links to a deleted profile. See PRD 05.
