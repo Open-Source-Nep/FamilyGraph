@@ -26,7 +26,8 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 - Domain rule enforcement and error reporting (D-007 below).
 - Identity approach and account model (D-008 below).
 - Database, integration-test database and bounded graph queries (D-009 below).
-- Business contains no DTOs or API contracts. Account and user DTOs wait for the identity and API-convention decisions.
+- API conventions (D-010 below).
+- Business contains no DTOs or API contracts (D-010 places API models in Server).
 
 ## Proposed, not yet finalized
 
@@ -34,9 +35,9 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 
 ## Decisions to discuss next
 
-1. **Identity approach:** agreed (D-008). Still open, with API conventions (item 3) and hosting (item 5): cookie or token sessions for the SPA.
+1. **Identity approach:** agreed (D-008). Still open, with hosting (item 5): cookie or token sessions for the SPA.
 2. **Database and graph queries:** agreed (D-009).
-3. **API conventions:** Decide endpoint style, DTO placement, validation, pagination, and error format.
+3. **API conventions:** agreed (D-010).
 4. **Testing (#7):** xUnit v3, built-in `Assert` (D-003), the test project layout (D-004), acceptance-criteria mapping (D-005) and Playwright e2e smoke tests (D-006) are agreed. The integration-test database is Testcontainers with PostgreSQL (D-009).
 5. **Production hosting:** Decide whether Client assets are served by Server or hosted separately, while keeping local development on the SPA Proxy.
 6. **CI/CD and configuration:** Decide build pipeline, migration deployment policy, secrets management, and supported deployment configuration.
@@ -136,7 +137,7 @@ For each major decision, record:
 - **Trade-offs:** A result type makes failures explicit in signatures but adds plumbing to every call. Exceptions keep domain signatures simple and stop execution at the violated rule, at the cost of being invisible in signatures. Permission checks only in Application would let a code path bypass the rules.
 - **Decision:**
   - Domain entities enforce their own invariants and authority rules. For example, `Person` refuses a rename from anyone other than its maintainer.
-  - Rule violations throw custom exceptions with a clear error message. Business defines a base domain exception plus specific subclasses per rule. Application defines its own exceptions for application-level failures (e.g. not found). Neither depends on HTTP types.
+  - Rule violations throw custom exceptions with a clear error message and a stable error code (e.g. `link.cycle_detected`, see D-010). Business defines a base domain exception plus specific subclasses per rule. Application defines its own exceptions for application-level failures (e.g. not found). Neither depends on HTTP types.
   - Exceptions are for rule violations, not normal control flow. Domain code does not catch and swallow them.
 - **Consequences:** Unit tests assert the exception type thrown for each rule. Mapping exceptions to HTTP responses belongs to the API-conventions decision (#6). Message localization is not decided.
 
@@ -174,7 +175,7 @@ For each major decision, record:
     | Query | Default | Maximum |
     |---|---|---|
     | Local view around a person, generations each way | 2 | 4 |
-    | Local view, people returned | 200 | 500 |
+    | Local view or "load more" from an edge person, people returned | 10 | 500 |
     | How two people are related | no generation limit; at most 10,000 people examined | configurable |
     | Cycle check at link creation or reactivation | 5,000 ancestors / 50 generations | same |
 
@@ -184,3 +185,19 @@ For each major decision, record:
   - Docker is required to run integration tests locally and in CI (#34).
   - Future maintainer checkpoints may change the people-examined cap for relationship search.
   - Package versions are pinned when #9 adds them.
+
+### D-010: API conventions
+
+- **Status:** agreed (2026-10-21). Issue #6.
+- **Context:** The Client shows graphs, mainly fan charts centred on one person, not tables. Privacy must be enforced on every read path (PRD 05). Domain rules throw custom exceptions (D-007).
+- **Options considered:** minimal APIs or MVC controllers; API models in Application or Server; built-in validation or FluentValidation; page-number, cursor or no pagination; ProblemDetails or a custom error shape; one privacy component or per-query privacy filtering.
+- **Trade-offs:** Controllers are more ceremony than minimal APIs but familiar to contributors. Separate API models duplicate some types and need mapping, but keep HTTP-specific validation out of Application. Skipping pagination is simpler but needs a limit on every list. One privacy component can't be skipped by a new endpoint, while per-query filtering repeats the rule in every query.
+- **Decision:**
+  - **Endpoints:** MVC controllers with `[ApiController]`, one controller per feature. Routes are plural and lowercase under `/api` with no version prefix (e.g. `/api/people`, `/api/relationships`).
+  - **API models:** request and response models live in Server and carry API-specific validation. Server maps them to and from Application's use-case inputs and read models. EF entities and domain objects are never API contracts.
+  - **Validation:** built-in data annotations on the Server API models, checked automatically by `[ApiController]` (400). Business rules stay in the domain (D-007). No validation library.
+  - **Graph reads, no pagination:** a view request returns the centre person plus up to N related people (default 10, configurable, hard maximum 500, see D-009). Edge people whose further relatives were not loaded are flagged "has more", and a "load more" request around an edge person returns up to the same limit.
+  - **Lists, no pagination for now:** person search returns the top 20 matches and says when there are more ("refine your search"). Other lists (e.g. profiles I maintain, audit history) return everything up to a configurable limit and say when they were cut short. Pagination is added only when a real list needs it.
+  - **Errors:** ProblemDetails (RFC 9457), with each custom exception's stable error code as an extension so the Client can choose wording or translations. Status codes: 400 invalid request shape, 403 not permitted (e.g. not the maintainer), 404 not found, 409 conflict with current state (e.g. duplicate link), 422 domain rule violated (e.g. cycle, missing first name).
+  - **Privacy projection:** one Application component turns hidden profiles into `Private` or `Deleted` placeholders. Query services return person references that only this component can produce, so a read path cannot skip it. Integration tests cover every read endpoint. What is hidden is decided in #17.
+- **Consequences:** Every custom exception carries an error code (D-007). A global exception handler in Server maps exceptions to ProblemDetails. The "has more" flag needs a cheap existence check per edge person in the traversal query. The fan-chart presentation is decided with #19 and #23.

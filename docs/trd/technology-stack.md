@@ -13,7 +13,7 @@ Proposed baseline; versions and supporting dependencies must be verified before 
 | Styling | Plain CSS (component-scoped styles + CSS custom properties) | Agreed (D-001); no Tailwind or UI component library |
 | Backend language | C# | Intended |
 | Frontend language | TypeScript | Intended |
-| API style | REST with JSON | Recommended baseline |
+| API style | REST with JSON, MVC controllers, ProblemDetails errors | Agreed (D-010) |
 | Relational database | PostgreSQL (Npgsql provider) | Agreed (D-009) |
 | ORM and migrations | Entity Framework Core; recursive CTEs for traversal | Agreed (D-009) |
 | Identity persistence | ASP.NET Core Identity with EF Core, Google sign-in | Agreed (D-008). One shared `IdentityDbContext`-derived context |
