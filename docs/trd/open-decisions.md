@@ -23,6 +23,7 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 - Test project layout (D-004 below).
 - Mapping PRD acceptance criteria to tests (D-005 below).
 - Client end-to-end smoke tests with Playwright (D-006 below).
+- Domain rule enforcement and error reporting (D-007 below).
 - Business contains no DTOs or API contracts. Account and user DTOs wait for the identity and API-convention decisions.
 
 ## Proposed, not yet finalized
@@ -126,3 +127,15 @@ For each major decision, record:
 - **Trade-offs:** Playwright adds an npm dependency, browser binaries in CI, and run time. Its tests need a running Server and database, so they depend on the hosting and database decisions. Skipping e2e leaves UI wiring regressions to manual checks.
 - **Decision:** Use Playwright (`@playwright/test`) for a small set of smoke tests over key user flows in the first release. Keep them in `src/client/e2e/`, sharing the client's `package.json`. Component and logic tests stay in Vitest.
 - **Consequences:** The dependency and configuration are added with the first UI flow worth covering, not before. The CI decision must provide browsers plus a running Server and database. Smoke tests follow D-005 using Playwright tags, e.g. `test('shows a local subgraph view', { tag: '@AC-08.4' }, ...)`.
+
+### D-007: Domain rule enforcement and error reporting
+
+- **Status:** agreed (2026-10-21). Issue #12.
+- **Context:** The domain core (#12, #14, #15, #16) must reject invalid operations, such as an empty first name, a rename by someone other than the maintainer, or a link that would create a cycle. Callers need to know which rule failed and why.
+- **Options considered:** a result type returned from domain operations; custom exceptions; checking permissions only in Application.
+- **Trade-offs:** A result type makes failures explicit in signatures but adds plumbing to every call. Exceptions keep domain signatures simple and stop execution at the violated rule, at the cost of being invisible in signatures. Permission checks only in Application would let a code path bypass the rules.
+- **Decision:**
+  - Domain entities enforce their own invariants and authority rules. For example, `Person` refuses a rename from anyone other than its maintainer.
+  - Rule violations throw custom exceptions with a clear error message. Business defines a base domain exception plus specific subclasses per rule. Application defines its own exceptions for application-level failures (e.g. not found). Neither depends on HTTP types.
+  - Exceptions are for rule violations, not normal control flow. Domain code does not catch and swallow them.
+- **Consequences:** Unit tests assert the exception type thrown for each rule. Mapping exceptions to HTTP responses belongs to the API-conventions decision (#6). Message localization is not decided.

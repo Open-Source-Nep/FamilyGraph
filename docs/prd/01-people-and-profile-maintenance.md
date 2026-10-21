@@ -10,6 +10,8 @@ Define person profiles, account separation, and profile-maintainer authority.
 - A `UserAccount` is an authenticated application user. It may claim and maintain a person profile.
 - A contributor may create multiple person profiles.
 - Creating a person initially requires only a name.
+- A person's name has a first name (required), a middle name (optional), and a last name (optional). No other profile data is required.
+- Only the profile's current maintainer may rename the person.
 - Each person profile has exactly one responsible maintainer at a time.
 - Before a profile is claimed, its original contributor is its maintainer.
 - After a claim is approved, the claimant becomes the profile's maintainer.
@@ -26,6 +28,8 @@ Define person profiles, account separation, and profile-maintainer authority.
 - `AC-01.4` Claim approval changes the maintainer to the claimant.
 - `AC-01.5` Existing relationships remain in their current consent state after a successful claim.
 - `AC-01.6` The application does not infer identity solely from matching names.
+- `AC-01.7` A person can be created with only a first name; middle and last names are optional.
+- `AC-01.8` Only the current maintainer can rename a person.
 
 ## Open details
 
