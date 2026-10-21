@@ -44,6 +44,13 @@ Define when a parent–child relationship is active, inactive, restored, or remo
 - Historical events remain auditable after deactivation or deletion.
 - Administrators cannot force an active relationship when required consent is absent.
 
+## Creation decisions (agreed 2026-10-21)
+
+- Only a user who maintains at least one endpoint can create a parent–child link.
+- The creator's endpoint(s) start as approved.
+- An endpoint maintained by a different user starts as **pending**, whether or not it is claimed. The link stays inactive until that maintainer approves.
+- This defines what "subject to its maintainer's authority" means above. A link is active by default only when one user maintains both endpoints.
+
 ## Open details
 
 - Exact event names and state-machine representation are implementation details, provided observable behavior matches these requirements.
