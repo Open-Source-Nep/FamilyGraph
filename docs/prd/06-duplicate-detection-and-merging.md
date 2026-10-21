@@ -18,11 +18,11 @@ Allow the community to resolve duplicate profiles without making unsafe identity
 
 ## Acceptance criteria
 
-- Similar names can trigger a suggestion but never an automatic merge.
-- Users can keep profiles separate when identity is uncertain.
-- Merge actions are auditable.
-- A merge cannot silently transfer a claimed profile to another account.
-- Relationships affected by a merge continue to obey PRD 03.
+- `AC-06.1` Similar names can trigger a suggestion but never an automatic merge.
+- `AC-06.2` Users can keep profiles separate when identity is uncertain.
+- `AC-06.3` Merge actions are auditable.
+- `AC-06.4` A merge cannot silently transfer a claimed profile to another account.
+- `AC-06.5` Relationships affected by a merge continue to obey PRD 03.
 
 ## Open details
 

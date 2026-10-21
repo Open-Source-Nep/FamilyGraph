@@ -24,11 +24,11 @@ Do not add guardianship, step-parent, foster-parent, or other parent categories 
 
 ## Acceptance criteria
 
-- A user can create biological and adoptive parent–child relationships.
-- The system can derive a sibling relationship from shared active parent links.
-- The system can distinguish biological and adoptive paths when explaining a derived relationship.
-- The system indicates when an adoptive connection is relevant to a derived relationship.
-- Inactive/disagreed parent–child links are excluded from normal graph traversal and derived relationships.
+- `AC-02.1` A user can create biological and adoptive parent–child relationships.
+- `AC-02.2` The system can derive a sibling relationship from shared active parent links.
+- `AC-02.3` The system can distinguish biological and adoptive paths when explaining a derived relationship.
+- `AC-02.4` The system indicates when an adoptive connection is relevant to a derived relationship.
+- `AC-02.5` Inactive/disagreed parent–child links are excluded from normal graph traversal and derived relationships.
 
 ## Open details
 

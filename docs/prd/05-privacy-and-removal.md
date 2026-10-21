@@ -19,11 +19,11 @@ Minimize personal data while allowing public exploration of family relationships
 
 ## Acceptance criteria
 
-- A private profile's name and personal details are not exposed in public views.
-- A private person can remain represented as a `Private` node in a public family graph.
-- A deleted person can remain represented as a `Deleted` node.
-- Public graph traversal can pass through active relationships involving placeholders.
-- Inactive relationships are not exposed as active merely because profile privacy is enabled.
+- `AC-05.1` A private profile's name and personal details are not exposed in public views.
+- `AC-05.2` A private person can remain represented as a `Private` node in a public family graph.
+- `AC-05.3` A deleted person can remain represented as a `Deleted` node.
+- `AC-05.4` Public graph traversal can pass through active relationships involving placeholders.
+- `AC-05.5` Inactive relationships are not exposed as active merely because profile privacy is enabled.
 
 ## Open details
 

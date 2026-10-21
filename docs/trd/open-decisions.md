@@ -21,6 +21,7 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 - **Unit-test framework (agreed 2026-10-21):** xUnit v3. The integration-test database strategy is still open (see Testing below).
 - Assertions use xUnit's built-in `Assert` (D-003 below).
 - Test project layout (D-004 below).
+- Mapping PRD acceptance criteria to tests (D-005 below).
 - Business contains no DTOs or API contracts. Account and user DTOs wait for the identity and API-convention decisions.
 
 ## Proposed, not yet finalized
@@ -34,7 +35,7 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 1. **Identity approach:** Decide supported sign-in methods, identity provider strategy, account lifecycle, and whether ASP.NET Core Identity is the chosen foundation.
 2. **Database and graph queries:** Confirm PostgreSQL and define initial traversal/query patterns, limits, and indexing approach.
 3. **API conventions:** Decide endpoint style, DTO placement, validation, pagination, and error format.
-4. **Testing (#7):** xUnit v3, built-in `Assert` (D-003) and the test project layout (D-004) are agreed. Still to decide: mapping PRD acceptance criteria to tests, client e2e for the first release, and the integration-test database strategy.
+4. **Testing (#7):** xUnit v3, built-in `Assert` (D-003) the test project layout (D-004) and acceptance-criteria mapping (D-005) are agreed. Still to decide: client e2e for the first release, and the integration-test database strategy.
 5. **Production hosting:** Decide whether Client assets are served by Server or hosted separately, while keeping local development on the SPA Proxy.
 6. **CI/CD and configuration:** Decide build pipeline, migration deployment policy, secrets management, and supported deployment configuration.
 
@@ -103,3 +104,15 @@ For each major decision, record:
   - `Server.IntegrationTests`: HTTP-level tests that host `Server` in-process.
   - `FamilyGraph.ArchitectureTests`: enforces the D-002 reference graph (#8).
 - **Consequences:** Unit tests do not touch a real database. Tests that need one wait for the integration-test database decision. Any test host package (e.g. `Microsoft.AspNetCore.Mvc.Testing`) is introduced in #8 with explicit mention.
+
+### D-005: Mapping PRD acceptance criteria to tests
+
+- **Status:** agreed (2026-10-21). Issue #7.
+- **Context:** PRD acceptance criteria were unnumbered bullets, so tests could not reference them and coverage gaps were invisible.
+- **Options considered:** stable criterion IDs with test traits; descriptive test names only; a coverage table maintained in the TRD.
+- **Trade-offs:** IDs require a one-time PRD edit and discipline when adding criteria. Names alone carry no maintenance cost but give no mechanical traceability. A hand-maintained table drifts.
+- **Decision:**
+  - Every PRD acceptance criterion has a stable ID, `AC-<PRD>.<n>`. The rules for keeping IDs stable are in `docs/prd/README.md`.
+  - A test that verifies a criterion carries `[Trait("AC", "AC-03.1")]`, with one trait per criterion it covers.
+  - Test names still describe the behaviour, e.g. `Disagreement_deactivates_link_immediately`.
+- **Consequences:** `dotnet test --filter "AC=AC-03.1"` selects a criterion's tests. Tests for TRD-level rules (e.g. architecture tests) carry no `AC` trait.

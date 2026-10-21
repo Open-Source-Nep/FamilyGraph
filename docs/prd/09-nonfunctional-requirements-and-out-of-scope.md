@@ -19,6 +19,6 @@
 
 ## Acceptance criteria
 
-- The product remains usable when the graph is too large to render in full.
-- Core relationship information can be understood through text explanations as well as graph visualization.
-- Self-hosting is an explicit product goal, not tied to one hosting provider.
+- `AC-09.1` The product remains usable when the graph is too large to render in full.
+- `AC-09.2` Core relationship information can be understood through text explanations as well as graph visualization.
+- `AC-09.3` Self-hosting is an explicit product goal, not tied to one hosting provider.
