@@ -61,13 +61,14 @@ Rules:
 
 ## Current state of the repo
 
-Fresh template scaffolding with no commits and no domain code yet. Some of it differs from the TRDs; resolve these with the user rather than "fixing" them unasked:
+Template scaffolding with no domain code yet. Layout and toolchain are agreed (D-001 in `docs/trd/open-decisions.md`):
 
-- Solution file is `FamilyGraph.slnx` (the TRD says `.sln`). All projects live under `src/` (the TRD layout puts them at the root). The Angular project folder is `src/client` (lowercase, `client.esproj`).
-- Client uses **Angular 21** with TypeScript 5.9, Vitest, Prettier, and **Tailwind CSS 4**. The TRD proposes Angular 22 and says to avoid UI libraries by default, so Tailwind's inclusion should be confirmed.
+- Solution `FamilyGraph.slnx`, all projects under `src/`. The Angular project folder is `src/client` (`client.esproj`).
+- `global.json` pins the .NET SDK 10.0.1xx. `.nvmrc` selects Node 24.
+- Client uses **Angular 22** with TypeScript 6.0, Vitest, and Prettier. Styling is plain CSS: no Tailwind or UI component library.
 - `Server` targets `net10.0` with only `Microsoft.AspNetCore.OpenApi`. `Program.cs` is still the weatherforecast template. The SPA Proxy is **not** configured yet.
 - No project references between the class libraries yet. Each contains only a placeholder `Class1.cs`.
-- No `global.json`, tests, `deploy/`, database provider, or EF Core packages yet.
+- No tests, `deploy/`, database provider, or EF Core packages yet.
 
 Open technical decisions, in order (see `docs/trd/open-decisions.md`): project references and persistence abstractions, identity approach, database and graph query patterns (PostgreSQL is provisional), API conventions, testing strategy, production hosting, CI/CD and configuration.
 

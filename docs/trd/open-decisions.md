@@ -15,14 +15,13 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 - Infrastructure contains EF Core `DbContext`, migrations, persistence, and may use `IdentityDbContext`.
 - Keep a modular monolith initially and avoid unnecessary abstraction.
 - Do not write application code until the technical specification is sufficiently agreed.
+- Repository layout, toolchain versions, and styling approach (D-001 below).
 
 ## Proposed, not yet finalized
 
-- .NET 10 LTS and Angular 22.
 - PostgreSQL as the relational database.
 - EF Core for persistence and migrations.
 - Microsoft `dotnet new angular` template as the starting point, subject to checking its current structure and compatibility.
-- One repository containing Server, Client, class libraries, tests, docs, and deployment files.
 - Repository/query abstraction ownership split between Business and Application based on responsibility.
 
 ## Decisions to discuss next
@@ -44,3 +43,19 @@ For each major decision, record:
 - Trade-offs.
 - Chosen option and rationale.
 - Consequences and follow-up work.
+
+## Decision records
+
+### D-001: Reconcile template scaffold with TRD
+
+- **Status:** agreed (2026-10-21). Issue #2.
+- **Context:** The generated template differed from the proposed TRD layout: `.slnx` instead of `.sln`, projects under `src/`, Angular folder `src/client`, Angular 21, and Tailwind CSS 4 included.
+- **Options considered:** follow the TRD as written (move folders, regenerate `.sln`), or keep the template layout and update the TRD; upgrade Angular now or later; keep or remove Tailwind; pin toolchains now or defer to CI.
+- **Trade-offs:** Moving folders gives no functional benefit and adds churn. `.slnx` needs recent tooling (.NET 9+ SDK, VS 2022 17.13+, Rider). Upgrading before feature code exists is the cheapest time to do it. Tailwind is a utility library rather than a component library, but it still adds long-term dependencies and conventions.
+- **Decision:**
+  - Keep `FamilyGraph.slnx` and all projects under `src/`.
+  - Keep the Angular folder as `src/client` (`client.esproj`). "Client" remains the logical project name.
+  - Upgrade to Angular 22 (TypeScript 6.0) and use the v22 defaults. The `ng update` compatibility shims (eager change detection, suppressed nullish diagnostics) were not kept.
+  - Remove Tailwind CSS (and the PostCSS config). Use plain component-scoped CSS and CSS custom properties.
+  - Pin toolchains: `global.json` (.NET SDK 10.0.1xx, `latestPatch`), `.nvmrc` (Node 24), and `engines` in `package.json`.
+- **Consequences:** Contributors need .NET SDK 10.0.1xx and Node 22.22.3+ or 24.15+. Any later styling dependency needs a separate agreement.

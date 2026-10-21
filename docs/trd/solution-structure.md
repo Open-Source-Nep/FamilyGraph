@@ -4,38 +4,29 @@
 
 - Solution: `FamilyGraph`
 - API project: `Server`
-- Angular project: `Client`
+- Angular project: `Client` (folder `src/client`, project file `client.esproj`)
 - Class libraries: `FamilyGraph.Business`, `FamilyGraph.Application`, `FamilyGraph.Infrastructure`
 
-## Proposed repository layout
+## Repository layout (agreed, see D-001 in `open-decisions.md`)
 
 ```text
 FamilyGraph/
-├── FamilyGraph.sln
+├── FamilyGraph.slnx
 ├── global.json
+├── .nvmrc
 ├── README.md
-├── Server/
-│   └── Server.csproj
-├── Client/
-│   ├── package.json
-│   ├── angular.json
-│   └── src/
-├── FamilyGraph.Business/
-│   └── FamilyGraph.Business.csproj
-├── FamilyGraph.Application/
-│   └── FamilyGraph.Application.csproj
-├── FamilyGraph.Infrastructure/
-│   └── FamilyGraph.Infrastructure.csproj
-├── tests/
-│   ├── FamilyGraph.Business.Tests/
-│   ├── FamilyGraph.Application.Tests/
-│   ├── FamilyGraph.Infrastructure.Tests/
-│   └── Server.Tests/
+├── src/
+│   ├── Server/
+│   ├── client/                     # Angular SPA ("Client")
+│   ├── FamilyGraph.Business/
+│   ├── FamilyGraph.Application/
+│   └── FamilyGraph.Infrastructure/
+├── tests/                          # added per the testing decision
 ├── docs/
-└── deploy/
+└── deploy/                         # added per the hosting decision
 ```
 
-This is a proposed initial layout, not an instruction to create every test project or folder before it is useful. Confirm how the selected Microsoft Angular template lays out its generated files, then adapt it while preserving the agreed project names.
+Add `tests/` and `deploy/` folders only when they are needed.
 
 ## Project responsibilities
 
