@@ -7,10 +7,11 @@ This file is intentionally unresolved. Claude Code must not silently invent deci
 - Can a maintainer be replaced if their account becomes permanently inaccessible outside the claim process?
 
 ## Relationships
-- How should the system prevent or handle cycles in parent–child links?
+- **Decided (initial invariant, 2026-10-21):** a person cannot be their own parent. A direct two-person cycle (A parent of B and B parent of A) is rejected.
+- Still open: how to prevent or handle deeper cycles (A → B → C → A).
 - What happens when a merge produces duplicate or contradictory relationships?
-- What happens if relationship types conflict (biological versus adoptive) for the same endpoints?
-- Are there any limits on multiple parents or multiple parent links of the same type?
+- **Decided (2026-10-21):** at most one parent–child link per ordered pair (parent, child), so the same pair cannot have both a biological and an adoptive link.
+- **Decided (2026-10-21):** no limit on the number of parents, of either type.
 
 ## Claims and identity
 - How is original-maintainer unavailability determined?

@@ -17,6 +17,9 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 - Do not write application code until the technical specification is sufficiently agreed.
 - Repository layout, toolchain versions, and styling approach (D-001 below).
 - Project references and persistence abstractions (D-002 below).
+- **First implementation slice (agreed 2026-10-21):** domain core only, in `FamilyGraph.Business`. It covers people, maintainers, parent–child links, per-endpoint consent and audit events, with unit tests. It uses no persistence, identity or HTTP, so it is not blocked by the decisions below.
+- **Unit-test framework (agreed 2026-10-21):** xUnit v3. The integration-test database strategy is still open (see Testing below).
+- Business contains no DTOs or API contracts. Account and user DTOs wait for the identity and API-convention decisions.
 
 ## Proposed, not yet finalized
 
@@ -29,7 +32,7 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 1. **Identity approach:** Decide supported sign-in methods, identity provider strategy, account lifecycle, and whether ASP.NET Core Identity is the chosen foundation.
 2. **Database and graph queries:** Confirm PostgreSQL and define initial traversal/query patterns, limits, and indexing approach.
 3. **API conventions:** Decide endpoint style, DTO placement, validation, pagination, and error format.
-4. **Testing:** Decide test frameworks and integration-test database strategy.
+4. **Testing:** xUnit v3 is agreed for unit tests. Still to decide: the integration-test database strategy.
 5. **Production hosting:** Decide whether Client assets are served by Server or hosted separately, while keeping local development on the SPA Proxy.
 6. **CI/CD and configuration:** Decide build pipeline, migration deployment policy, secrets management, and supported deployment configuration.
 
