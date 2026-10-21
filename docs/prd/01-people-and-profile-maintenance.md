@@ -22,11 +22,12 @@ Define person profiles, account separation, and profile-maintainer authority.
 
 ## Account deletion and maintainer succession
 
-- When an account is deleted, every profile it maintains becomes **maintained by administrators** as a group. Any current administrator may act as that profile's maintainer, and audit history records which administrator acted. This keeps exactly one maintainer per profile.
-- A claimed person deleting their account chooses whether to delete their own profile (erasure, PRD 05) or leave it, in which case it is also maintained by administrators.
+- When an account is deleted, every profile it maintains is assigned to **one administrator account** as maintainer: the first address on the configured administrator list that belongs to an existing account. This keeps exactly one maintainer per profile.
+- If that administrator's account is deleted or loses the administrator role, its inherited profiles move to the next administrator in the same way.
+- A claimed person deleting their account chooses whether to delete their own profile (erasure, PRD 05) or leave it, in which case it is also assigned to an administrator.
 - Approvals and disagreements recorded before the deletion stay unchanged. Links the person disagreed with stay inactive.
-- An administrator maintaining a profile has exactly a maintainer's powers. They cannot override another person's disagreement (PRD 03).
-- **Succession:** any signed-in user may request to become the maintainer of a profile that is maintained by administrators, or whose maintainer is unavailable (as defined in PRD 04). An administrator decides the request.
+- An administrator maintaining an inherited profile has exactly a maintainer's powers. They cannot override another person's disagreement (PRD 03).
+- **Succession:** any signed-in user may request to become the maintainer of a profile inherited by an administrator, or whose maintainer is unavailable (as defined in PRD 04). An administrator decides the request.
 - Succession never applies to a profile whose maintainer is the claimed person themselves while their account exists. Only a new identity claim (PRD 04) can change that maintainer.
 
 ## Acceptance criteria
@@ -39,9 +40,9 @@ Define person profiles, account separation, and profile-maintainer authority.
 - `AC-01.6` The application does not infer identity solely from matching names.
 - `AC-01.7` A person can be created with only a first name; middle and last names are optional.
 - `AC-01.8` Only the current maintainer can rename a person.
-- `AC-01.9` Deleting an account makes its maintained profiles maintained by administrators, without changing any relationship's consent state.
-- `AC-01.10` A claimed person deleting their account can choose to delete their own profile or leave it maintained by administrators.
-- `AC-01.11` An administrator can approve a succession request for a profile maintained by administrators or whose maintainer is unavailable.
+- `AC-01.9` Deleting an account assigns its maintained profiles to the first available administrator, without changing any relationship's consent state.
+- `AC-01.10` A claimed person deleting their account can choose to delete their own profile or leave it assigned to an administrator.
+- `AC-01.11` An administrator can approve a succession request for a profile inherited by an administrator or whose maintainer is unavailable.
 
 ## Open details
 

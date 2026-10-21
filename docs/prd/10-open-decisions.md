@@ -3,8 +3,8 @@
 This file is intentionally unresolved. Claude Code must not silently invent decisions listed here. Update each item when the product owner decides it.
 
 ## People and accounts
-- **Decided (2026-10-21):** profiles of a deleted account become maintained by administrators as a group. A claimed person may instead delete their own profile. Recorded consent is unchanged. See PRD 01.
-- **Decided (2026-10-21):** an administrator may grant a succession request for a profile maintained by administrators or whose maintainer is unavailable. A claimed person's own profile changes maintainer only through a claim.
+- **Decided (2026-10-21):** profiles of a deleted account are assigned to one administrator account (the first on the configured list with an existing account; they move on if that administrator is removed). A claimed person may instead delete their own profile. Recorded consent is unchanged. See PRD 01.
+- **Decided (2026-10-21):** an administrator may grant a succession request for a profile inherited by an administrator or whose maintainer is unavailable. A claimed person's own profile changes maintainer only through a claim.
 
 ## Relationships
 - **Decided (initial invariant, 2026-10-21):** a person cannot be their own parent. A direct two-person cycle (A parent of B and B parent of A) is rejected.
