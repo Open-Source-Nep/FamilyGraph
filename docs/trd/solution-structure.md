@@ -21,12 +21,17 @@ FamilyGraph/
 │   ├── FamilyGraph.Business/
 │   ├── FamilyGraph.Application/
 │   └── FamilyGraph.Infrastructure/
-├── tests/                          # added per the testing decision
+├── tests/                          # D-004
+│   ├── FamilyGraph.Business.Tests/
+│   ├── FamilyGraph.Application.Tests/
+│   ├── FamilyGraph.Infrastructure.Tests/
+│   ├── Server.IntegrationTests/
+│   └── FamilyGraph.ArchitectureTests/
 ├── docs/
 └── deploy/                         # added per the hosting decision
 ```
 
-Add `tests/` and `deploy/` folders only when they are needed.
+Add the `deploy/` folder only when it is needed.
 
 ## Project responsibilities
 

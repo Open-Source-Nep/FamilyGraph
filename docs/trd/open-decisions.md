@@ -20,6 +20,7 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 - **First implementation slice (agreed 2026-10-21):** domain core only, in `FamilyGraph.Business`. It covers people, maintainers, parent–child links, per-endpoint consent and audit events, with unit tests. It uses no persistence, identity or HTTP, so it is not blocked by the decisions below.
 - **Unit-test framework (agreed 2026-10-21):** xUnit v3. The integration-test database strategy is still open (see Testing below).
 - Assertions use xUnit's built-in `Assert` (D-003 below).
+- Test project layout (D-004 below).
 - Business contains no DTOs or API contracts. Account and user DTOs wait for the identity and API-convention decisions.
 
 ## Proposed, not yet finalized
@@ -33,7 +34,7 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 1. **Identity approach:** Decide supported sign-in methods, identity provider strategy, account lifecycle, and whether ASP.NET Core Identity is the chosen foundation.
 2. **Database and graph queries:** Confirm PostgreSQL and define initial traversal/query patterns, limits, and indexing approach.
 3. **API conventions:** Decide endpoint style, DTO placement, validation, pagination, and error format.
-4. **Testing (#7):** xUnit v3 and built-in `Assert` are agreed (D-003). Still to decide: test project layout, mapping PRD acceptance criteria to tests, client e2e for the first release, and the integration-test database strategy.
+4. **Testing (#7):** xUnit v3, built-in `Assert` (D-003) and the test project layout (D-004) are agreed. Still to decide: mapping PRD acceptance criteria to tests, client e2e for the first release, and the integration-test database strategy.
 5. **Production hosting:** Decide whether Client assets are served by Server or hosted separately, while keeping local development on the SPA Proxy.
 6. **CI/CD and configuration:** Decide build pipeline, migration deployment policy, secrets management, and supported deployment configuration.
 
@@ -90,3 +91,15 @@ For each major decision, record:
 - **Trade-offs:** `Assert` adds no dependency, but its object-graph comparison is weaker. Shouldly gives clearer messages for one small dependency. AwesomeAssertions is the most expressive, but has the largest API and dependency.
 - **Decision:** Use xUnit's built-in `Assert`. Add no assertion library.
 - **Consequences:** Prefer records and value equality in Business so that `Assert.Equal` is enough. If messages prove inadequate, moving to Shouldly is a mechanical change that needs a new agreement.
+
+### D-004: Test project layout
+
+- **Status:** agreed (2026-10-21). Issue #7.
+- **Context:** #8 creates the test projects. The integration-test database strategy is still open.
+- **Options considered:** Business and architecture tests only, adding the others later; one test project per production project; a single test project.
+- **Trade-offs:** Creating projects only when needed means less scaffolding up front. One project per production project keeps a clear home for tests and mirrors the reference graph, at the cost of some near-empty projects at first.
+- **Decision:** Under `tests/`:
+  - `FamilyGraph.Business.Tests`, `FamilyGraph.Application.Tests` and `FamilyGraph.Infrastructure.Tests`: unit tests, each referencing only its project under test.
+  - `Server.IntegrationTests`: HTTP-level tests that host `Server` in-process.
+  - `FamilyGraph.ArchitectureTests`: enforces the D-002 reference graph (#8).
+- **Consequences:** Unit tests do not touch a real database. Tests that need one wait for the integration-test database decision. Any test host package (e.g. `Microsoft.AspNetCore.Mvc.Testing`) is introduced in #8 with explicit mention.
