@@ -9,7 +9,7 @@ This file is intentionally unresolved. Claude Code must not silently invent deci
 ## Relationships
 - **Decided (initial invariant, 2026-10-21):** a person cannot be their own parent. A direct two-person cycle (A parent of B and B parent of A) is rejected.
 - **Decided (2026-10-21):** deeper cycles (A → B → C → A) are rejected when a link is created or reactivated, if the proposed child is already an ancestor of the proposed parent. The check counts active, pending, and inactive links (not deleted ones). If the bounded check hits its limit, the link is rejected with an explanation that it could not be verified as cycle-free. Rejected alternatives: allow and flag for review; defer to the database/traversal decisions. See PRD 02.
-- What happens when a merge produces duplicate or contradictory relationships?
+- **Decided (2026-10-21):** duplicate or contradictory relationships from a merge are resolved by the reviewers choosing one link to keep. See PRD 06.
 - **Decided (2026-10-21):** at most one parent–child link per ordered pair (parent, child), so the same pair cannot have both a biological and an adoptive link.
 - **Decided (2026-10-21):** no limit on the number of parents, of either type.
 
@@ -27,9 +27,9 @@ This file is intentionally unresolved. Claude Code must not silently invent deci
 - **Decided (2026-10-21):** profiles are Public (default) or Private. The graph is visible only to signed-in users. Maintainers and administrators see through `Private`.
 
 ## Merging
-- Who can initiate and approve a merge involving claimed profiles?
-- Is consent from both claimed profile owners mandatory?
-- Can merges be reversed? If so, how are subsequent edits handled?
+- **Decided (2026-10-21):** anyone may propose a merge; each profile's maintainer approves. An administrator may stand in only for an unavailable maintainer of an unclaimed profile. Two claimed profiles are never merged. See PRD 06.
+- **Decided (2026-10-21):** moved links keep their approvals; reviewers choose which of two clashing links to keep; merges that would create a self-link or cycle are blocked.
+- **Decided (2026-10-21):** merges are not reversible.
 
 ## Audit and moderation
 - **Decided (2026-10-21):** relationship audit history is visible to the current maintainers of both profiles and administrators. See PRD 07.
