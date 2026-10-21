@@ -38,8 +38,8 @@ Agreed (D-001):
 - `package-lock.json` is committed; CI uses `npm ci`.
 - `global.json` selects the Microsoft.Testing.Platform runner for `dotnet test`. xunit.v3 4.x does not support VSTest on the .NET 10 SDK.
 
-Still to agree:
-- EF Core provider and package versions.
-- Restore/build commands used in CI.
+Agreed later:
+- EF Core provider: Npgsql (D-009); package versions are pinned when #9 adds them.
+- CI restore/build/test commands (D-012).
 
 Do not assume that template defaults are current or that all package major versions are mutually compatible.

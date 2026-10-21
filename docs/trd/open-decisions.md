@@ -28,6 +28,7 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 - Database, integration-test database and bounded graph queries (D-009 below).
 - API conventions (D-010 below).
 - Production hosting and deployment (D-011 below).
+- CI/CD, configuration and releases (D-012 below).
 - Business contains no DTOs or API contracts (D-010 places API models in Server).
 
 ## Proposed, not yet finalized
@@ -41,7 +42,7 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 3. **API conventions:** agreed (D-010).
 4. **Testing (#7):** xUnit v3, built-in `Assert` (D-003), the test project layout (D-004), acceptance-criteria mapping (D-005) and Playwright e2e smoke tests (D-006) are agreed. The integration-test database is Testcontainers with PostgreSQL (D-009).
 5. **Production hosting:** agreed (D-011).
-6. **CI/CD and configuration:** Decide build pipeline, migration deployment policy, secrets management, and supported deployment configuration.
+6. **CI/CD and configuration:** agreed (D-012).
 
 ## Decision-record convention
 
@@ -215,3 +216,15 @@ For each major decision, record:
   - **Artifact:** one Docker image containing Server and the built Client, plus `deploy/docker-compose.yml` that runs the app, PostgreSQL and the migration step. Configuration (Google client, admin emails, connection string, limits) comes from environment variables.
   - **Migrations:** an EF Core migration bundle runs as a separate one-off step before the app starts; the app does not migrate at startup. A failed migration stops the deploy.
 - **Consequences:** #33 adds the Dockerfile, `deploy/` and self-hosting docs. HTTPS is terminated by the operator's reverse proxy or host; the docs explain this. #34 builds and publishes the image.
+
+### D-012: CI/CD, configuration and releases
+
+- **Status:** agreed (2026-10-21). Issue #34 (decision part; the implementation stays in #34).
+- **Context:** The repository is on GitHub. Integration tests need Docker (D-009). Self-hosters deploy a Docker image (D-011) and must supply their own Google client and admin emails (D-008).
+- **Options considered:** GitHub Actions or another CI service; environment variables or committed per-instance config; tagged semantic-version releases to a container registry, or build-from-source only.
+- **Trade-offs:** GitHub Actions keeps CI next to the code and its hosted runners include Docker. Publishing images means maintaining a release process, but self-hosters can pin versions instead of building.
+- **Decision:**
+  - **CI:** one GitHub Actions workflow on every PR and on pushes to `main`. Backend: `dotnet build` and `dotnet test` (architecture, unit and Testcontainers integration tests). Client: `npm ci`, Prettier check, `npm test`, `npm run build`. Playwright smoke tests join when the first UI flow exists (D-006).
+  - **Configuration:** standard ASP.NET Core configuration. `appsettings.json` holds safe defaults only. Instance-specific values (Google client ID and secret, admin emails, connection string, query limits) come from environment variables, listed in a documented `deploy/.env.example`. Secrets are never committed. Local development uses `dotnet user-secrets`.
+  - **Releases:** semantic versions from Git tags (`vX.Y.Z`). A pushed tag builds the Docker image and publishes it to GitHub Container Registry (`ghcr.io/open-source-nep/familygraph`). Self-hosters pin a version in the compose file.
+- **Consequences:** #34 adds the CI workflow first and the release workflow after #33's Dockerfile. Required status checks on `main` are a repository setting for the maintainers.
