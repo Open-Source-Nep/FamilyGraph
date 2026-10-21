@@ -32,9 +32,9 @@ This file is intentionally unresolved. Claude Code must not silently invent deci
 - Can merges be reversed? If so, how are subsequent edits handled?
 
 ## Audit and moderation
-- Which roles can see relationship audit history?
-- What are the retention periods for audit records?
-- Can administrators suspend contributors for abuse, and what effect does suspension have on existing contributions?
+- **Decided (2026-10-21):** relationship audit history is visible to the current maintainers of both profiles and administrators. See PRD 07.
+- **Decided (2026-10-21):** audit records are kept indefinitely; personal data in them is erased on profile deletion.
+- **Decided (2026-10-21):** signed-in users can report abuse to an administrator queue. Administrators can suspend accounts; suspension blocks sign-in and changes but leaves profiles, relationships and consent untouched.
 
 ## Graph exploration
 - **Decided (2026-10-21):** show the shortest path, with "There are more connections between these people" listing up to 5 more (configurable). See PRD 08.
