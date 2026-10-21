@@ -24,8 +24,8 @@ Read the relevant PRD/TRD files before proposing behavior or design. These docs 
 
 ## Core product invariants (summary, see PRDs for detail)
 
-- **People are not accounts.** A `Person` can exist without a `UserAccount`. One account can maintain many profiles. A new person needs only a name.
-- **One maintainer per profile.** Before a claim, the contributor is the maintainer. After an approved claim, the claimant is.
+- **People are not accounts.** A `Person` can exist without a `UserAccount`. One account can maintain many profiles. A new person needs only a first name (middle and last are optional).
+- **One maintainer per profile.** Before a claim, the contributor is the maintainer. After an approved claim, the claimant is. After the maintainer's account is deleted, administrators as a group are.
 - **Direct facts are parent–child only.** The only types are biological and adoptive. Siblings, grandparents, cousins, and other relationships are *derived* from active links and are never stored as authoritative facts.
 - **Consent is tracked per endpoint**, not as a single `Active` flag. When both endpoints are claimed, both must approve. A claimed person's disagreement deactivates the link immediately. Withdrawing the disagreement reactivates it if the other approval is still valid.
 - **Inactive links** are excluded from the active graph, traversal, and derivation, but stay in audit history.
