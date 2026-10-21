@@ -20,12 +20,12 @@ Define person profiles, account separation, and profile-maintainer authority.
 
 ## Acceptance criteria
 
-- A person can exist without a corresponding account.
-- One account can maintain multiple person profiles.
-- A profile has one current maintainer, not multiple co-maintainers.
-- Claim approval changes the maintainer to the claimant.
-- Existing relationships remain in their current consent state after a successful claim.
-- The application does not infer identity solely from matching names.
+- `AC-01.1` A person can exist without a corresponding account.
+- `AC-01.2` One account can maintain multiple person profiles.
+- `AC-01.3` A profile has one current maintainer, not multiple co-maintainers.
+- `AC-01.4` Claim approval changes the maintainer to the claimant.
+- `AC-01.5` Existing relationships remain in their current consent state after a successful claim.
+- `AC-01.6` The application does not infer identity solely from matching names.
 
 ## Open details
 

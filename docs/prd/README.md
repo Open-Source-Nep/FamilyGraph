@@ -23,6 +23,10 @@ This folder contains bite-sized product requirements documents (PRDs) for Claude
 10. `09-nonfunctional-requirements-and-out-of-scope.md`
 11. `10-open-decisions.md`
 
+## Acceptance criterion IDs
+
+Each acceptance criterion has a stable ID, `AC-<PRD number>.<n>` (e.g. `AC-03.1`). Tests reference these IDs (see D-005 in `docs/trd/open-decisions.md`). Never renumber or reuse an ID. Add new criteria at the end of the list with the next number. Mark a removed criterion `(retired)` instead of deleting it.
+
 ## Scope note
 
 These documents are a product-level specification, not a database schema, architecture decision record, or implementation plan. Entity names are illustrative. Do not choose databases, frameworks, hosting, or infrastructure until the product rules are sufficiently stable.

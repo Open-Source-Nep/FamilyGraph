@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\FamilyGraph.Business\FamilyGraph.Business.csproj" />
+  </ItemGroup>
+
 </Project>

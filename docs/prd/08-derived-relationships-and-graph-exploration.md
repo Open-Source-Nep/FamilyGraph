@@ -17,10 +17,10 @@ Enable people to explore a large interconnected family graph without treating de
 
 ## Acceptance criteria
 
-- Derived relationships update when a supporting relationship becomes inactive or active again.
-- Users can inspect an explanation for a derived relationship.
-- Adoption is indicated when relevant.
-- The application can display a local/subgraph view instead of rendering the entire dataset.
+- `AC-08.1` Derived relationships update when a supporting relationship becomes inactive or active again.
+- `AC-08.2` Users can inspect an explanation for a derived relationship.
+- `AC-08.3` Adoption is indicated when relevant.
+- `AC-08.4` The application can display a local/subgraph view instead of rendering the entire dataset.
 
 ## Open details
 

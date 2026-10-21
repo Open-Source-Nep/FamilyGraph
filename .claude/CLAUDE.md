@@ -62,23 +62,26 @@ Rules:
 
 ## Current state of the repo
 
-Template scaffolding with no domain code yet. Layout and toolchain are agreed (D-001 in `docs/trd/open-decisions.md`):
+Foundation wired (#8), no domain code yet. Layout and toolchain are agreed (D-001 in `docs/trd/open-decisions.md`):
 
-- Solution `FamilyGraph.slnx`, all projects under `src/`. The Angular project folder is `src/client` (`client.esproj`).
-- `global.json` pins the .NET SDK 10.0.1xx. `.nvmrc` selects Node 24.
+- Solution `FamilyGraph.slnx`, production projects under `src/`, test projects under `tests/` (D-004). The Angular project folder is `src/client` (`client.esproj`).
+- `global.json` pins the .NET SDK 10.0.1xx and selects the Microsoft.Testing.Platform test runner. `.nvmrc` selects Node 24.
 - Client uses **Angular 22** with TypeScript 6.0, Vitest, and Prettier. Styling is plain CSS: no Tailwind or UI component library.
-- `Server` targets `net10.0` with only `Microsoft.AspNetCore.OpenApi`. `Program.cs` is still the weatherforecast template. The SPA Proxy is **not** configured yet.
-- No project references between the class libraries yet. Each contains only a placeholder `Class1.cs`.
-- No tests, `deploy/`, database provider, or EF Core packages yet.
+- Project references follow D-002. The class libraries contain no code yet.
+- `Server` has `Microsoft.AspNetCore.OpenApi` and `Microsoft.AspNetCore.SpaProxy`. `Program.cs` only maps OpenAPI in Development. The SPA Proxy is enabled only via `launchSettings.json`: `dotnet run` starts `npm start` and redirects to `http://localhost:4200`. No Angular dev-server proxy to the API yet (waits for API conventions).
+- Tests: xUnit v3 with built-in `Assert` (D-003), tagged with PRD `AC` IDs (D-005). `FamilyGraph.ArchitectureTests` enforces D-002. `Server.IntegrationTests` uses `WebApplicationFactory`. The unit-test projects are empty and accept "zero tests ran" until their first test lands.
+- No `deploy/`, database provider, or EF Core packages yet.
 
-Open technical decisions, in order (see `docs/trd/open-decisions.md`): identity approach, database and graph query patterns (PostgreSQL is provisional), API conventions, testing strategy, production hosting, CI/CD and configuration.
+Open technical decisions, in order (see `docs/trd/open-decisions.md`): identity approach, database and graph query patterns (PostgreSQL is provisional), API conventions, integration-test database (with the database decision), production hosting, CI/CD and configuration.
 
 ## Commands
 
 ```bash
 # Backend (from repo root)
 dotnet build FamilyGraph.slnx
-dotnet run --project src/Server            # http://localhost:5039, https://localhost:7027
+dotnet run --project src/Server            # http://localhost:5039, https://localhost:7027; starts the SPA via the SPA Proxy
+dotnet test                                # all .NET test projects (Microsoft.Testing.Platform)
+dotnet test --project tests/FamilyGraph.ArchitectureTests
 
 # Frontend (from src/client)
 npm install

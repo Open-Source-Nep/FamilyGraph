@@ -38,11 +38,11 @@ Define when a parent–child relationship is active, inactive, restored, or remo
 
 ## Acceptance criteria
 
-- Disagreement removes a relationship from the active graph immediately.
-- Derived relationships dependent on an inactive link are no longer shown as active.
-- Restoring approval reactivates a relationship when all required approvals are valid.
-- Historical events remain auditable after deactivation or deletion.
-- Administrators cannot force an active relationship when required consent is absent.
+- `AC-03.1` Disagreement removes a relationship from the active graph immediately.
+- `AC-03.2` Derived relationships dependent on an inactive link are no longer shown as active.
+- `AC-03.3` Restoring approval reactivates a relationship when all required approvals are valid.
+- `AC-03.4` Historical events remain auditable after deactivation or deletion.
+- `AC-03.5` Administrators cannot force an active relationship when required consent is absent.
 
 ## Creation decisions (agreed 2026-10-21)
 

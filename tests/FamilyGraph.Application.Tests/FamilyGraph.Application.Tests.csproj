@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- No tests yet: accept "zero tests ran" (exit code 8). Remove when the first test is added. -->
+  <PropertyGroup>
+    <TestingPlatformCommandLineArguments>$(TestingPlatformCommandLineArguments) --ignore-exit-code 8</TestingPlatformCommandLineArguments>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\FamilyGraph.Application\FamilyGraph.Application.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -31,11 +31,11 @@ Rules:
 
 ## Acceptance criteria
 
-- The original maintainer can approve or reject a claim.
-- Rejection or maintainer unavailability permits an appeal for manual review.
-- Claim approval transfers profile maintenance to the claimant.
-- Claim approval alone does not change relationship consent state.
-- Evidence and administrator rationale are access-controlled.
+- `AC-04.1` The original maintainer can approve or reject a claim.
+- `AC-04.2` Rejection or maintainer unavailability permits an appeal for manual review.
+- `AC-04.3` Claim approval transfers profile maintenance to the claimant.
+- `AC-04.4` Claim approval alone does not change relationship consent state.
+- `AC-04.5` Evidence and administrator rationale are access-controlled.
 
 ## Open details
 

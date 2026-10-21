@@ -17,10 +17,10 @@ Provide accountability without giving administrators the power to override relat
 
 ## Acceptance criteria
 
-- An authorized reviewer can reconstruct the lifecycle of a relationship from its audit events.
-- An inactive relationship does not appear as active merely because it exists in audit history.
-- Claim approval/rejection records are distinct from relationship consent events.
-- Sensitive evidence is not exposed through public graph views or general audit access.
+- `AC-07.1` An authorized reviewer can reconstruct the lifecycle of a relationship from its audit events.
+- `AC-07.2` An inactive relationship does not appear as active merely because it exists in audit history.
+- `AC-07.3` Claim approval/rejection records are distinct from relationship consent events.
+- `AC-07.4` Sensitive evidence is not exposed through public graph views or general audit access.
 
 ## Open details
 
