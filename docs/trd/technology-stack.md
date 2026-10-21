@@ -17,7 +17,8 @@ Proposed baseline; versions and supporting dependencies must be verified before 
 | Relational database | PostgreSQL | Provisional; finalize during data design |
 | ORM and migrations | Entity Framework Core | Recommended baseline |
 | Identity persistence | ASP.NET Core Identity with EF Core, if suitable | Infrastructure may use `IdentityDbContext`; exact identity approach remains to be specified |
-| Development integration | ASP.NET Core Angular SPA Proxy | Intended |
+| Development integration | ASP.NET Core Angular SPA Proxy | Configured (#8); enabled only through `launchSettings.json` |
+| Testing | xUnit v3 (built-in `Assert`), Microsoft.Testing.Platform; Vitest; Playwright smoke tests | Agreed (D-003–D-006); integration-test database deferred |
 | Packaging | Docker | Intended for self-hosting |
 | Repository | One Git repository / monorepo | Recommended and reflected in proposed layout |
 
@@ -35,6 +36,7 @@ Agreed (D-001):
 - Angular CLI and packages `^22.2`, TypeScript `~6.0`.
 - `.nvmrc` selects Node 24 LTS; `package.json` `engines` allows `^22.22.3 || ^24.15.0` (Angular 22's supported range).
 - `package-lock.json` is committed; CI uses `npm ci`.
+- `global.json` selects the Microsoft.Testing.Platform runner for `dotnet test`. xunit.v3 4.x does not support VSTest on the .NET 10 SDK.
 
 Still to agree:
 - EF Core provider and package versions.

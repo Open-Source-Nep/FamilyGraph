@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\FamilyGraph.Business\FamilyGraph.Business.csproj" />
+    <ProjectReference Include="..\..\src\FamilyGraph.Application\FamilyGraph.Application.csproj" />
+    <ProjectReference Include="..\..\src\FamilyGraph.Infrastructure\FamilyGraph.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Server\Server.csproj" />
+  </ItemGroup>
+
+</Project>
