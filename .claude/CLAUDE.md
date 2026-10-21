@@ -72,7 +72,7 @@ Foundation wired (#8), no domain code yet. Layout and toolchain are agreed (D-00
 - Tests: xUnit v3 with built-in `Assert` (D-003), tagged with PRD `AC` IDs (D-005). `FamilyGraph.ArchitectureTests` enforces D-002. `Server.IntegrationTests` uses `WebApplicationFactory`. The unit-test projects are empty and accept "zero tests ran" until their first test lands.
 - No `deploy/`, database provider, or EF Core packages yet.
 
-Open technical decisions, in order (see `docs/trd/open-decisions.md`): identity approach, database and graph query patterns (PostgreSQL is provisional), API conventions, integration-test database (with the database decision), production hosting, CI/CD and configuration.
+Agreed since: identity (D-008: Google sign-in, ASP.NET Core Identity, config-defined admins) and database (D-009: PostgreSQL + EF Core, Testcontainers, recursive CTEs with limits). Open technical decisions, in order (see `docs/trd/open-decisions.md`): API conventions, production hosting, CI/CD and configuration.
 
 ## Commands
 

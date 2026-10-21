@@ -25,20 +25,19 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 - Client end-to-end smoke tests with Playwright (D-006 below).
 - Domain rule enforcement and error reporting (D-007 below).
 - Identity approach and account model (D-008 below).
+- Database, integration-test database and bounded graph queries (D-009 below).
 - Business contains no DTOs or API contracts. Account and user DTOs wait for the identity and API-convention decisions.
 
 ## Proposed, not yet finalized
 
-- PostgreSQL as the relational database.
-- EF Core for persistence and migrations.
 - Microsoft `dotnet new angular` template as the starting point, subject to checking its current structure and compatibility.
 
 ## Decisions to discuss next
 
 1. **Identity approach:** agreed (D-008). Still open, with API conventions (item 3) and hosting (item 5): cookie or token sessions for the SPA.
-2. **Database and graph queries:** Confirm PostgreSQL and define initial traversal/query patterns, limits, and indexing approach. Settle the integration-test database strategy alongside it (see item 4).
+2. **Database and graph queries:** agreed (D-009).
 3. **API conventions:** Decide endpoint style, DTO placement, validation, pagination, and error format.
-4. **Testing (#7):** xUnit v3, built-in `Assert` (D-003), the test project layout (D-004), acceptance-criteria mapping (D-005) and Playwright e2e smoke tests (D-006) are agreed. Deferred until the database decision (item 2, #5): the integration-test database strategy. Testcontainers is the leading option if PostgreSQL is confirmed; in-memory and SQLite providers were rejected because they do not reproduce PostgreSQL constraints, transactions or recursive queries.
+4. **Testing (#7):** xUnit v3, built-in `Assert` (D-003), the test project layout (D-004), acceptance-criteria mapping (D-005) and Playwright e2e smoke tests (D-006) are agreed. The integration-test database is Testcontainers with PostgreSQL (D-009).
 5. **Production hosting:** Decide whether Client assets are served by Server or hosted separately, while keeping local development on the SPA Proxy.
 6. **CI/CD and configuration:** Decide build pipeline, migration deployment policy, secrets management, and supported deployment configuration.
 
@@ -158,3 +157,30 @@ For each major decision, record:
   - New NuGet packages (Microsoft, first-party): `Microsoft.AspNetCore.Authentication.Google` and `Microsoft.AspNetCore.Identity.EntityFrameworkCore`, added with #11.
   - Self-host docs must explain creating a Google OAuth client. Secrets handling belongs to #34.
   - Cookie or token sessions for the SPA are decided with API conventions (#6) and hosting (#33).
+
+### D-009: Database, integration-test database and bounded graph queries
+
+- **Status:** agreed (2026-10-21). Issue #5 (also closes the deferred part of #7).
+- **Context:** The graph must support more than 10,000 people without loading the whole graph (PRD 08, PRD 09). Only active links take part in traversal and derivation (PRD 03). The cycle check counts all non-deleted links (PRD 02).
+- **Options considered:** PostgreSQL, SQL Server or SQLite; Testcontainers or a shared local database for integration tests; recursive CTEs or per-generation expansion in Application; a stored status column, a database-computed status, or status derived from per-endpoint approval columns; a hard depth limit or a node cap for finding how two people are related.
+- **Trade-offs:** PostgreSQL is free, easy to self-host and supports recursive CTEs. Testcontainers tests the real engine but requires Docker locally and in CI. Recursive CTEs need hand-written SQL but take one round trip per query. Deriving state from the two approval columns keeps a single source of truth, at the cost of a slightly longer filter predicate.
+- **Decision:**
+  - **Database:** PostgreSQL with EF Core, via `Npgsql.EntityFrameworkCore.PostgreSQL`.
+  - **Integration tests:** Testcontainers (`Testcontainers.PostgreSql`, test projects only) starts a disposable PostgreSQL for the run. In-memory and SQLite providers are rejected because they do not reproduce PostgreSQL constraints, transactions or recursive queries.
+  - **Traversal:** recursive CTEs with depth and row limits inside the query, hand-written behind Application's query interfaces.
+  - **Link state storage:** the relationship row stores the parent-side and child-side approval (approved, pending or disagreed) and a nullable deletion timestamp. No separate status column. A link is active when both sides are approved and it is not deleted. When one user maintains both endpoints, both sides start approved.
+  - **Limits** (configurable per instance; the maximums are enforced in code):
+
+    | Query | Default | Maximum |
+    |---|---|---|
+    | Local view around a person, generations each way | 2 | 4 |
+    | Local view, people returned | 200 | 500 |
+    | How two people are related | no generation limit; at most 10,000 people examined | configurable |
+    | Cycle check at link creation or reactivation | 5,000 ancestors / 50 generations | same |
+
+    All graph queries also run under a query timeout. A query that hits a limit returns what it found and says it was cut short. "How two people are related" reports "no connection found within the search limit" rather than "not related". The cycle check rejects the link instead (PRD 02).
+  - **Indexes:** a unique index on (parent, child) for non-deleted links; parent and child lookup indexes filtered to active links; a child lookup index over all non-deleted links for the cycle check.
+- **Consequences:**
+  - Docker is required to run integration tests locally and in CI (#34).
+  - Future maintainer checkpoints may change the people-examined cap for relationship search.
+  - Package versions are pinned when #9 adds them.
