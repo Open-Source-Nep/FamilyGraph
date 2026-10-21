@@ -19,7 +19,7 @@ Proposed baseline; versions and supporting dependencies must be verified before 
 | Identity persistence | ASP.NET Core Identity with EF Core, Google sign-in | Agreed (D-008). One shared `IdentityDbContext`-derived context |
 | Development integration | ASP.NET Core Angular SPA Proxy | Configured (#8); enabled only through `launchSettings.json` |
 | Testing | xUnit v3 (built-in `Assert`), Microsoft.Testing.Platform; Vitest; Playwright smoke tests | Agreed (D-003–D-006); integration tests use Testcontainers PostgreSQL (D-009) |
-| Packaging | Docker | Intended for self-hosting |
+| Packaging | One Docker image (Server + built Client), `deploy/docker-compose.yml` with PostgreSQL and a migration bundle step | Agreed (D-011) |
 | Repository | One Git repository / monorepo | Recommended and reflected in proposed layout |
 
 ## Dependency policy

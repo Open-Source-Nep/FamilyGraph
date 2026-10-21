@@ -27,6 +27,7 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 - Identity approach and account model (D-008 below).
 - Database, integration-test database and bounded graph queries (D-009 below).
 - API conventions (D-010 below).
+- Production hosting and deployment (D-011 below).
 - Business contains no DTOs or API contracts (D-010 places API models in Server).
 
 ## Proposed, not yet finalized
@@ -35,11 +36,11 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 
 ## Decisions to discuss next
 
-1. **Identity approach:** agreed (D-008). Still open, with hosting (item 5): cookie or token sessions for the SPA.
+1. **Identity approach:** agreed (D-008). Sessions use cookies (D-011).
 2. **Database and graph queries:** agreed (D-009).
 3. **API conventions:** agreed (D-010).
 4. **Testing (#7):** xUnit v3, built-in `Assert` (D-003), the test project layout (D-004), acceptance-criteria mapping (D-005) and Playwright e2e smoke tests (D-006) are agreed. The integration-test database is Testcontainers with PostgreSQL (D-009).
-5. **Production hosting:** Decide whether Client assets are served by Server or hosted separately, while keeping local development on the SPA Proxy.
+5. **Production hosting:** agreed (D-011).
 6. **CI/CD and configuration:** Decide build pipeline, migration deployment policy, secrets management, and supported deployment configuration.
 
 ## Decision-record convention
@@ -201,3 +202,16 @@ For each major decision, record:
   - **Errors:** ProblemDetails (RFC 9457), with each custom exception's stable error code as an extension so the Client can choose wording or translations. Status codes: 400 invalid request shape, 403 not permitted (e.g. not the maintainer), 404 not found, 409 conflict with current state (e.g. duplicate link), 422 domain rule violated (e.g. cycle, missing first name).
   - **Privacy projection:** one Application component turns hidden profiles into `Private` or `Deleted` placeholders. Query services return person references that only this component can produce, so a read path cannot skip it. Integration tests cover every read endpoint. What is hidden is decided in #17.
 - **Consequences:** Every custom exception carries an error code (D-007). A global exception handler in Server maps exceptions to ProblemDetails. The "has more" flag needs a cheap existence check per edge person in the traversal query. The fan-chart presentation is decided with #19 and #23.
+
+### D-011: Production hosting and deployment
+
+- **Status:** agreed (2026-10-21). Issue #33 (decision part; the implementation stays in #33).
+- **Context:** Self-hosting without a specific provider is a product goal (PRD 09). Sign-in is Google via ASP.NET Core Identity (D-008). The SPA Proxy is for development only.
+- **Options considered:** Server serves the built Client, or the Client is hosted separately with token auth; one image plus a compose file, or the image only; a separate migration step, or migrations at app startup.
+- **Trade-offs:** Serving the Client from Server is one process and one origin, so no CORS and cookie sessions work naturally, but the frontend cannot scale separately. A compose file is one more file to maintain, but gives self-hosters a one-command setup. A separate migration step is one more container, but migrations run once and fail cleanly.
+- **Decision:**
+  - **Client hosting:** Server serves the production Angular build as static files from the same origin, with a fallback to `index.html` for client routes. The SPA Proxy stays development-only.
+  - **Sessions:** ASP.NET Core Identity cookie authentication. The cookie is `HttpOnly`, `Secure` and `SameSite=Lax`, and state-changing API requests are protected against CSRF (antiforgery). No bearer tokens in the browser.
+  - **Artifact:** one Docker image containing Server and the built Client, plus `deploy/docker-compose.yml` that runs the app, PostgreSQL and the migration step. Configuration (Google client, admin emails, connection string, limits) comes from environment variables.
+  - **Migrations:** an EF Core migration bundle runs as a separate one-off step before the app starts; the app does not migrate at startup. A failed migration stops the deploy.
+- **Consequences:** #33 adds the Dockerfile, `deploy/` and self-hosting docs. HTTPS is terminated by the operator's reverse proxy or host; the docs explain this. #34 builds and publishes the image.
