@@ -1,10 +1,12 @@
+using FamilyGraph.Business.Audit;
+
 namespace FamilyGraph.Business.People;
 
 /// <summary>
 /// A real-world individual in the graph (PRD 01). A person is not an account: it only records
 /// which account currently maintains the profile, and there is always exactly one maintainer.
 /// </summary>
-public sealed class Person
+public sealed class Person : AuditedEntity
 {
     private Person(PersonId id, PersonName name, AccountId maintainerId)
     {
@@ -24,7 +26,9 @@ public sealed class Person
     {
         ArgumentNullException.ThrowIfNull(name);
 
-        return new Person(PersonId.New(), name, creatorId);
+        var person = new Person(PersonId.New(), name, creatorId);
+        person.Record(new PersonCreated(person.Id, creatorId));
+        return person;
     }
 
     public bool IsMaintainedBy(AccountId accountId) => MaintainerId == accountId;
@@ -40,6 +44,7 @@ public sealed class Person
         }
 
         Name = newName;
+        Record(new PersonRenamed(Id, actorId));
     }
 }
 
