@@ -264,11 +264,10 @@ For each major decision, record:
 
 - **Status:** agreed (2026-10-22). Issue #48.
 - **Context:** Ash requires that the order of a parent's children matters. PRD 02 now defines it as a display-only birth order, set manually per parent by the parent's maintainer, with new children unordered. Profiles store no birth date, and a parent's children can include half siblings with a different other parent.
-- **Options considered:** a position on each parent–child link, or a separate ordering aggregate per parent; contiguous positions or sparse ranks; replacing the whole order at once, or moving one child at a time; rejecting an unchanged order, or ignoring it.
-- **Trade-offs:** A position on the link needs no new aggregate and is removed with the link. Replacing the whole order keeps positions unique and contiguous without renumbering rules, and the order of one parent is small. Moving one child at a time is a client convenience that can be built on top. Rejecting an unchanged order matches D-013 and avoids empty audit events.
+- **Options considered:** a number field on each parent–child link, set one link at a time; a separate service that replaces a parent's whole order with contiguous positions.
+- **Trade-offs:** A number on the link needs no new class and keeps the rule on the aggregate that owns it. It does not keep numbers unique or contiguous across siblings, which a sort key does not need. A whole-order service guarantees that, but adds a class and needs all of the parent's links for every change (rejected in PR #49 review).
 - **Decision:**
-  - `ParentChildLink.BirthOrder` is a nullable position among the parent's children (1 is the eldest). `null` means unordered, and every new link starts unordered.
-  - `ChildBirthOrder.Arrange` is a pure Business service. Application supplies all of the parent's non-deleted links and the list of links to place, eldest first. Listed links get positions 1, 2, …; the rest become unordered.
-  - Only the parent's maintainer may arrange (`link.birth_order_not_parent_maintainer`). A link not belonging to the parent (`link.birth_order_unknown_child`), a link listed twice (`link.birth_order_duplicate_child`) or an order identical to the current one (`link.birth_order_unchanged`) is rejected.
-  - Arranging never touches consent, activity or deletion. Pending and inactive links can be placed; deleted links are not passed in, and their old position is ignored.
-- **Consequences:** #10 needs a "children reordered" audit event for the parent. Read models sort children by position, then unordered children by name. Application, API and Client parts follow later.
+  - `ParentChildLink.BirthOrder` is a nullable number (lower is elder). `null` means unordered, and every new link starts unordered.
+  - `ParentChildLink.SetBirthOrder(parent, actor, number)` sets or clears it. Only the parent's maintainer may (`link.birth_order_not_parent_maintainer`). The number must be 1 or greater (`link.birth_order_invalid`). Setting the current value is rejected (`link.birth_order_unchanged`), and a deleted link rejects it (`link.deleted`).
+  - Setting it never touches consent or activity, so pending and inactive links can be placed.
+- **Consequences:** #10 needs a "birth order changed" audit event. Read models sort a parent's children by number, then by name for equal numbers and unordered children. Application, API and Client parts follow later.

@@ -47,7 +47,7 @@ Do not add guardianship, step-parent, foster-parent, or other parent categories 
 - `AC-02.5` Inactive/disagreed parent–child links are excluded from normal graph traversal and derived relationships.
 - `AC-02.6` Creating or reactivating a link is rejected when the proposed child is already an ancestor of the proposed parent through active, pending, or inactive links.
 - `AC-02.7` When the bounded ancestor check cannot rule out a cycle, the link is rejected with an explanation that it could not be verified as cycle-free.
-- `AC-02.8` A parent's maintainer can place that parent's children in birth order, eldest first; children left out are unordered.
+- `AC-02.8` A parent's maintainer can place each of that parent's children in birth order, or make a child unordered again.
 - `AC-02.9` Only the parent's maintainer can change the order, and changing it never changes consent or link activity.
 - `AC-02.10` A newly linked child is unordered until placed.
 
