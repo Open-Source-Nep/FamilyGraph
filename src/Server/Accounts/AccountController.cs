@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using FamilyGraph.Application.Accounts;
-using FamilyGraph.Business.People;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
@@ -16,16 +15,20 @@ namespace Server.Accounts;
 /// </summary>
 [ApiController]
 [Route("api/account")]
-public sealed class AccountController(AccountService accounts, IAntiforgery antiforgery) : ControllerBase
+/// <remarks>
+/// <see cref="AccountService"/> is injected per action, so starting sign-in still answers 503 when
+/// Google is not configured on an instance that has no database either.
+/// </remarks>
+public sealed class AccountController(IAntiforgery antiforgery) : ControllerBase
 {
     /// <summary>The cookie Angular's HttpClient reads and echoes in the <c>X-XSRF-TOKEN</c> header (D-011).</summary>
     internal const string XsrfCookie = "XSRF-TOKEN";
 
     [HttpGet]
     [Authorize]
-    public async Task<ActionResult<AccountResponse>> Get(CancellationToken cancellationToken)
+    public async Task<ActionResult<AccountResponse>> Get([FromServices] AccountService accounts, CancellationToken cancellationToken)
     {
-        var account = await accounts.GetAsync(CurrentAccountId(), cancellationToken);
+        var account = await accounts.GetAsync(User.AccountId(), cancellationToken);
         if (account is null)
         {
             // The account behind the session no longer exists.
@@ -55,7 +58,8 @@ public sealed class AccountController(AccountService accounts, IAntiforgery anti
     }
 
     [HttpGet("sign-in/callback")]
-    public async Task<IActionResult> SignInCallback(string? returnUrl, CancellationToken cancellationToken)
+    public async Task<IActionResult> SignInCallback(
+        string? returnUrl, [FromServices] AccountService accounts, CancellationToken cancellationToken)
     {
         var external = await HttpContext.AuthenticateAsync(IdentityConstants.ExternalScheme);
         await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
@@ -91,8 +95,6 @@ public sealed class AccountController(AccountService accounts, IAntiforgery anti
         Response.Cookies.Delete(XsrfCookie);
         return NoContent();
     }
-
-    private AccountId CurrentAccountId() => new(Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!));
 
     private string LocalOrRoot(string? returnUrl) => Url.IsLocalUrl(returnUrl) ? returnUrl! : "/";
 
