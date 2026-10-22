@@ -4,10 +4,9 @@ This folder contains bite-sized product requirements documents (PRDs) for Claude
 
 ## How to use with Claude Code
 
-1. Copy this folder into the project repository, for example under `docs/prd/`.
-2. Start with `00-product-vision-and-working-agreement.md`.
-3. Ask Claude Code to review one PRD at a time and identify ambiguities before implementing anything.
-4. Keep decisions in these PRDs as the source of truth. Do not silently invent answers for unresolved items.
+1. Start with `00-product-vision-and-working-agreement.md`.
+2. Review one PRD at a time and identify ambiguities before implementing the behavior it describes.
+3. Keep decisions in these PRDs as the source of truth. Do not silently invent answers for unresolved items.
 
 ## Suggested order
 
@@ -29,4 +28,4 @@ Each acceptance criterion has a stable ID, `AC-<PRD number>.<n>` (e.g. `AC-03.1`
 
 ## Scope note
 
-These documents are a product-level specification, not a database schema, architecture decision record, or implementation plan. Entity names are illustrative. Do not choose databases, frameworks, hosting, or infrastructure until the product rules are sufficiently stable.
+These documents are a product-level specification, not a database schema, architecture decision record, or implementation plan. Entity names are illustrative. Technical choices live in `docs/trd/`.

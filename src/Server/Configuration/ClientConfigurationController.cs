@@ -12,5 +12,5 @@ namespace Server.Configuration;
 public sealed class ClientConfigurationController(GoogleSignInSettings google) : ControllerBase
 {
     [HttpGet]
-    public ClientConfigurationResponse Get() => new(new GoogleSignInConfiguration(google.Enabled));
+    public ClientConfigurationResponse Get() => new(new GoogleSignInConfiguration(google.Enabled, google.Enabled ? google.ClientId : null));
 }

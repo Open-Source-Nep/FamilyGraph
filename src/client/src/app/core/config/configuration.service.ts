@@ -6,7 +6,7 @@ import { ClientConfiguration } from './client-configuration';
 
 /**
  * The instance settings, loaded once while the app starts (`provideAppInitializer`). The server
- * reads them from its configuration; the Client never reads Google settings itself.
+ * reads them from its configuration, including the public Google client ID.
  */
 @Service()
 export class ConfigurationService {

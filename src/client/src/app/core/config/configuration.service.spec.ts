@@ -20,10 +20,12 @@ describe('ConfigurationService', () => {
 
   it('loads the instance settings from the API', async () => {
     const loading = service.load();
-    http.expectOne('/api/configuration').flush({ google: { enabled: true } });
+    http
+      .expectOne('/api/configuration')
+      .flush({ google: { enabled: true, clientId: 'client-id' } });
     await loading;
 
-    expect(service.configuration()).toEqual({ google: { enabled: true } });
+    expect(service.configuration()).toEqual({ google: { enabled: true, clientId: 'client-id' } });
   });
 
   it('starts without settings when the server cannot be reached', async () => {

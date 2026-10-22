@@ -1,12 +1,13 @@
-import { HttpParams } from '@angular/common/http';
 import { Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { AuthService } from '../../core/auth/auth.service';
+import { GoogleSignInService } from '../../core/auth/google-sign-in.service';
 
 /**
- * Where Google sends the browser after sign-in. It hands Google's result to the API and moves on;
- * the server does every check. The URL is replaced so the one-time code leaves the history.
+ * Where Google sends the browser after sign-in, with the ID token in the URL fragment. It checks
+ * the answer belongs to the sign-in this browser started and hands the token to the API, which
+ * checks it. The URL is replaced so the token leaves the history.
  */
 @Component({
   selector: 'app-google-callback-page',
@@ -14,16 +15,20 @@ import { AuthService } from '../../core/auth/auth.service';
 })
 export class GoogleCallbackPage implements OnInit {
   private readonly auth = inject(AuthService);
+  private readonly google = inject(GoogleSignInService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
   async ngOnInit(): Promise<void> {
-    const googleResult = new HttpParams({ fromObject: this.route.snapshot.queryParams });
-    let target: string;
+    let target = '/sign-in?failed=true';
     try {
-      target = await this.auth.completeGoogleSignIn(googleResult);
+      const result = this.google.complete(this.route.snapshot.fragment);
+      if (result) {
+        await this.auth.completeGoogleSignIn(result.idToken, result.nonceSecret);
+        target = result.returnUrl;
+      }
     } catch {
-      target = '/sign-in?failed=true';
+      // Stays on the failure target.
     }
     await this.router.navigateByUrl(target, { replaceUrl: true });
   }

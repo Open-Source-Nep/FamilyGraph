@@ -11,8 +11,8 @@
     <p role="alert" class="error">
       FamilyGraph could not be reached. Reload the page to try again.
     </p>
-  } @else if (googleEnabled()) {
-    <a class="google-button" [href]="googleUrl()">
+  } @else if (clientId(); as clientId) {
+    <button type="button" class="google-button" (click)="signInWithGoogle(clientId)">
       <svg class="google-logo" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
         <path
           fill="#EA4335"
@@ -32,7 +32,7 @@
         />
       </svg>
       <span>Sign in with Google</span>
-    </a>
+    </button>
   } @else {
     <p role="status" class="notice">
       Google sign-in is not set up on this FamilyGraph instance yet. Ask the person who runs it to

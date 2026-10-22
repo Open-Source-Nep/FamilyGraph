@@ -9,7 +9,7 @@ The Server builds its connection from the `Database` section. Each key is an Npg
 | Where | How to set it |
 |---|---|
 | Self-hosted instance | Environment variables `Database__Host=db`, `Database__Database=familygraph`, `Database__Username=familygraph`, `Database__Password=...` |
-| Local development | `appsettings.Development.json` sets `localhost`, `familygraph` and `familygraph`; set the password with `dotnet user-secrets set Database:Password "<password>" --project src/Server` |
+| Local development | Copy `src/Server/appsettings.Development.dist.json` to `appsettings.Development.json` in the same folder (Git ignores it) and adjust it, or set values with `dotnet user-secrets set Database:Password "<password>" --project src/Server` |
 
 The Server starts without `Database:Host`, but any request that uses the database fails until it is set.
 

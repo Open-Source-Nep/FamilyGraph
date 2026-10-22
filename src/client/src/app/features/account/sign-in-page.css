@@ -53,6 +53,7 @@ h1 {
   font-weight: 500;
   line-height: 20px;
   text-decoration: none;
+  cursor: pointer;
 }
 
 .google-button:hover {

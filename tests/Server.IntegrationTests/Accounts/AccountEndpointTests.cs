@@ -1,8 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
-using System.Web;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Server.Accounts;
 
 namespace Server.IntegrationTests.Accounts;
@@ -21,17 +19,21 @@ public class AccountEndpointTests : IClassFixture<AccountTestFactory>
     private static CancellationToken Cancellation => TestContext.Current.CancellationToken;
 
     [Fact]
-    public async Task Account_requires_a_session()
+    public async Task Account_requires_a_session_and_still_issues_the_antiforgery_token()
     {
         using var response = await _browser.GetAsync("/api/account", Cancellation);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.NotEmpty(AccountTestFactory.XsrfToken(response));
     }
 
     [Fact]
     public async Task Sign_in_reports_when_Google_is_not_configured()
     {
-        using var response = await _browser.GetAsync("/api/account/sign-in", Cancellation);
+        using var unconfigured = _factory.WithWebHostBuilder(builder => builder.UseSetting("Authentication:Google:ClientId", ""));
+        using var browser = unconfigured.CreateClient(new() { BaseAddress = new Uri("https://localhost"), AllowAutoRedirect = false });
+
+        using var response = await SignInAsync(browser, "google-1", "maya@example.org");
         var problem = await response.Content.ReadFromJsonAsync<Dictionary<string, object>>(Cancellation);
 
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
@@ -39,46 +41,13 @@ public class AccountEndpointTests : IClassFixture<AccountTestFactory>
     }
 
     [Fact]
-    public async Task Sign_in_sends_Google_back_to_the_Client_callback_page()
-    {
-        using var google = WithGoogle();
-        using var browser = google.CreateClient(new() { BaseAddress = new Uri("https://localhost"), AllowAutoRedirect = false });
-
-        using var response = await browser.GetAsync("/api/account/sign-in?returnUrl=%2Fpeople", Cancellation);
-        var location = response.Headers.Location!;
-        var query = HttpUtility.ParseQueryString(location.Query);
-
-        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Equal("accounts.google.com", location.Host);
-        Assert.Equal("https://localhost/google-callback", query["redirect_uri"]);
-        Assert.Equal("openid email", query["scope"]);
-    }
-
-    [Fact]
-    public async Task Google_callback_with_an_invalid_state_answers_with_a_problem()
-    {
-        using var google = WithGoogle();
-        using var browser = google.CreateClient(new() { BaseAddress = new Uri("https://localhost"), AllowAutoRedirect = false });
-
-        using var response = await browser.GetAsync("/api/account/google-callback?code=abc&state=forged", Cancellation);
-        var problem = await response.Content.ReadFromJsonAsync<Dictionary<string, object>>(Cancellation);
-
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        Assert.Equal("account.sign_in_failed", problem!["code"].ToString());
-    }
-
-    [Fact]
     [Trait("AC", "AC-01.12")]
     public async Task First_sign_in_registers_the_account_and_starts_a_session()
     {
-        var key = Guid.NewGuid().ToString();
-
-        using var callback = await CallbackAsync(key, "maya@example.org", returnUrl: "/people");
-        var signIn = await callback.Content.ReadFromJsonAsync<SignInResponse>(Cancellation);
+        using var signIn = await SignInAsync(_browser, Guid.NewGuid().ToString(), "maya@example.org");
         var account = await _browser.GetFromJsonAsync<AccountResponse>("/api/account", Cancellation);
 
-        Assert.Equal(HttpStatusCode.OK, callback.StatusCode);
-        Assert.Equal("/people", signIn!.ReturnUrl);
+        Assert.Equal(HttpStatusCode.NoContent, signIn.StatusCode);
         Assert.Equal("maya@example.org", account!.Email);
         Assert.True(account.EmailVerified);
         Assert.Equal(["User"], account.Roles);
@@ -86,40 +55,63 @@ public class AccountEndpointTests : IClassFixture<AccountTestFactory>
     }
 
     [Fact]
+    public async Task Signing_in_again_finds_the_same_account()
+    {
+        var subject = Guid.NewGuid().ToString();
+        using var _ = await SignInAsync(_browser, subject, "maya@example.org");
+        var first = await _browser.GetFromJsonAsync<AccountResponse>("/api/account", Cancellation);
+
+        using var again = _factory.CreateBrowser();
+        using var __ = await SignInAsync(again, subject, "maya@example.org");
+        var second = await again.GetFromJsonAsync<AccountResponse>("/api/account", Cancellation);
+
+        Assert.Equal(first!.Id, second!.Id);
+    }
+
+    [Fact]
     public async Task Configured_administrator_email_gets_the_administrator_role()
     {
-        using var _ = await CallbackAsync(Guid.NewGuid().ToString(), AccountTestFactory.AdministratorEmail);
+        using var _ = await SignInAsync(_browser, Guid.NewGuid().ToString(), AccountTestFactory.AdministratorEmail);
 
         var account = await _browser.GetFromJsonAsync<AccountResponse>("/api/account", Cancellation);
 
         Assert.Equal(["User", "Administrator"], account!.Roles);
     }
 
-    [Theory]
-    [InlineData("https://evil.example.org/")]
-    [InlineData("//evil.example.org/")]
-    public async Task Sign_in_never_returns_off_site(string returnUrl)
+    [Fact]
+    public async Task An_invalid_ID_token_does_not_sign_in()
     {
-        using var callback = await CallbackAsync(Guid.NewGuid().ToString(), "maya@example.org", returnUrl);
-        var signIn = await callback.Content.ReadFromJsonAsync<SignInResponse>(Cancellation);
+        using var response = await AccountTestFactory.PostGoogleSignInAsync(_browser, "forged", "secret", Cancellation);
 
-        Assert.Equal("/", signIn!.ReturnUrl);
+        await AssertSignInFailedAsync(response);
     }
 
     [Fact]
-    public async Task Completing_without_a_Google_result_answers_with_a_problem()
+    public async Task An_ID_token_bound_to_another_nonce_secret_does_not_sign_in()
     {
-        using var response = await _browser.GetAsync("/api/account/sign-in/complete", Cancellation);
-        var problem = await response.Content.ReadFromJsonAsync<Dictionary<string, object>>(Cancellation);
+        var stolen = AccountTestFactory.IdToken(Guid.NewGuid().ToString(), "maya@example.org", "victim-secret");
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        Assert.Equal("account.sign_in_failed", problem!["code"].ToString());
+        using var response = await AccountTestFactory.PostGoogleSignInAsync(_browser, stolen, "attacker-secret", Cancellation);
+
+        await AssertSignInFailedAsync(response);
+    }
+
+    [Fact]
+    public async Task Sign_in_requires_the_antiforgery_token()
+    {
+        var idToken = AccountTestFactory.IdToken(Guid.NewGuid().ToString(), "maya@example.org", "secret");
+
+        using var response = await _browser.PostAsJsonAsync(
+            "/api/account/google-sign-in", new { idToken, nonceSecret = "secret" }, Cancellation);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await _browser.GetAsync("/api/account", Cancellation)).StatusCode);
     }
 
     [Fact]
     public async Task Sign_out_requires_the_antiforgery_token()
     {
-        using var _ = await CallbackAsync(Guid.NewGuid().ToString(), "maya@example.org");
+        using var _ = await SignInAsync(_browser, Guid.NewGuid().ToString(), "maya@example.org");
         using var __ = await _browser.GetAsync("/api/account", Cancellation);
 
         using var response = await _browser.PostAsync("/api/account/sign-out", null, Cancellation);
@@ -131,9 +123,7 @@ public class AccountEndpointTests : IClassFixture<AccountTestFactory>
     [Fact]
     public async Task Sign_out_with_the_antiforgery_token_ends_the_session()
     {
-        using var _ = await CallbackAsync(Guid.NewGuid().ToString(), "maya@example.org");
-        using var account = await _browser.GetAsync("/api/account", Cancellation);
-        var token = AccountTestFactory.XsrfToken(account);
+        var token = await AccountTestFactory.SignInAsync(_browser, "maya@example.org", Cancellation);
 
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/account/sign-out");
         request.Headers.Add("X-XSRF-TOKEN", token);
@@ -143,16 +133,16 @@ public class AccountEndpointTests : IClassFixture<AccountTestFactory>
         Assert.Equal(HttpStatusCode.Unauthorized, (await _browser.GetAsync("/api/account", Cancellation)).StatusCode);
     }
 
-    private async Task<HttpResponseMessage> CallbackAsync(string key, string email, string returnUrl = "/")
-    {
-        using var request = new HttpRequestMessage(
-            HttpMethod.Get, "/api/account/sign-in/complete?returnUrl=" + Uri.EscapeDataString(returnUrl));
-        request.Headers.Add(AccountTestFactory.LoginHeader, $"{key}|{email}|true");
-        return await _browser.SendAsync(request, Cancellation);
-    }
+    private static Task<HttpResponseMessage> SignInAsync(HttpClient browser, string subject, string email) =>
+        AccountTestFactory.PostGoogleSignInAsync(
+            browser, AccountTestFactory.IdToken(subject, email, "secret"), "secret", Cancellation);
 
-    /// <summary>The Server with Google configured; the Google handler runs, but Google is never called.</summary>
-    private WebApplicationFactory<Program> WithGoogle() => _factory.WithWebHostBuilder(builder => builder
-        .UseSetting("Authentication:Google:ClientId", "test-client")
-        .UseSetting("Authentication:Google:ClientSecret", "test-secret"));
+    private async Task AssertSignInFailedAsync(HttpResponseMessage response)
+    {
+        var problem = await response.Content.ReadFromJsonAsync<Dictionary<string, object>>(Cancellation);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("account.sign_in_failed", problem!["code"].ToString());
+        Assert.Equal(HttpStatusCode.Unauthorized, (await _browser.GetAsync("/api/account", Cancellation)).StatusCode);
+    }
 }

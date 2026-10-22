@@ -1,29 +1,27 @@
-using System.Security.Claims;
-using System.Text.Encodings.Web;
+using System.Buffers.Text;
+using System.Net.Http.Json;
+using System.Security.Cryptography;
+using System.Text;
 using FamilyGraph.Application.Accounts;
 using FamilyGraph.Application.People;
 using FamilyGraph.Application.Persistence;
 using FamilyGraph.Application.Relationships;
 using FamilyGraph.Business.People;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+using Server.Accounts;
 using Server.IntegrationTests.People;
 
 namespace Server.IntegrationTests.Accounts;
 
 /// <summary>
-/// Runs the Server with in-memory account, people and link stores and a fake external sign-in, so the
-/// endpoints are tested without Google or a database. A request carrying <see cref="LoginHeader"/>
-/// arrives at the sign-in completion as if Google had just signed in that user.
+/// Runs the Server with in-memory account, people and link stores and a fake Google ID token
+/// validator, so the endpoints are tested without Google or a database. A fake ID token is
+/// "subject|email|verified|nonce" (see <see cref="IdToken"/>).
 /// </summary>
 public sealed class AccountTestFactory : WebApplicationFactory<Program>
 {
-    public const string LoginHeader = "X-Test-Google-Login";
     public const string AdministratorEmail = "admin@example.org";
 
     public InMemoryAccountStore Store { get; } = new();
@@ -33,6 +31,7 @@ public sealed class AccountTestFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("Admin:Emails:0", AdministratorEmail);
+        builder.UseSetting("Authentication:Google:ClientId", "test-client");
         builder.ConfigureServices(services =>
         {
             services.AddSingleton<IAccountStore>(Store);
@@ -42,8 +41,7 @@ public sealed class AccountTestFactory : WebApplicationFactory<Program>
             services.AddSingleton<IRelationshipQueries>(People);
             services.AddSingleton<IAuditLog>(People);
             services.AddSingleton<IUnitOfWork>(People);
-            services.Configure<AuthenticationOptions>(options =>
-                options.SchemeMap[IdentityConstants.ExternalScheme].HandlerType = typeof(FakeExternalHandler));
+            services.AddSingleton<IGoogleIdTokenValidator, FakeIdTokenValidator>();
         });
     }
 
@@ -53,15 +51,38 @@ public sealed class AccountTestFactory : WebApplicationFactory<Program>
         AllowAutoRedirect = false,
     });
 
+    /// <summary>A fake ID token for a Google user, bound to <paramref name="nonceSecret"/>.</summary>
+    public static string IdToken(string subject, string email, string nonceSecret, bool verified = true) =>
+        $"{subject}|{email}|{verified}|{Nonce(nonceSecret)}";
+
+    /// <summary>The nonce the Client sends to Google: base64url of the SHA-256 of the secret.</summary>
+    public static string Nonce(string nonceSecret) =>
+        Base64Url.EncodeToString(SHA256.HashData(Encoding.UTF8.GetBytes(nonceSecret)));
+
     /// <summary>
-    /// Signs a new account in through the fake Google result and returns the antiforgery token
-    /// for its state-changing requests.
+    /// Posts a Google sign-in the way the Client does: loads the account first for the antiforgery
+    /// token, then sends the ID token and nonce secret.
+    /// </summary>
+    public static async Task<HttpResponseMessage> PostGoogleSignInAsync(
+        HttpClient browser, string idToken, string nonceSecret, CancellationToken cancellationToken)
+    {
+        using var account = await browser.GetAsync("/api/account", cancellationToken);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/account/google-sign-in")
+        {
+            Content = JsonContent.Create(new { idToken, nonceSecret }),
+        };
+        request.Headers.Add("X-XSRF-TOKEN", XsrfToken(account));
+        return await browser.SendAsync(request, cancellationToken);
+    }
+
+    /// <summary>
+    /// Signs a new account in through a fake Google ID token and returns the antiforgery token for
+    /// its state-changing requests.
     /// </summary>
     public static async Task<string> SignInAsync(HttpClient browser, string email, CancellationToken cancellationToken)
     {
-        using var callback = new HttpRequestMessage(HttpMethod.Get, "/api/account/sign-in/complete");
-        callback.Headers.Add(LoginHeader, $"{Guid.NewGuid()}|{email}|true");
-        using var _ = await browser.SendAsync(callback, cancellationToken);
+        using var _ = await PostGoogleSignInAsync(
+            browser, IdToken(Guid.NewGuid().ToString(), email, "secret"), "secret", cancellationToken);
         using var account = await browser.GetAsync("/api/account", cancellationToken);
         return XsrfToken(account);
     }
@@ -72,30 +93,14 @@ public sealed class AccountTestFactory : WebApplicationFactory<Program>
         return Uri.UnescapeDataString(cookie["XSRF-TOKEN=".Length..cookie.IndexOf(';')]);
     }
 
-    /// <summary>Header value "providerKey|email|verified".</summary>
-    private sealed class FakeExternalHandler(
-        IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder)
-        : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder), IAuthenticationSignOutHandler
+    /// <summary>Accepts "subject|email|verified|nonce"; anything else is not a valid token.</summary>
+    private sealed class FakeIdTokenValidator : IGoogleIdTokenValidator
     {
-        protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+        public Task<GoogleIdToken?> ValidateAsync(string idToken)
         {
-            if (!Request.Headers.TryGetValue(LoginHeader, out var value))
-            {
-                return Task.FromResult(AuthenticateResult.NoResult());
-            }
-
-            var parts = value.ToString().Split('|');
-            var identity = new ClaimsIdentity(
-                [
-                    new Claim(ClaimTypes.NameIdentifier, parts[0]),
-                    new Claim(ClaimTypes.Email, parts[1]),
-                    new Claim("email_verified", parts[2]),
-                ],
-                Scheme.Name);
-            return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), Scheme.Name)));
+            var parts = idToken.Split('|');
+            return Task.FromResult(parts.Length == 4 ? new GoogleIdToken(parts[0], parts[1], bool.Parse(parts[2]), parts[3]) : null);
         }
-
-        public Task SignOutAsync(AuthenticationProperties? properties) => Task.CompletedTask;
     }
 }
 

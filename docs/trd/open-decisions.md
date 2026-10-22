@@ -1,6 +1,6 @@
 # Open Technical Decisions
 
-Use this file to track unresolved technical choices. Do not treat recommendations as final until discussed and agreed.
+The technical decision log, plus any unresolved choices. Do not treat recommendations as final until discussed and agreed.
 
 ## Agreed so far
 
@@ -14,11 +14,11 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 - Application handles user management, authentication/authorization workflows, permissions, and use-case orchestration.
 - Infrastructure contains EF Core `DbContext`, migrations, persistence, and may use `IdentityDbContext`.
 - Keep a modular monolith initially and avoid unnecessary abstraction.
-- Do not write application code until the technical specification is sufficiently agreed.
+- Write application code only for scoped tasks the user authorizes.
 - Repository layout, toolchain versions, and styling approach (D-001 below).
 - Project references and persistence abstractions (D-002 below).
 - **First implementation slice (agreed 2026-10-21):** domain core only, in `FamilyGraph.Business`. It covers people, maintainers, parent–child links, per-endpoint consent and audit events, with unit tests. It uses no persistence, identity or HTTP, so it is not blocked by the decisions below.
-- **Unit-test framework (agreed 2026-10-21):** xUnit v3. The integration-test database strategy is still open (see Testing below).
+- **Unit-test framework (agreed 2026-10-21):** xUnit v3. The integration-test database is Testcontainers PostgreSQL (D-009).
 - Assertions use xUnit's built-in `Assert` (D-003 below).
 - Test project layout (D-004 below).
 - Mapping PRD acceptance criteria to tests (D-005 below).
@@ -41,7 +41,7 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 - Creating parent–child links: use case, ancestor query and API (D-020 below).
 - **Name length (agreed 2026-10-21):** Business puts no length cap on name parts. Any storage or input limit is set later by persistence (#9) and API validation (D-010).
 
-## Decisions to discuss next
+## Discussion topics (all agreed)
 
 1. **Identity approach:** agreed (D-008). Sessions use cookies (D-011).
 2. **Database and graph queries:** agreed (D-009).
@@ -320,15 +320,20 @@ For each major decision, record:
   - **Registration:** the first Google sign-in creates the account with the `User` role. It never creates a Person (`AC-01.12`).
   - **Administrators:** on every sign-in the account gets or loses `Administrator` by matching its verified email, ignoring case, against `Admin:Emails` (D-008).
   - **Identity in Infrastructure:** `FamilyGraphDbContext` derives from `IdentityDbContext` with GUID keys. Tables are `user_accounts`, `user_account_logins`, `user_account_roles`, `user_account_claims`, `user_account_tokens`, `roles` and `role_claims`; the two roles are seeded by migration. Application owns `IAccountStore` and `AccountService`; Infrastructure implements the store with `UserManager`. The account ID is the domain's `AccountId`.
-  - **Endpoints** (`AccountController`, `/api/account`): `GET /api/account/sign-in?returnUrl=` starts Google sign-in (503 `account.sign_in_unavailable` when Google is not configured); `GET /api/account/sign-in/complete` creates or updates the account, starts the session and answers with a local `returnUrl` only (401 `account.sign_in_failed` without a Google result); `POST /api/account/sign-out` ends it; `GET /api/account` returns the own account or 401.
+  - **Endpoints** (`AccountController`, `/api/account`): `POST /api/account/google-sign-in` checks a Google ID token, creates or updates the account and starts the session (204; 503 `account.sign_in_unavailable` when Google is not configured; 401 `account.sign_in_failed` for a rejected token); `POST /api/account/sign-out` ends it; `GET /api/account` returns the own account or 401. *(Revised 2026-10-22, see "Client-side Google flow" below.)*
   - **Session:** the Identity application cookie `FamilyGraph.Session` (`HttpOnly`, `Secure`, `SameSite=Lax`, sliding expiry) holds the account ID and roles. The API answers 401 and 403 instead of redirecting.
   - **CSRF:** `GET /api/account` sets a readable `XSRF-TOKEN` cookie. Angular's `HttpClient` sends it back as `X-XSRF-TOKEN`, and a global filter rejects any non-GET request without a valid token (400 `request.antiforgery_invalid`).
-  - **Client:** a sign-in page, an account page with sign-out, and a guard that sends signed-out users to sign-in with a `returnUrl`. Since #55 the Client loads `GET /api/configuration` once at startup (`provideAppInitializer`); it reports only whether Google sign-in is configured, never the client ID or secret. The sign-in page shows a Google-branded button (inline logo, no Google script or font) that navigates to `/api/account/sign-in`, says when Google is not configured or the server is unreachable, and sends already signed-in users to their local `returnUrl`. In development, the Angular dev server serves HTTPS with the ASP.NET Core development certificate, and `proxy.conf.json` forwards only `/api` to the Server over HTTP with `X-Forwarded-*` headers; the Development profiles enable forwarded headers so the Server builds `https` URLs.
-  - **Google redirect URI (revised 2026-10-22, at Ash's request):** Google redirects to the Client route `/google-callback`, not to a Server path, so the Client proxies only `/api`. The page passes Google's query string to `GET /api/account/google-callback`, the Google handler's callback path. `ClientCallbackGoogleHandler` (a `GoogleHandler`) uses `/google-callback` as the redirect URI in both the authorization request and the code exchange, since Google requires them to match; `state`, the correlation cookie and PKCE are still checked by the handler. On success it redirects to `GET /api/account/sign-in/complete`, which HttpClient follows; failures and cancellations answer 401 `account.sign_in_failed` instead of a redirect. The redirect URI to register is `https://<host>/google-callback`. HTTPS redirection runs outside Development only.
-  - **Packages:** `Microsoft.AspNetCore.Identity.EntityFrameworkCore` 10.0.4 (matches EF Core) in Infrastructure, `Microsoft.AspNetCore.Authentication.Google` 10.0.12 in Server (both named in D-008).
+  - **Client:** a sign-in page, an account page with sign-out, and a guard that sends signed-out users to sign-in with a `returnUrl`. Since #55 the Client loads `GET /api/configuration` once at startup (`provideAppInitializer`); it reports whether Google sign-in is configured and, since the revision below, the public client ID. The sign-in page shows a Google-branded button (inline logo, no Google script or font) that starts the Google flow, says when Google is not configured or the server is unreachable, and sends already signed-in users to their local `returnUrl`. In development, the Angular dev server serves HTTPS with the ASP.NET Core development certificate. Since 24cd6b5 its proxy is `src/client/src/proxy.conf.js`, which forwards `/api` and `/hubs` (WebSockets) to the Server and no longer sends `X-Forwarded-*` headers; since the client-side flow below, sign-in does not need them.
+  - **Google redirect URI (revised 2026-10-22, at Ash's request):** Google redirects to the Client route `/google-callback`, not to a Server path, so the dev proxy forwards no sign-in paths. The redirect URI to register is `https://<host>/google-callback`. HTTPS redirection runs outside Development only. *(The Server-side handler from the first revision, `ClientCallbackGoogleHandler`, was superseded the same day by the next point.)*
+  - **Client-side Google flow (revised 2026-10-22, at Ash's request):** the Client runs the Google side; the Server only checks the result.
+    - *Options considered:* the redirect flow with `response_type=id_token` built by the Client; Google Identity Services (Google's script and button, popup); the code flow started by the Client with the Server exchanging the code. For validation: `Google.Apis.Auth` or `Microsoft.IdentityModel.Protocols.OpenIdConnect`.
+    - *Trade-offs:* Google Identity Services loads a third-party script on our pages. The code flow still needs the client secret and a Server call to Google. The id_token flow needs neither, but the token passes through the browser, so it must be bound to the browser that asked for it. `Google.Apis.Auth` is one call maintained by Google but brings `Google.Apis.Core` and `Newtonsoft.Json`. Ash chose it over `Microsoft.IdentityModel`.
+    - *Decision:* `GET /api/configuration` returns `google.clientId` (public). The sign-in button sends the browser to Google with `response_type=id_token`, `scope=openid email`, a random `state` and `nonce` = base64url SHA-256 of a random secret, all kept in session storage. `/google-callback` reads the token from the URL fragment, checks `state` (each pending sign-in is used once), and posts `{ idToken, nonceSecret }` to `POST /api/account/google-sign-in`. The Server validates the token with `GoogleJsonWebSignature` (signature, issuer, expiry, audience = client ID) and checks the nonce against the secret, so a leaked token cannot be replayed without it. The login provider stays `Google`, so existing accounts are found again. `GET /api/account` also issues the antiforgery cookie when signed out, so the sign-in POST passes the global antiforgery filter.
+    - *Consequences:* no client secret is configured anywhere; the external sign-in cookie and the Google authentication handler are gone. The Client builds the redirect URI from the browser's origin, so forwarded headers no longer matter for sign-in.
+  - **Packages:** `Microsoft.AspNetCore.Identity.EntityFrameworkCore` 10.0.4 (matches EF Core) in Infrastructure. `Google.Apis.Auth` 1.77.0 in Server replaces `Microsoft.AspNetCore.Authentication.Google` (named in D-008) since the revision above.
 - **Consequences:**
   - The roles in a session are those of its sign-in. An administrator removed from `Admin:Emails` keeps the role until signing in again or the session expires. The first administrator-only endpoint decides whether to re-check per request.
-  - Self-hosters set `Authentication__Google__ClientId`, `Authentication__Google__ClientSecret` and `Admin__Emails__0` (see `docs/authentication.md`). Behind a TLS-terminating proxy, forwarded headers must be enabled so Google gets an `https` callback URL (#33).
+  - Self-hosters set `Authentication__Google__ClientId` and `Admin__Emails__0` (see `docs/authentication.md`). No client secret is needed.
   - Account deletion and the erasure of the stored email come with #32.
 
 ### D-019: Person profile use cases, unit of work and API

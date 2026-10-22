@@ -32,14 +32,14 @@ Infrastructure references Application only to implement Application-owned interf
 
 ### Write side
 
-- Use focused store interfaces per aggregate, created only when a use case needs them (e.g. `IRelationshipStore.GetAsync/Add`).
+- Use focused store interfaces per aggregate, created only when a use case needs them (e.g. `IPersonStore`, `IParentChildLinkStore`).
 - One `IUnitOfWork.SaveChangesAsync` commits a use case's changes and its audit events in the same transaction.
 - No generic repository and no repository per entity by default.
 
 ### Read side
 
-- Use dedicated, Application-owned query services that return flat read models, not domain entities (e.g. `IGraphQueries.GetNeighbourhood(personId, depth, maxNodes)`).
-- Depth and node limits are **required parameters**, so an unbounded query cannot be expressed. The limit values come from the database decision.
+- Use dedicated, Application-owned query services that return flat read models, not domain entities (e.g. `IPersonQueries`, `IRelationshipQueries`).
+- Depth and node limits are **required parameters**, so an unbounded query cannot be expressed. The limit values follow D-009.
 - Privacy projection (`Private`/`Deleted` placeholders) is applied in Application before results leave the use case.
 
 ### Derived relationships

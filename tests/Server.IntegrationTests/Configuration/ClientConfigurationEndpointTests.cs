@@ -13,26 +13,25 @@ public class ClientConfigurationEndpointTests(WebApplicationFactory<Program> fac
     [Fact]
     public async Task Reports_Google_sign_in_as_unavailable_when_it_is_not_configured()
     {
-        using var client = factory.CreateClient();
+        using var unconfigured = factory.WithWebHostBuilder(builder => builder.UseSetting("Authentication:Google:ClientId", ""));
+        using var client = unconfigured.CreateClient();
 
         var configuration = await client.GetFromJsonAsync<ClientConfigurationResponse>("/api/configuration", Cancellation);
 
         Assert.False(configuration!.Google.Enabled);
+        Assert.Null(configuration.Google.ClientId);
     }
 
     [Fact]
-    public async Task Reports_Google_sign_in_as_available_without_exposing_its_credentials()
+    public async Task Reports_Google_sign_in_as_available_with_its_public_client_ID()
     {
         using var configured = factory.WithWebHostBuilder(builder => builder
-            .UseSetting("Authentication:Google:ClientId", "test-client-id")
-            .UseSetting("Authentication:Google:ClientSecret", "test-client-secret"));
+            .UseSetting("Authentication:Google:ClientId", "test-client-id"));
         using var client = configured.CreateClient();
 
-        var body = await client.GetStringAsync("/api/configuration", Cancellation);
         var configuration = await client.GetFromJsonAsync<ClientConfigurationResponse>("/api/configuration", Cancellation);
 
         Assert.True(configuration!.Google.Enabled);
-        Assert.DoesNotContain("test-client-id", body, StringComparison.Ordinal);
-        Assert.DoesNotContain("test-client-secret", body, StringComparison.Ordinal);
+        Assert.Equal("test-client-id", configuration.Google.ClientId);
     }
 }

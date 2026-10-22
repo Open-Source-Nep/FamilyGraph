@@ -2,25 +2,25 @@
 
 ## Status
 
-Proposed baseline; versions and supporting dependencies must be verified before project creation.
+Agreed. Pinned versions are listed below and in the decision records.
 
-## Proposed stack
+## Stack
 
-| Area | Proposed direction | Status / notes |
+| Area | Choice | Status / notes |
 |---|---|---|
 | Backend runtime | .NET 10 LTS / ASP.NET Core | Agreed; SDK pinned in `global.json` (D-001) |
 | Frontend | Angular 22, standalone components | Agreed (D-001); TypeScript 6.0, Node 24 LTS (`.nvmrc`) |
 | Styling | Plain CSS (component-scoped styles + CSS custom properties) | Agreed (D-001); no Tailwind or UI component library |
-| Backend language | C# | Intended |
-| Frontend language | TypeScript | Intended |
+| Backend language | C# | Agreed |
+| Frontend language | TypeScript | Agreed |
 | API style | REST with JSON, MVC controllers, ProblemDetails errors | Agreed (D-010) |
 | Relational database | PostgreSQL (Npgsql provider) | Agreed (D-009) |
 | ORM and migrations | Entity Framework Core; recursive CTEs for traversal | Agreed (D-009) |
-| Identity persistence | ASP.NET Core Identity with EF Core, Google sign-in | Agreed (D-008). One shared `IdentityDbContext`-derived context |
+| Identity persistence | ASP.NET Core Identity with EF Core, Google sign-in | Agreed (D-008, D-018). One shared `IdentityDbContext`-derived context; the Client runs the Google flow and the Server validates the ID token |
 | Development integration | ASP.NET Core Angular SPA Proxy | Configured (#8); enabled only through `launchSettings.json` |
 | Testing | xUnit v3 (built-in `Assert`), Microsoft.Testing.Platform; Vitest; Playwright smoke tests | Agreed (D-003–D-006); integration tests use Testcontainers PostgreSQL (D-009) |
 | Packaging | One Docker image (Server + built Client), `deploy/docker-compose.yml` with PostgreSQL and a migration bundle step | Agreed (D-011) |
-| Repository | One Git repository / monorepo | Recommended and reflected in proposed layout |
+| Repository | One Git repository / monorepo | Agreed (D-001) |
 
 ## Dependency policy
 
@@ -40,7 +40,7 @@ Agreed (D-001):
 
 Agreed later:
 - EF Core provider: Npgsql (D-009). Versions pinned in #9 (D-017): `Npgsql.EntityFrameworkCore.PostgreSQL` 10.0.3, `Microsoft.EntityFrameworkCore.Design` 10.0.4, `dotnet-ef` 10.0.4 (local tool in `.config/dotnet-tools.json`), `Testcontainers.PostgreSql` 4.16.0.
-- Identity packages pinned in #11 (D-018): `Microsoft.AspNetCore.Identity.EntityFrameworkCore` 10.0.4, `Microsoft.AspNetCore.Authentication.Google` 10.0.12.
+- Identity packages pinned in #11 (D-018): `Microsoft.AspNetCore.Identity.EntityFrameworkCore` 10.0.4. Google ID tokens are validated with `Google.Apis.Auth` 1.77.0 (D-018, revised 2026-10-22); `Microsoft.AspNetCore.Authentication.Google` was removed.
 - CI restore/build/test commands (D-012).
 
-Do not assume that template defaults are current or that all package major versions are mutually compatible.
+Do not assume that template defaults are current or that all package major versions are mutually compatible when upgrading.

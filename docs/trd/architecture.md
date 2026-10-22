@@ -2,7 +2,7 @@
 
 ## Status
 
-Initial baseline. Project names and responsibilities below are agreed; detailed architecture and technology choices remain partly open.
+Agreed. Detailed choices are recorded as decisions in `open-decisions.md`; none are open.
 
 ## Product context
 

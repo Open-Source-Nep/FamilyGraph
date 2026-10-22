@@ -59,7 +59,7 @@ Add the `deploy/` folder only when it is needed.
 - EF Core `DbContext` and entity configurations.
 - EF Core migrations.
 - Persistence and query implementations.
-- Identity persistence, including an `IdentityDbContext`-derived context if selected.
+- Identity persistence through the `IdentityDbContext`-derived `FamilyGraphDbContext` (D-018).
 - Implementations of persistence and integration abstractions.
 
 ### `Client`
@@ -67,8 +67,8 @@ Add the `deploy/` folder only when it is needed.
 - Feature-based organization, routes, UI components, API integration, and frontend state.
 - No authoritative enforcement of privacy, consent, or permissions; the server remains responsible.
 
-## Angular organization proposal
+## Angular organization
 
-Organize by feature rather than only by technical type. Candidate feature areas include `people`, `family-graph`, `profile-claims`, `relationships`, `account`, and `administration`. These are organizational suggestions, not final product module boundaries.
+Organize by feature rather than only by technical type. `src/client/src/app/core` holds app-wide services (`auth`, `config`); `features` has `account`, `home`, `people` and `relationships`. Later areas such as `family-graph`, `profile-claims` and `administration` are suggestions, not final product module boundaries.
 
 Use standalone components, lazy-loaded feature routes, strict TypeScript settings, and framework-native patterns where suitable. Avoid adding a global state library or UI component library until a concrete need is established.
