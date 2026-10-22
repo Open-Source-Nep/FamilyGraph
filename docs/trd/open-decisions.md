@@ -33,6 +33,7 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 - **Domain enumerations (agreed 2026-10-22, PR #44 review):** closed sets of domain values are sealed classes deriving from `FamilyGraph.Business.BaseEnum<T>`, with one `public static readonly` field per value and a stable integer `Value` for persistence. C# `enum` is not used in the domain.
 - Consent state transitions (D-013 below).
 - Link removal (D-014 below).
+- Audit event model (D-015 below).
 - Birth order of children (D-016 below).
 - **Name length (agreed 2026-10-21):** Business puts no length cap on name parts. Any storage or input limit is set later by persistence (#9) and API validation (D-010).
 
@@ -260,6 +261,20 @@ For each major decision, record:
   - Delete and Disagree are separate operations, so their audit events (#10) are distinct.
 - **Consequences:** `ParentChildLink` gains `Delete`, `DeletedAt` and `IsDeleted`; Application supplies the timestamp. Audit events come with #10; Application, API and Client parts follow later.
 
+### D-015: Audit event model
+
+- **Status:** agreed (2026-10-22). Issue #10.
+- **Context:** PRD 07 requires append-only audit events for every lifecycle change, kept after the active row is deleted, with claim decisions separate from consent events. D-002 saves audit events in the same transaction as the change. PRD 05 replaces erased personal data in audit records with `[erased]`. Event names are left to implementation (PRD 03).
+- **Options considered:** where events come from (entities record them, Application use cases write them, or each operation returns its event); whether events copy personal values such as old and new names.
+- **Trade-offs:** Use-case-written events can be forgotten, and only tests catch that. Returned events can be ignored by the caller. Copying personal values shows what changed but needs rewriting on erasure and keeps more personal data.
+- **Decision:**
+  - Business entities (`AuditedEntity`) record an `AuditEvent` in every successful operation. Rejected operations record nothing. Application takes the events with `TakeEvents()`, stamps the time and saves them with the change.
+  - Each event has a family (`AuditFamily`: relationship consent, identity claim, profile, merge, administrative), a type (its record type), subject IDs and the acting account.
+  - Events hold IDs, types and states only, never names or other personal values. A rename records that it happened, not the names.
+  - Consent events, one per transition: `LinkCreated`, `LinkEndpointApproved` (pending → approved), `LinkApprovalRestored` (disagreed → approved), `LinkEndpointDeclined` (pending → disagreed), `LinkEndpointDisagreed` (approved → disagreed, which includes withdrawal), `LinkDeleted`. Profile events: `PersonCreated`, `PersonRenamed`, `LinkBirthOrderChanged` (D-016).
+  - Claim, merge and administrative event types are added with their features. Restricted payloads (claim evidence, admin rationale) are stored apart from general events, so general audit reads cannot reach them.
+- **Consequences:** Persistence (#9) stores events in an append-only table keyed by family, type, subject and actor, with no foreign key to the active rows so records outlive deletion. Visibility and the reconstruction query come with #27 and #28.
+
 ### D-016: Birth order of children
 
 - **Status:** agreed (2026-10-22). Issue #48.
@@ -270,4 +285,5 @@ For each major decision, record:
   - `ParentChildLink.BirthOrder` is a nullable number (lower is elder). `null` means unordered, and every new link starts unordered.
   - `ParentChildLink.SetBirthOrder(parent, actor, number)` sets or clears it. Only the parent's maintainer may (`link.birth_order_not_parent_maintainer`). The number must be 1 or greater (`link.birth_order_invalid`). Setting the current value is rejected (`link.birth_order_unchanged`), and a deleted link rejects it (`link.deleted`).
   - Setting it never touches consent or activity, so pending and inactive links can be placed.
-- **Consequences:** #10 needs a "birth order changed" audit event. Read models sort a parent's children by number, then by name for equal numbers and unordered children. Application, API and Client parts follow later.
+- Every change records a `LinkBirthOrderChanged` audit event (D-015) with the link, the parent and the new number. It is in the profile family, not relationship consent, because it needs no consent.
+- **Consequences:** Read models sort a parent's children by number, then by name for equal numbers and unordered children. Application, API and Client parts follow later.

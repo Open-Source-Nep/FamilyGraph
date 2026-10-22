@@ -38,6 +38,11 @@ Provide accountability without giving administrators the power to override relat
 - `AC-07.7` A suspended account cannot sign in or make changes.
 - `AC-07.8` Suspending an account does not change its profiles or the consent state of their relationships.
 
+## Audit content (agreed 2026-10-22)
+
+- Audit events record IDs, event types, states, the acting account and the time. They never copy names or other personal details.
+- See D-015 in `docs/trd/open-decisions.md`.
+
 ## Open details
 
 - Jurisdiction-specific legal retention or deletion requirements are left to each instance operator.

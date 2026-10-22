@@ -1,3 +1,4 @@
+using FamilyGraph.Business.Audit;
 using FamilyGraph.Business.People;
 using FamilyGraph.Business.Relationships;
 
@@ -128,5 +129,35 @@ public class ParentChildLinkBirthOrderTests
         var (_, child, link) = LinkBetweenTwoMaintainers();
 
         Assert.Throws<ArgumentException>(() => link.SetBirthOrder(child, Bob, 1));
+    }
+
+    [Fact]
+    [Trait("AC", "AC-02.9")]
+    public void Setting_the_birth_order_records_a_profile_event()
+    {
+        var (parent, _, link) = LinkBetweenTwoMaintainers();
+        link.TakeEvents();
+
+        link.SetBirthOrder(parent, Alice, 2);
+        link.SetBirthOrder(parent, Alice, null);
+
+        Assert.Equal(
+            [
+                new LinkBirthOrderChanged(link.Id, parent.Id, 2, Alice),
+                new LinkBirthOrderChanged(link.Id, parent.Id, null, Alice),
+            ],
+            link.PendingEvents);
+        Assert.All(link.PendingEvents, e => Assert.Equal(AuditFamily.Profile, e.Family));
+    }
+
+    [Fact]
+    public void Rejected_birth_order_change_records_nothing()
+    {
+        var (parent, _, link) = LinkBetweenTwoMaintainers();
+        link.TakeEvents();
+
+        Assert.Throws<NotParentMaintainerException>(() => link.SetBirthOrder(parent, Bob, 1));
+
+        Assert.Empty(link.PendingEvents);
     }
 }
