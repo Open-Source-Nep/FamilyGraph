@@ -35,9 +35,10 @@ Self-hosted instances run migrations as a separate step before the app starts; t
 
    ```bash
    dotnet tool restore
-   dotnet ef database update --project src/FamilyGraph.Infrastructure \
-     --connection "Host=localhost;Database=familygraph;Username=familygraph;Password=familygraph"
+   dotnet ef database update --project src/FamilyGraph.Infrastructure --startup-project src/Server
    ```
+
+   `dotnet ef` builds the Server's host in the Development environment, so it connects with the same `Database` settings and user secrets as the app. To target another database, add `--connection "<connection string>"` or set `Database__*` environment variables.
 
 ## Changing the schema
 
@@ -45,7 +46,7 @@ Self-hosted instances run migrations as a separate step before the app starts; t
 2. Add a migration and review the generated code:
 
    ```bash
-   dotnet ef migrations add <Name> --project src/FamilyGraph.Infrastructure --output-dir Persistence/Migrations
+   dotnet ef migrations add <Name> --project src/FamilyGraph.Infrastructure --startup-project src/Server --output-dir Persistence/Migrations
    ```
 
 3. Run `dotnet test`. A test fails if the model has changes that no migration covers.
