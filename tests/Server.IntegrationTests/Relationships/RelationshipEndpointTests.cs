@@ -14,6 +14,9 @@ public class RelationshipEndpointTests(AccountTestFactory factory) : IClassFixtu
     [Theory]
     [InlineData("POST", "/api/relationships")]
     [InlineData("GET", "/api/people/0199f6a2-0000-7000-8000-000000000001/relatives")]
+    [InlineData("GET", "/api/relationships/inactive")]
+    [InlineData("POST", "/api/relationships/0199f6a2-0000-7000-8000-000000000001/approve")]
+    [InlineData("POST", "/api/relationships/0199f6a2-0000-7000-8000-000000000001/disagree")]
     public async Task Relationships_require_a_session(string method, string url)
     {
         using var browser = factory.CreateBrowser();
@@ -174,6 +177,142 @@ public class RelationshipEndpointTests(AccountTestFactory factory) : IClassFixtu
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.Equal("person.not_found", await CodeAsync(response));
     }
+
+    [Fact]
+    [Trait("AC", "AC-03.1")]
+    [Trait("AC", "AC-03.3")]
+    public async Task Approving_activates_withdrawing_deactivates_and_restoring_reactivates()
+    {
+        var (other, otherToken) = await SignInAsync(UniqueEmail());
+        var parent = await CreatePersonAsync(other, otherToken, "Gita");
+        var (browser, token) = await SignInAsync(UniqueEmail());
+        var child = await CreatePersonAsync(browser, token, "Maya");
+        var linkId = await CreatedLinkIdAsync(browser, token, parent, child);
+
+        using var approved = await ConsentAsync(other, otherToken, linkId, "approve", "Parent");
+        var approvedLink = await approved.Content.ReadFromJsonAsync<LinkConsentResponse>(Cancellation);
+        Assert.Equal(HttpStatusCode.OK, approved.StatusCode);
+        Assert.True(approvedLink!.IsActive);
+        Assert.Equal(("Approved", true), (approvedLink.Parent.Approval, approvedLink.Parent.MaintainedByYou));
+        Assert.Equal(("Approved", false), (approvedLink.Child.Approval, approvedLink.Child.MaintainedByYou));
+        var listed = Assert.Single((await RelativesAsync(browser, child)).Parents);
+        Assert.Equal((linkId, false), (listed.LinkId, listed.MaintainedByYou));
+
+        using var withdrawn = await ConsentAsync(browser, token, linkId, "disagree", "Child");
+        Assert.Equal(HttpStatusCode.OK, withdrawn.StatusCode);
+        Assert.False((await withdrawn.Content.ReadFromJsonAsync<LinkConsentResponse>(Cancellation))!.IsActive);
+        Assert.IsType<LinkEndpointDisagreed>(factory.People.AuditEvents[^1].Event);
+        Assert.Empty((await RelativesAsync(browser, child)).Parents);
+
+        using var restored = await ConsentAsync(browser, token, linkId, "approve", "Child");
+        Assert.True((await restored.Content.ReadFromJsonAsync<LinkConsentResponse>(Cancellation))!.IsActive);
+        Assert.IsType<LinkApprovalRestored>(factory.People.AuditEvents[^1].Event);
+        Assert.Single((await RelativesAsync(browser, child)).Parents);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-03.5")]
+    public async Task Only_the_endpoint_maintainer_can_change_its_approval()
+    {
+        var (other, otherToken) = await SignInAsync(UniqueEmail());
+        var parent = await CreatePersonAsync(other, otherToken, "Gita");
+        var (browser, token) = await SignInAsync(UniqueEmail());
+        var child = await CreatePersonAsync(browser, token, "Maya");
+        var linkId = await CreatedLinkIdAsync(browser, token, parent, child);
+
+        using var response = await ConsentAsync(browser, token, linkId, "approve", "Parent");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal("link.consent_not_maintainer", await CodeAsync(response));
+    }
+
+    [Fact]
+    public async Task Repeating_the_current_approval_is_a_conflict()
+    {
+        var (other, otherToken) = await SignInAsync(UniqueEmail());
+        var parent = await CreatePersonAsync(other, otherToken, "Gita");
+        var (browser, token) = await SignInAsync(UniqueEmail());
+        var child = await CreatePersonAsync(browser, token, "Maya");
+        var linkId = await CreatedLinkIdAsync(browser, token, parent, child);
+
+        using var response = await ConsentAsync(browser, token, linkId, "approve", "Child");
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal("link.consent_unchanged", await CodeAsync(response));
+    }
+
+    [Fact]
+    public async Task Sole_maintainer_cannot_disagree()
+    {
+        var (browser, token) = await SignInAsync(UniqueEmail());
+        var parent = await CreatePersonAsync(browser, token, "Hari");
+        var child = await CreatePersonAsync(browser, token, "Maya");
+        var linkId = await CreatedLinkIdAsync(browser, token, parent, child);
+
+        using var response = await ConsentAsync(browser, token, linkId, "disagree", "Parent");
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        Assert.Equal("link.sole_maintainer_must_delete", await CodeAsync(response));
+    }
+
+    [Theory]
+    [InlineData("approve")]
+    [InlineData("disagree")]
+    public async Task Consent_on_an_unknown_link_is_not_found(string action)
+    {
+        var (browser, token) = await SignInAsync(UniqueEmail());
+
+        using var response = await ConsentAsync(browser, token, Guid.CreateVersion7(), action, "Parent");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("link.not_found", await CodeAsync(response));
+    }
+
+    [Theory]
+    [InlineData("Sibling")]
+    [InlineData(null)]
+    public async Task Unknown_endpoint_is_rejected(string? endpoint)
+    {
+        var (browser, token) = await SignInAsync(UniqueEmail());
+
+        using var response = await ConsentAsync(browser, token, Guid.CreateVersion7(), "approve", endpoint);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Inactive_links_list_those_waiting_for_you_first()
+    {
+        var (other, otherToken) = await SignInAsync(UniqueEmail());
+        var gita = await CreatePersonAsync(other, otherToken, "Gita");
+        var ram = await CreatePersonAsync(other, otherToken, "Ram");
+        var (browser, token) = await SignInAsync(UniqueEmail());
+        var maya = await CreatePersonAsync(browser, token, "Maya");
+        var waitingForOther = await CreatedLinkIdAsync(browser, token, gita, maya);
+        var waitingForYou = await CreatedLinkIdAsync(other, otherToken, ram, maya);
+
+        var list = await browser.GetFromJsonAsync<LinkConsentListResponse>("/api/relationships/inactive", Cancellation);
+
+        Assert.Equal([waitingForYou, waitingForOther], list!.Links.Select(link => link.Id));
+        Assert.False(list.IsTruncated);
+        Assert.Equal(("Ram", "Approved", "Pending"), (list.Links[0].Parent.FirstName, list.Links[0].Parent.Approval, list.Links[0].Child.Approval));
+        Assert.True(list.Links[0].Child.MaintainedByYou);
+    }
+
+    private static string UniqueEmail() => $"{Guid.NewGuid():N}@example.org";
+
+    private async Task<DirectRelativesResponse> RelativesAsync(HttpClient browser, Guid personId) =>
+        (await browser.GetFromJsonAsync<DirectRelativesResponse>($"/api/people/{personId}/relatives", Cancellation))!;
+
+    private static async Task<Guid> CreatedLinkIdAsync(HttpClient browser, string token, Guid parentId, Guid childId)
+    {
+        using var response = await CreateLinkAsync(browser, token, parentId, childId, "Biological");
+        return (await response.Content.ReadFromJsonAsync<CreatedLinkResponse>(Cancellation))!.Id;
+    }
+
+    private static Task<HttpResponseMessage> ConsentAsync(
+        HttpClient browser, string token, Guid linkId, string action, string? endpoint) =>
+        SendAsync(browser, token, HttpMethod.Post, $"/api/relationships/{linkId}/{action}", new { endpoint });
 
     private async Task<(HttpClient Browser, string Token)> SignInAsync(string email)
     {

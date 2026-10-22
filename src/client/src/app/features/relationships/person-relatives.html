@@ -10,6 +10,21 @@
           @if (parent.type === 'Adoptive') {
             <span class="hint"> (adoptive parent)</span>
           }
+          @if (withdrawableSide(parent, 'parent'); as side) {
+            @if (confirming() === parent.linkId) {
+              <div class="actions">
+                <span>Withdraw your approval? The link stops being active.</span>
+                <button type="button" [disabled]="saving()" (click)="withdraw(parent, side)">
+                  Withdraw
+                </button>
+                <button type="button" class="secondary" (click)="confirming.set(null)">Keep</button>
+              </div>
+            } @else {
+              <button type="button" class="link-button" (click)="confirming.set(parent.linkId)">
+                Withdraw approval
+              </button>
+            }
+          }
         </li>
       }
     </ul>
@@ -28,6 +43,21 @@
           <a [routerLink]="['/people', child.id]">{{ fullName(child) }}</a>
           @if (child.type === 'Adoptive') {
             <span class="hint"> (adopted child)</span>
+          }
+          @if (withdrawableSide(child, 'child'); as side) {
+            @if (confirming() === child.linkId) {
+              <div class="actions">
+                <span>Withdraw your approval? The link stops being active.</span>
+                <button type="button" [disabled]="saving()" (click)="withdraw(child, side)">
+                  Withdraw
+                </button>
+                <button type="button" class="secondary" (click)="confirming.set(null)">Keep</button>
+              </div>
+            } @else {
+              <button type="button" class="link-button" (click)="confirming.set(child.linkId)">
+                Withdraw approval
+              </button>
+            }
           }
         </li>
       }

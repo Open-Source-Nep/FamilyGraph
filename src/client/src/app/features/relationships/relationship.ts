@@ -15,9 +15,12 @@ export interface CreatedLink extends NewLink {
   isActive: boolean;
 }
 
+/** A relative through an active link. `maintainedByYou` never names the maintaining account. */
 export interface Relative extends PersonName {
+  linkId: string;
   id: string;
   type: ParentChildType;
+  maintainedByYou: boolean;
 }
 
 /** `birthOrder` is null while the parent's maintainer has not placed the child (D-016). */
@@ -31,4 +34,31 @@ export interface DirectRelatives {
   parentsTruncated: boolean;
   children: Child[];
   childrenTruncated: boolean;
+}
+
+/** Which side of a link a consent request is for. */
+export type LinkEndpoint = 'Parent' | 'Child';
+
+/** One endpoint's consent (PRD 03, D-013). Nothing returns to pending. */
+export type EndpointApproval = 'Pending' | 'Approved' | 'Disagreed';
+
+export interface LinkEndpointConsent extends PersonName {
+  id: string;
+  approval: EndpointApproval;
+  maintainedByYou: boolean;
+}
+
+/** A link's per-endpoint consent, shown to the maintainers of its profiles (D-021). */
+export interface LinkConsent {
+  id: string;
+  type: ParentChildType;
+  parent: LinkEndpointConsent;
+  child: LinkEndpointConsent;
+  isActive: boolean;
+}
+
+/** The inactive links of your profiles, from `GET /api/relationships/inactive`. */
+export interface LinkConsentList {
+  links: LinkConsent[];
+  isTruncated: boolean;
 }

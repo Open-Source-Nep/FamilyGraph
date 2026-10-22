@@ -1,6 +1,7 @@
 using FamilyGraph.Application.People;
 using FamilyGraph.Application.Relationships;
 using FamilyGraph.Business.People;
+using FamilyGraph.Business.Relationships;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Server.Accounts;
@@ -8,8 +9,9 @@ using Server.Accounts;
 namespace Server.Relationships;
 
 /// <summary>
-/// Parent–child links (PRD 02, #14): create a biological or adoptive link where you maintain at
-/// least one endpoint, and list a person's parents and children through active links.
+/// Parent–child links (PRD 02, PRD 03, #14, #59): create a biological or adoptive link where you
+/// maintain at least one endpoint, approve or disagree for an endpoint you maintain, list the
+/// inactive links of your profiles, and list a person's parents and children through active links.
 /// </summary>
 [ApiController]
 [Authorize]
@@ -33,6 +35,34 @@ public sealed class RelationshipsController(RelationshipService relationships) :
         return StatusCode(StatusCodes.Status201Created, CreatedLinkResponse.From(link));
     }
 
+    /// <summary>
+    /// The non-deleted, inactive links with an endpoint you maintain, those waiting for your
+    /// approval first (D-021).
+    /// </summary>
+    [HttpGet("inactive")]
+    public async Task<LinkConsentListResponse> ListInactive(CancellationToken cancellationToken) =>
+        LinkConsentListResponse.From(await relationships.ListInactiveLinksAsync(User.AccountId(), cancellationToken));
+
+    /// <summary>
+    /// Approves the link for the endpoint you maintain, from pending or after a disagreement
+    /// (D-013). 403 <c>link.consent_not_maintainer</c>, 404 <c>link.not_found</c>, 409
+    /// <c>link.consent_unchanged</c>, 422 when reactivating would form a cycle.
+    /// </summary>
+    [HttpPost("{id:guid}/approve")]
+    public async Task<LinkConsentResponse> Approve(Guid id, LinkConsentRequest request, CancellationToken cancellationToken) =>
+        LinkConsentResponse.From(await relationships.ApproveAsync(
+            ToLinkId(id), request.ToEndpoint(), User.AccountId(), cancellationToken));
+
+    /// <summary>
+    /// Declines a pending endpoint you maintain or withdraws your approval (D-013); the link is
+    /// inactive at once. 403 <c>link.consent_not_maintainer</c>, 404 <c>link.not_found</c>, 409
+    /// <c>link.consent_unchanged</c>, 422 <c>link.sole_maintainer_must_delete</c>.
+    /// </summary>
+    [HttpPost("{id:guid}/disagree")]
+    public async Task<LinkConsentResponse> Disagree(Guid id, LinkConsentRequest request, CancellationToken cancellationToken) =>
+        LinkConsentResponse.From(await relationships.DisagreeAsync(
+            ToLinkId(id), request.ToEndpoint(), User.AccountId(), cancellationToken));
+
     [HttpGet("/api/people/{id:guid}/relatives")]
     public async Task<DirectRelativesResponse> ListDirectRelatives(Guid id, CancellationToken cancellationToken) =>
         DirectRelativesResponse.From(
@@ -41,4 +71,7 @@ public sealed class RelationshipsController(RelationshipService relationships) :
     /// <summary>The empty GUID is never a person, so it is reported like any other unknown ID.</summary>
     private static PersonId ToPersonId(Guid id) =>
         id == Guid.Empty ? throw new PersonNotFoundException() : new PersonId(id);
+
+    private static LinkId ToLinkId(Guid id) =>
+        id == Guid.Empty ? throw new LinkNotFoundException() : new LinkId(id);
 }

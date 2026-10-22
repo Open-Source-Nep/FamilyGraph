@@ -10,7 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FamilyGraph.Infrastructure.Tests.Relationships;
 
-/// <summary>The link store, the bounded ancestor query and the relatives query against PostgreSQL (#14).</summary>
+/// <summary>The link store, the bounded ancestor query, the relatives query and the consent use cases against PostgreSQL (#14, #59).</summary>
 public class RelationshipPersistenceServicesTests(PostgresFixture postgres)
 {
     private static readonly AccountId Maintainer = TestData.NewAccount();
@@ -178,10 +178,11 @@ public class RelationshipPersistenceServicesTests(PostgresFixture postgres)
 
         await using var scope = services.CreateAsyncScope();
         var queries = scope.ServiceProvider.GetRequiredService<IRelationshipQueries>();
-        var all = await queries.ListDirectRelativesAsync(parent.Id, limit: 10, Cancellation);
-        var cut = await queries.ListDirectRelativesAsync(parent.Id, limit: 2, Cancellation);
+        var all = await queries.ListDirectRelativesAsync(parent.Id, Maintainer, limit: 10, Cancellation);
+        var cut = await queries.ListDirectRelativesAsync(parent.Id, Maintainer, limit: 2, Cancellation);
 
         Assert.Equal(["Ram"], all.Parents.Select(relative => relative.Name.FirstName));
+        Assert.True(all.Parents[0].MaintainedByViewer);
         Assert.Equal(ParentChildType.Biological, all.Parents[0].Type);
         Assert.Equal(["Chandra", "Asha", "Bina"], all.Children.Select(relative => relative.Name.FirstName));
         Assert.Equal([1, null, null], all.Children.Select(relative => relative.BirthOrder));
@@ -189,6 +190,94 @@ public class RelationshipPersistenceServicesTests(PostgresFixture postgres)
         Assert.Equal(["Chandra", "Asha"], cut.Children.Select(relative => relative.Name.FirstName));
         Assert.True(cut.ChildrenTruncated);
         Assert.False(cut.ParentsTruncated);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-03.1")]
+    [Trait("AC", "AC-03.3")]
+    public async Task Approval_and_withdrawal_are_saved_with_their_audit_events()
+    {
+        await using var services = await NewServicesAsync();
+        var other = TestData.NewAccount();
+        var parent = TestData.NewPerson(other, "Hari");
+        var child = TestData.NewPerson(Maintainer, "Maya");
+        var link = TestData.NewLink(parent, child, Maintainer);
+        await SaveAsync(services, parent, child, link);
+
+        await using (var scope = services.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<RelationshipService>()
+                .ApproveAsync(link.Id, LinkEndpoint.Parent, other, Cancellation);
+        }
+
+        await using (var scope = services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<FamilyGraphDbContext>();
+            Assert.True((await context.Set<ParentChildLink>().SingleAsync(Cancellation)).IsActive);
+            await scope.ServiceProvider.GetRequiredService<RelationshipService>()
+                .DisagreeAsync(link.Id, LinkEndpoint.Child, Maintainer, Cancellation);
+        }
+
+        await using (var scope = services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<FamilyGraphDbContext>();
+            var saved = await context.Set<ParentChildLink>().SingleAsync(Cancellation);
+            var types = await context.Set<AuditEventRecord>()
+                .Where(record => record.SubjectId == link.Id.Value)
+                .Select(record => record.Type)
+                .OrderBy(type => type)
+                .ToListAsync(Cancellation);
+
+            Assert.Equal((EndpointApproval.Approved, EndpointApproval.Disagreed), (saved.ParentApproval, saved.ChildApproval));
+            Assert.False(saved.IsActive);
+            Assert.Equal([nameof(LinkEndpointApproved), nameof(LinkEndpointDisagreed)], types);
+        }
+    }
+
+    [Fact]
+    public async Task Inactive_links_are_those_of_the_viewers_profiles_waiting_for_the_viewer_first()
+    {
+        await using var services = await NewServicesAsync();
+        var other = TestData.NewAccount();
+        var maya = TestData.NewPerson(Maintainer, "Maya");
+        var hari = TestData.NewPerson(Maintainer, "Hari");
+        var bina = TestData.NewPerson(other, "Bina");
+        var ram = TestData.NewPerson(other, "Ram");
+        var gita = TestData.NewPerson(other, "Gita");
+        var waitingForOther = TestData.NewLink(bina, maya, Maintainer);
+        var waitingForViewer = TestData.NewLink(ram, hari, other);
+        var deleted = TestData.NewLink(hari, maya, Maintainer);
+        deleted.Delete(hari, maya, Maintainer, DateTimeOffset.UtcNow);
+        await SaveAsync(
+            services,
+            maya, hari, bina, ram, gita, waitingForOther, waitingForViewer, deleted,
+            TestData.NewLink(ram, maya, Maintainer),
+            TestData.NewLink(ram, gita, other));
+        await using (var scope = services.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<RelationshipService>()
+                .ApproveAsync(waitingForOther.Id, LinkEndpoint.Parent, other, Cancellation);
+            await scope.ServiceProvider.GetRequiredService<RelationshipService>()
+                .DisagreeAsync(waitingForOther.Id, LinkEndpoint.Child, Maintainer, Cancellation);
+        }
+
+        await using var queryScope = services.CreateAsyncScope();
+        var queries = queryScope.ServiceProvider.GetRequiredService<IRelationshipQueries>();
+        var all = await queries.ListInactiveLinksAsync(Maintainer, limit: 10, Cancellation);
+        var cut = await queries.ListInactiveLinksAsync(Maintainer, limit: 1, Cancellation);
+
+        Assert.Equal(
+            ["Ram → Hari", "Bina → Maya", "Ram → Maya"],
+            all.Links.Select(link => $"{link.Parent.Name.FirstName} → {link.Child.Name.FirstName}"));
+        Assert.False(all.IsTruncated);
+        var first = all.Links[0];
+        Assert.Equal(waitingForViewer.Id, first.Id);
+        Assert.Equal((EndpointApproval.Approved, false), (first.Parent.Approval, first.Parent.MaintainedByViewer));
+        Assert.Equal((EndpointApproval.Pending, true), (first.Child.Approval, first.Child.MaintainedByViewer));
+        Assert.Equal(EndpointApproval.Disagreed, all.Links[1].Child.Approval);
+        Assert.All(all.Links, link => Assert.False(link.IsActive));
+        Assert.Equal(waitingForViewer.Id, Assert.Single(cut.Links).Id);
+        Assert.True(cut.IsTruncated);
     }
 
     private static async Task<PersonId> SavePersonAsync(ServiceProvider services, string firstName)

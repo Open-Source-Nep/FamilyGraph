@@ -271,10 +271,10 @@ public sealed class DuplicateLinkException()
     : ConflictException("link.duplicate", "A link between this parent and this child already exists.");
 
 public sealed class NotConsentMaintainerException()
-    : DomainException("link.consent_not_maintainer", "Only the maintainer of this endpoint can change its approval.");
+    : NotPermittedException("link.consent_not_maintainer", "Only the maintainer of this endpoint can change its approval.");
 
 public sealed class ConsentUnchangedException()
-    : DomainException("link.consent_unchanged", "This endpoint is already in the requested approval state.");
+    : ConflictException("link.consent_unchanged", "This endpoint is already in the requested approval state.");
 
 public sealed class SoleMaintainerMustDeleteException()
     : DomainException(

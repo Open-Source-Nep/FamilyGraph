@@ -8,6 +8,9 @@ namespace FamilyGraph.Infrastructure.Relationships;
 
 internal sealed class EfParentChildLinkStore(FamilyGraphDbContext context) : IParentChildLinkStore
 {
+    public Task<ParentChildLink?> FindAsync(LinkId id, CancellationToken cancellationToken) =>
+        context.Set<ParentChildLink>().SingleOrDefaultAsync(link => link.Id == id, cancellationToken);
+
     public async Task<IReadOnlySet<PersonId>> ParentsOfAsync(PersonId childId, CancellationToken cancellationToken)
     {
         var parents = await context.Set<ParentChildLink>()

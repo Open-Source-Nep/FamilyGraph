@@ -25,6 +25,6 @@ describe('App', () => {
     account.set({ id: '1', email: 'maya@example.org', emailVerified: true, roles: ['User'] });
     await fixture.whenStable();
     const links = [...element.querySelectorAll('nav a')].map((link) => link.textContent);
-    expect(links).toEqual(['People', 'Account']);
+    expect(links).toEqual(['People', 'Approvals', 'Account']);
   });
 });

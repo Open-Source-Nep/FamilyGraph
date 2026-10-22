@@ -1,0 +1,51 @@
+<section class="panel">
+  <h1>Link approvals</h1>
+  <p class="hint">
+    Parent and child links of the profiles you maintain that are not active. A link is active only
+    when the maintainers of both people approve it.
+  </p>
+
+  @if (notice(); as notice) {
+    <p role="status">{{ notice }}</p>
+  }
+  @if (error(); as error) {
+    <p class="error" role="alert">{{ error }}</p>
+  }
+
+  @if (list(); as list) {
+    @if (list.links.length === 0) {
+      <p>Nothing is waiting. All links of your profiles are active.</p>
+    }
+    @for (section of sections(); track section.title) {
+      <h2>{{ section.title }}</h2>
+      <ul class="links">
+        @for (link of section.links; track link.id) {
+          <li>
+            <a [routerLink]="['/people', link.parent.id]">{{ fullName(link.parent) }}</a>
+            as {{ link.type === 'Adoptive' ? 'adoptive parent' : 'parent' }} of
+            <a [routerLink]="['/people', link.child.id]">{{ fullName(link.child) }}</a>
+            @if (section.yours) {
+              <div class="actions">
+                @for (action of actions(link); track action.label) {
+                  <button
+                    type="button"
+                    [class.secondary]="!action.approve"
+                    [disabled]="saving()"
+                    (click)="act(link, action)"
+                  >
+                    {{ action.label }}
+                  </button>
+                }
+              </div>
+            } @else {
+              <div class="hint">{{ status(link) }}</div>
+            }
+          </li>
+        }
+      </ul>
+    }
+    @if (list.isTruncated) {
+      <p class="hint">Only the first {{ list.links.length }} links are shown.</p>
+    }
+  }
+</section>

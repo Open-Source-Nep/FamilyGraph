@@ -43,6 +43,12 @@ export const routes: Routes = [
         loadComponent: () => import('./features/people/person-page').then((m) => m.PersonPage),
       },
       {
+        path: 'approvals',
+        title: 'Link approvals',
+        loadComponent: () =>
+          import('./features/relationships/approvals-page').then((m) => m.ApprovalsPage),
+      },
+      {
         path: 'account',
         title: 'Your account',
         loadComponent: () => import('./features/account/account-page').then((m) => m.AccountPage),
