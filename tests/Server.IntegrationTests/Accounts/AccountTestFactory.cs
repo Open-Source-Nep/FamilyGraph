@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using FamilyGraph.Application.Accounts;
+using FamilyGraph.Application.People;
+using FamilyGraph.Application.Persistence;
 using FamilyGraph.Business.People;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
@@ -9,11 +11,12 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Server.IntegrationTests.People;
 
 namespace Server.IntegrationTests.Accounts;
 
 /// <summary>
-/// Runs the Server with an in-memory account store and a fake external sign-in, so the account
+/// Runs the Server with in-memory account and people stores and a fake external sign-in, so the
 /// endpoints are tested without Google or a database. A request carrying <see cref="LoginHeader"/>
 /// arrives at the callback as if Google had just signed in that user.
 /// </summary>
@@ -24,12 +27,18 @@ public sealed class AccountTestFactory : WebApplicationFactory<Program>
 
     public InMemoryAccountStore Store { get; } = new();
 
+    public InMemoryPeople People { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("Admin:Emails:0", AdministratorEmail);
         builder.ConfigureServices(services =>
         {
             services.AddSingleton<IAccountStore>(Store);
+            services.AddSingleton<IPersonStore>(People);
+            services.AddSingleton<IPersonQueries>(People);
+            services.AddSingleton<IAuditLog>(People);
+            services.AddSingleton<IUnitOfWork>(People);
             services.Configure<AuthenticationOptions>(options =>
                 options.SchemeMap[IdentityConstants.ExternalScheme].HandlerType = typeof(FakeExternalHandler));
         });
@@ -40,6 +49,25 @@ public sealed class AccountTestFactory : WebApplicationFactory<Program>
         BaseAddress = new Uri("https://localhost"),
         AllowAutoRedirect = false,
     });
+
+    /// <summary>
+    /// Signs a new account in through the fake Google callback and returns the antiforgery token
+    /// for its state-changing requests.
+    /// </summary>
+    public static async Task<string> SignInAsync(HttpClient browser, string email, CancellationToken cancellationToken)
+    {
+        using var callback = new HttpRequestMessage(HttpMethod.Get, "/api/account/sign-in/callback");
+        callback.Headers.Add(LoginHeader, $"{Guid.NewGuid()}|{email}|true");
+        using var _ = await browser.SendAsync(callback, cancellationToken);
+        using var account = await browser.GetAsync("/api/account", cancellationToken);
+        return XsrfToken(account);
+    }
+
+    public static string XsrfToken(HttpResponseMessage response)
+    {
+        var cookie = response.Headers.GetValues("Set-Cookie").Single(value => value.StartsWith("XSRF-TOKEN=", StringComparison.Ordinal));
+        return Uri.UnescapeDataString(cookie["XSRF-TOKEN=".Length..cookie.IndexOf(';')]);
+    }
 
     /// <summary>Header value "providerKey|email|verified".</summary>
     private sealed class FakeExternalHandler(

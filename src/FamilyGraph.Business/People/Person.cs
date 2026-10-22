@@ -55,4 +55,4 @@ public sealed class Person : AuditedEntity
 }
 
 public sealed class NotProfileMaintainerException(PersonId personId)
-    : DomainException("person.not_maintainer", $"Only the maintainer of profile {personId.Value} can change it.");
+    : NotPermittedException("person.not_maintainer", $"Only the maintainer of profile {personId.Value} can change it.");

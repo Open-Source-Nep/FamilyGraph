@@ -37,6 +37,7 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 - Birth order of children (D-016 below).
 - Persistence mapping (D-017 below).
 - Accounts, sign-in flow and sessions (D-018 below).
+- Person profile use cases, unit of work and API (D-019 below, proposed with #12).
 - **Name length (agreed 2026-10-21):** Business puts no length cap on name parts. Any storage or input limit is set later by persistence (#9) and API validation (D-010).
 
 ## Decisions to discuss next
@@ -309,7 +310,7 @@ For each major decision, record:
 
 ### D-018: Accounts, sign-in flow and sessions
 
-- **Status:** agreed when the #11 PR merges (2026-10-22). Ash chose the account data; the rest applies D-008, D-010 and D-011.
+- **Status:** agreed (2026-10-22). Issue #11, PR #52. Ash chose the account data; the rest applies D-008, D-010 and D-011.
 - **Context:** D-008 picks Google sign-in, ASP.NET Core Identity, the `User` and `Administrator` roles and config-defined admins. D-011 picks an Identity session cookie with CSRF protection. The product keeps personal data to a minimum, and an account is never a person profile (PRD 01).
 - **Options considered:** keeping only the email from Google, or also the name, or also the photo; a separate registration step, or registering on first sign-in; Identity's `SignInManager`, or signing in with the Identity cookie scheme directly.
 - **Trade-offs:** A name or photo would let the UI greet the user, but is more personal data to protect and erase, and no requirement needs it; a user's name belongs on their Person profile. A separate registration step adds a screen with nothing to ask. `SignInManager` brings password, lockout and security-stamp features that Google-only sign-in does not use and that need more configuration.
@@ -327,3 +328,18 @@ For each major decision, record:
   - The roles in a session are those of its sign-in. An administrator removed from `Admin:Emails` keeps the role until signing in again or the session expires. The first administrator-only endpoint decides whether to re-check per request.
   - Self-hosters set `Authentication__Google__ClientId`, `Authentication__Google__ClientSecret` and `Admin__Emails__0` (see `docs/authentication.md`). Behind a TLS-terminating proxy, forwarded headers must be enabled so Google gets an `https` callback URL (#33).
   - Account deletion and the erasure of the stored email come with #32.
+
+### D-019: Person profile use cases, unit of work and API
+
+- **Status:** proposed (2026-10-22). Issue #12. Agreed when the #12 PR merges.
+- **Context:** #12 is the first Application use case, so it brings the store interfaces, `IUnitOfWork` and query services that D-002 and D-017 deferred. D-015 has Application take and time-stamp audit events. D-010 sets the API shape, and D-017 leaves name length limits to API validation. Privacy settings and the `Private` placeholder come with #17 (PRD 05); until then every profile is Public, the PRD 05 default.
+- **Options considered:** saving audit events by scanning EF Core's change tracker in `SaveChanges`, or Application adding them to an audit log; whether to return a profile's maintainer account to other users; a length limit per name part of 100 or none.
+- **Trade-offs:** The change-tracker approach cannot forget events, but hides the time stamp and the event list in Infrastructure, against D-015. Naming the maintaining account to others reveals which account manages which profiles, which no requirement needs.
+- **Decision:**
+  - **Write side:** Application owns `IPersonStore` (find, add), `IAuditLog` (add events with their time) and `IUnitOfWork` (save). `PersonService` takes the entity's events, stamps them with `TimeProvider` and saves change and events in one `SaveChanges`, so one transaction.
+  - **Read side:** `IPersonQueries` returns `PersonView` (ID, name, whether the viewer maintains it) and the maintained list sorted by first, middle and last name, cut at `People:MaintainedListLimit` (default 500) with an `IsTruncated` flag.
+  - **Errors:** Business adds `NotPermittedException` (a `DomainException`) for authority rules; `NotProfileMaintainerException` derives from it. Application adds `NotFoundException`. A Server `IExceptionHandler` maps them to ProblemDetails with the `code` extension: not permitted 403, not found 404, other domain rules 422.
+  - **Endpoints** (`PeopleController`, signed-in users only): `POST /api/people` (201 with the profile), `GET /api/people/{id}`, `PUT /api/people/{id}/name` (204, maintainer only), `GET /api/people/maintained`. Any signed-in user may view any profile; responses say `maintainedByYou` but never name the maintaining account.
+  - **Validation:** each name part is at most 100 characters (400). A missing or blank first name is the domain rule `person.first_name_required` (422).
+  - **Client:** `features/people` has the profiles-you-maintain list, an add-a-person page and a person page where the maintainer edits the name.
+- **Consequences:** Later use cases reuse `IAuditLog` and `IUnitOfWork` with their own stores. #17 puts the privacy projection in front of `IPersonQueries` before any Private profile exists. The link permission exceptions move to `NotPermittedException` with their API work (#14, #15, #16).

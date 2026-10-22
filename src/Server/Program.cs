@@ -1,16 +1,22 @@
 using FamilyGraph.Infrastructure;
 using Server.Accounts;
+using Server.Errors;
+using Server.People;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddAccounts(builder.Configuration);
+builder.Services.AddPeople(builder.Configuration);
 builder.Services.AddAntiforgery(options => options.HeaderName = "X-XSRF-TOKEN");
 builder.Services.AddControllers(options => options.Filters.Add<ValidateAntiforgeryFilter>());
 builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 
 var app = builder.Build();
+
+app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
 {

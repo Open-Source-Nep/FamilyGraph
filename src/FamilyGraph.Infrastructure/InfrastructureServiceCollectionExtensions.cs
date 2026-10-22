@@ -1,5 +1,8 @@
 using FamilyGraph.Application.Accounts;
+using FamilyGraph.Application.People;
+using FamilyGraph.Application.Persistence;
 using FamilyGraph.Infrastructure.Identity;
+using FamilyGraph.Infrastructure.People;
 using FamilyGraph.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -23,7 +26,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddInfrastructure(ConnectionStringFrom(configuration.GetSection(DatabaseSection)));
 
     /// <summary>
-    /// Registers persistence against PostgreSQL and the ASP.NET Core Identity account store. A
+    /// Registers persistence against PostgreSQL, the stores, queries and unit of work that
+    /// Application owns, and the ASP.NET Core Identity account store. A
     /// missing connection string fails when the database is first used, not at startup, so the host
     /// can still start without one.
     /// </summary>
@@ -36,6 +40,10 @@ public static class InfrastructureServiceCollectionExtensions
             .AddRoles<IdentityRole<Guid>>()
             .AddEntityFrameworkStores<FamilyGraphDbContext>();
         services.AddScoped<IAccountStore, IdentityAccountStore>();
+        services.AddScoped<IUnitOfWork, EfUnitOfWork>();
+        services.AddScoped<IAuditLog, EfAuditLog>();
+        services.AddScoped<IPersonStore, EfPersonStore>();
+        services.AddScoped<IPersonQueries, EfPersonQueries>();
         return services;
     }
 

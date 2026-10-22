@@ -1,0 +1,37 @@
+<section class="panel">
+  @if (error(); as error) {
+    <p class="error" role="alert">{{ error }}</p>
+  }
+
+  @if (person(); as person) {
+    @if (editing()) {
+      <h1>Edit name</h1>
+      <app-person-name-form
+        [name]="person"
+        [busy]="saving()"
+        (saved)="rename($event)"
+        (cancelled)="editing.set(false)"
+      />
+    } @else {
+      <h1>{{ name() }}</h1>
+      <dl>
+        <dt>First name</dt>
+        <dd>{{ person.firstName }}</dd>
+        @if (person.middleName) {
+          <dt>Middle name</dt>
+          <dd>{{ person.middleName }}</dd>
+        }
+        @if (person.lastName) {
+          <dt>Last name</dt>
+          <dd>{{ person.lastName }}</dd>
+        }
+      </dl>
+      @if (person.maintainedByYou) {
+        <p class="hint">You maintain this profile.</p>
+        <button type="button" (click)="editing.set(true)">Edit name</button>
+      }
+    }
+  }
+
+  <p><a routerLink="/people">Back to your profiles</a></p>
+</section>

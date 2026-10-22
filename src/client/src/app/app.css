@@ -12,6 +12,11 @@ header {
   color: inherit;
 }
 
+nav {
+  display: flex;
+  gap: 1rem;
+}
+
 main {
   padding: 1rem;
 }
