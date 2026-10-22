@@ -62,7 +62,7 @@ Rules:
 
 ## Current state of the repo
 
-Foundation wired (#8). Domain core in progress: `FamilyGraph.Business/People` has `Person`, `PersonName`, `PersonId`, `AccountId` (#12). `FamilyGraph.Business/Relationships` has `ParentChildLink` creation with per-endpoint `Approved`/`Pending` approval and the bounded `LinkCycleCheck` over an Application-supplied `AncestorSnapshot` (#14); domain errors derive from `DomainException` (D-007). Layout and toolchain are agreed (D-001 in `docs/trd/open-decisions.md`):
+Foundation wired (#8). Domain core in progress: `FamilyGraph.Business/People` has `Person`, `PersonName`, `PersonId`, `AccountId` (#12). `FamilyGraph.Business/Relationships` has `ParentChildLink` creation with per-endpoint `Approved`/`Pending` approval and the bounded `LinkCycleCheck` over an Application-supplied `AncestorSnapshot` (#14); domain errors derive from `DomainException` (D-007), and closed value sets derive from `BaseEnum<T>` instead of C# enums. Layout and toolchain are agreed (D-001 in `docs/trd/open-decisions.md`):
 
 - Solution `FamilyGraph.slnx`, production projects under `src/`, test projects under `tests/` (D-004). The Angular project folder is `src/client` (`client.esproj`).
 - `global.json` pins the .NET SDK 10.0.1xx and selects the Microsoft.Testing.Platform test runner. `.nvmrc` selects Node 24.

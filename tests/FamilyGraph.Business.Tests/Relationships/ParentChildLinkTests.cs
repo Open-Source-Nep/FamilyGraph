@@ -17,11 +17,12 @@ public class ParentChildLinkTests
         Person.Create(new PersonName(firstName), maintainer);
 
     [Theory]
-    [InlineData(ParentChildType.Biological)]
-    [InlineData(ParentChildType.Adoptive)]
+    [InlineData(nameof(ParentChildType.Biological))]
+    [InlineData(nameof(ParentChildType.Adoptive))]
     [Trait("AC", "AC-02.1")]
-    public void Link_of_either_type_is_created_and_keeps_its_type(ParentChildType type)
+    public void Link_of_either_type_is_created_and_keeps_its_type(string typeName)
     {
+        var type = ParentChildType.FromName(typeName);
         var parent = NewPerson("Hari", Alice);
         var child = NewPerson("Maya", Alice);
 
@@ -111,10 +112,11 @@ public class ParentChildLinkTests
     }
 
     [Theory]
-    [InlineData(ParentChildType.Biological)]
-    [InlineData(ParentChildType.Adoptive)]
-    public void Second_link_for_the_same_parent_and_child_is_rejected_whatever_its_type(ParentChildType type)
+    [InlineData(nameof(ParentChildType.Biological))]
+    [InlineData(nameof(ParentChildType.Adoptive))]
+    public void Second_link_for_the_same_parent_and_child_is_rejected_whatever_its_type(string typeName)
     {
+        var type = ParentChildType.FromName(typeName);
         var parent = NewPerson("Hari", Alice);
         var child = NewPerson("Maya", Alice);
         var childParents = new HashSet<PersonId> { parent.Id };

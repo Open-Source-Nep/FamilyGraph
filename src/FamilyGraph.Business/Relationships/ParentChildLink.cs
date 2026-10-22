@@ -54,12 +54,8 @@ public sealed class ParentChildLink
     {
         ArgumentNullException.ThrowIfNull(parent);
         ArgumentNullException.ThrowIfNull(child);
+        ArgumentNullException.ThrowIfNull(type);
         ArgumentNullException.ThrowIfNull(childParents);
-
-        if (!Enum.IsDefined(type))
-        {
-            throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown parent–child type.");
-        }
 
         var maintainsParent = parent.IsMaintainedBy(creatorId);
         var maintainsChild = child.IsMaintainedBy(creatorId);
