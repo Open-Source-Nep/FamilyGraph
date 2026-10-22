@@ -21,7 +21,8 @@ interface ConsentAction {
 
 /**
  * The inactive links of the profiles you maintain (PRD 03, D-021): approve or decline those
- * waiting for you, restore an approval you withdrew, and see which wait for someone else.
+ * waiting for you, restore an approval you withdrew, delete a link whose two people you maintain
+ * (D-014), and see which wait for someone else.
  */
 @Component({
   selector: 'app-approvals-page',
@@ -36,6 +37,8 @@ export class ApprovalsPage {
   protected readonly error = signal<string | null>(null);
   protected readonly notice = signal<string | null>(null);
   protected readonly saving = signal(false);
+  /** The link whose deletion waits for confirmation. */
+  protected readonly confirming = signal<string | null>(null);
 
   /** The links grouped by what they wait for; empty groups are left out. */
   protected readonly sections = computed(() => {
@@ -74,6 +77,11 @@ export class ApprovalsPage {
     });
   }
 
+  /** Someone who maintains both people may delete the link in any consent state (D-014). */
+  protected deletable(link: LinkConsent): boolean {
+    return link.parent.maintainedByYou && link.child.maintainedByYou;
+  }
+
   /** Why a link with no action for you is inactive. */
   protected status(link: LinkConsent): string {
     const other = link.parent.maintainedByYou ? link.child : link.parent;
@@ -97,6 +105,22 @@ export class ApprovalsPage {
             ? `You approved ${describe(updated)}. It becomes active when the other maintainer approves.`
             : `You declined ${describe(updated)}. You can restore your approval later.`,
       );
+      this.load();
+    } catch (error) {
+      this.error.set(problemMessage(error));
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  protected async delete(link: LinkConsent): Promise<void> {
+    this.saving.set(true);
+    this.error.set(null);
+    this.notice.set(null);
+    try {
+      await this.relationships.delete(link.id);
+      this.confirming.set(null);
+      this.notice.set(`You deleted ${describe(link)}.`);
       this.load();
     } catch (error) {
       this.error.set(problemMessage(error));

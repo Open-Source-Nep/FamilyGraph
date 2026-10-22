@@ -12,8 +12,8 @@ import {
 } from './relationship';
 
 /**
- * Parent–child link requests. The server checks who may create a link or change an endpoint's
- * approval, and rejects cycles.
+ * Parent–child link requests. The server checks who may create, approve or delete a link, and
+ * rejects cycles.
  */
 @Service()
 export class RelationshipsService {
@@ -42,6 +42,13 @@ export class RelationshipsService {
   /** Declines a pending endpoint you maintain, or withdraws your approval. */
   disagree(linkId: string, endpoint: LinkEndpoint): Promise<LinkConsent> {
     return this.consent(linkId, 'disagree', endpoint);
+  }
+
+  /** Deletes a link whose two people you maintain. Deletion is final (D-014). */
+  delete(linkId: string): Promise<void> {
+    return firstValueFrom(
+      this.http.delete<void>(`/api/relationships/${encodeURIComponent(linkId)}`),
+    );
   }
 
   private consent(

@@ -282,12 +282,12 @@ public sealed class SoleMaintainerMustDeleteException()
         "You maintain both people on this link, so delete the link instead of disagreeing with it.");
 
 public sealed class NotSoleMaintainerException()
-    : DomainException(
+    : NotPermittedException(
         "link.not_sole_maintainer",
         "Only someone who maintains both people on this link can delete it. Withdraw your approval instead.");
 
 public sealed class NotParentMaintainerException()
-    : DomainException("link.birth_order_not_parent_maintainer", "Only the parent's maintainer can change the order of their children.");
+    : NotPermittedException("link.birth_order_not_parent_maintainer", "Only the parent's maintainer can change the order of their children.");
 
 public sealed class InvalidBirthOrderException()
     : DomainException("link.birth_order_invalid", "A birth-order number must be 1 or greater.");
@@ -296,4 +296,4 @@ public sealed class BirthOrderUnchangedException()
     : DomainException("link.birth_order_unchanged", "The child already has this birth-order number.");
 
 public sealed class LinkDeletedException()
-    : DomainException("link.deleted", "This link has been deleted.");
+    : ConflictException("link.deleted", "This link has been deleted.");

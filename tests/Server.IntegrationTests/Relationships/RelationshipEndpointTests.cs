@@ -17,6 +17,7 @@ public class RelationshipEndpointTests(AccountTestFactory factory) : IClassFixtu
     [InlineData("GET", "/api/relationships/inactive")]
     [InlineData("POST", "/api/relationships/0199f6a2-0000-7000-8000-000000000001/approve")]
     [InlineData("POST", "/api/relationships/0199f6a2-0000-7000-8000-000000000001/disagree")]
+    [InlineData("DELETE", "/api/relationships/0199f6a2-0000-7000-8000-000000000001")]
     public async Task Relationships_require_a_session(string method, string url)
     {
         using var browser = factory.CreateBrowser();
@@ -281,6 +282,60 @@ public class RelationshipEndpointTests(AccountTestFactory factory) : IClassFixtu
     }
 
     [Fact]
+    [Trait("AC", "AC-03.4")]
+    public async Task Sole_maintainer_deletes_a_link_and_it_cannot_be_deleted_again()
+    {
+        var (browser, token) = await SignInAsync(UniqueEmail());
+        var parent = await CreatePersonAsync(browser, token, "Hari");
+        var child = await CreatePersonAsync(browser, token, "Maya");
+        var linkId = await CreatedLinkIdAsync(browser, token, parent, child);
+        Assert.True(Assert.Single((await RelativesAsync(browser, child)).Parents).MaintainedByYou);
+
+        using var deleted = await DeleteAsync(browser, token, linkId);
+
+        Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
+        Assert.IsType<LinkDeleted>(factory.People.AuditEvents[^1].Event);
+        Assert.Empty((await RelativesAsync(browser, child)).Parents);
+
+        using var again = await DeleteAsync(browser, token, linkId);
+        Assert.Equal(HttpStatusCode.Conflict, again.StatusCode);
+        Assert.Equal("link.deleted", await CodeAsync(again));
+    }
+
+    [Fact]
+    [Trait("AC", "AC-03.4")]
+    public async Task Different_maintainer_cannot_delete_and_withdraws_instead()
+    {
+        var (other, otherToken) = await SignInAsync(UniqueEmail());
+        var parent = await CreatePersonAsync(other, otherToken, "Gita");
+        var (browser, token) = await SignInAsync(UniqueEmail());
+        var child = await CreatePersonAsync(browser, token, "Maya");
+        var linkId = await CreatedLinkIdAsync(browser, token, parent, child);
+        using var _ = await ConsentAsync(other, otherToken, linkId, "approve", "Parent");
+
+        using var refused = await DeleteAsync(browser, token, linkId);
+
+        Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
+        Assert.Equal("link.not_sole_maintainer", await CodeAsync(refused));
+        Assert.Single((await RelativesAsync(browser, child)).Parents);
+
+        using var withdrawn = await ConsentAsync(browser, token, linkId, "disagree", "Child");
+        Assert.Equal(HttpStatusCode.OK, withdrawn.StatusCode);
+        Assert.IsType<LinkEndpointDisagreed>(factory.People.AuditEvents[^1].Event);
+    }
+
+    [Fact]
+    public async Task Deleting_an_unknown_link_is_not_found()
+    {
+        var (browser, token) = await SignInAsync(UniqueEmail());
+
+        using var response = await DeleteAsync(browser, token, Guid.CreateVersion7());
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("link.not_found", await CodeAsync(response));
+    }
+
+    [Fact]
     public async Task Inactive_links_list_those_waiting_for_you_first()
     {
         var (other, otherToken) = await SignInAsync(UniqueEmail());
@@ -313,6 +368,13 @@ public class RelationshipEndpointTests(AccountTestFactory factory) : IClassFixtu
     private static Task<HttpResponseMessage> ConsentAsync(
         HttpClient browser, string token, Guid linkId, string action, string? endpoint) =>
         SendAsync(browser, token, HttpMethod.Post, $"/api/relationships/{linkId}/{action}", new { endpoint });
+
+    private static async Task<HttpResponseMessage> DeleteAsync(HttpClient browser, string token, Guid linkId)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/relationships/{linkId}");
+        request.Headers.Add("X-XSRF-TOKEN", token);
+        return await browser.SendAsync(request, Cancellation);
+    }
 
     private async Task<(HttpClient Browser, string Token)> SignInAsync(string email)
     {

@@ -39,7 +39,8 @@ The technical decision log, plus any unresolved choices. Do not treat recommenda
 - Accounts, sign-in flow and sessions (D-018 below).
 - Person profile use cases, unit of work and API (D-019 below).
 - Creating parent–child links: use case, ancestor query and API (D-020 below).
-- Link approvals: use cases, inactive-links view and API (D-021 below, proposed).
+- Link approvals: use cases, inactive-links view and API (D-021 below).
+- Link deletion: use case, API and Client (D-022 below, proposed).
 - **Name length (agreed 2026-10-21):** Business puts no length cap on name parts. Any storage or input limit is set later by persistence (#9) and API validation (D-010).
 
 ## Discussion topics (all agreed)
@@ -369,7 +370,7 @@ For each major decision, record:
 
 ### D-021: Link approvals end to end
 
-- **Status:** proposed (2026-10-22). Issue #59, the Application, API and Client parts of #15.
+- **Status:** agreed (2026-10-22). Issue #59, the Application, API and Client parts of #15.
 - **Context:** D-013 fixes the consent transitions in the domain and D-015 their audit events. #15's acceptance asks that a user sees the links of the profiles they maintain and can approve, decline, withdraw or restore. PRD 03 keeps inactive links out of ordinary relationship views, and PRD 07 lets the current maintainers of both profiles see a link's audit history. Deletion by a sole maintainer stays with #16.
 - **Options considered:** naming the endpoint by person ID or by side (`Parent`/`Child`); letting the server infer the side from the actor; listing only links waiting for you, or every inactive link of your profiles; showing the other side's state or hiding it; status codes for repeated and unauthorised changes.
 - **Trade-offs:** A person ID needs an extra "not an endpoint" error; inferring the side fails when one account maintains both people (inheritance). Listing only pending links leaves no way to find a link you withdrew in order to restore it. Showing the other side's state reveals no more than the audit history PRD 07 already gives both maintainers, and tells you why a link is still inactive.
@@ -380,3 +381,16 @@ For each major decision, record:
   - **Endpoints:** `GET /api/relationships/inactive`; `POST /api/relationships/{id}/approve` and `POST /api/relationships/{id}/disagree` with `{ "endpoint": "Parent" | "Child" }` (400 otherwise), each answering 200 with the link's consent state.
   - **Client:** an Approvals page (`/approvals`, in the header) groups the links into "waiting for your approval" (Approve, Decline), "declined or withdrawn by you" (Restore approval) and "waiting for others" (why it is inactive). The person page offers "Withdraw approval", with an inline confirmation, on each relative where you maintain exactly one of the two people.
 - **Consequences:** Two maintainers approving opposite sides at once both succeed, since each saves only its own column. A concurrent approval and a link closing a cycle have the same gap as D-020. #16 adds deletion next to these actions, and #18 puts placeholders on the inactive-links list.
+
+### D-022: Link deletion end to end
+
+- **Status:** proposed (2026-10-22). Issue #61, the Application, API and Client parts of #16.
+- **Context:** D-014 fixes deletion in the domain: only an account that maintains both endpoints deletes, in any consent state, finally, and a deleted link rejects every further change. D-021 put withdrawal on the person page and the Approvals page and left deletion to #16. D-015 already records `LinkDeleted`, distinct from the consent events.
+- **Options considered:** `DELETE /api/relationships/{id}` or a `POST .../delete` action next to approve and disagree; 200 with the link or 204; the status of `link.deleted` (409 conflict, 404 or 410 gone, or 422 as before); where the Client offers deletion.
+- **Trade-offs:** `DELETE` is the plain HTTP verb for removal, and no state is left for the caller to show. 404 or 410 would tell a non-maintainer that the link existed and was deleted, which D-014 hides by checking authority first; 409 matches `link.consent_unchanged` as a change that conflicts with the link's current state.
+- **Decision:**
+  - **Write side:** `RelationshipService.DeleteAsync` loads the link (deleted or not) and both people, deletes it with the current time and saves the change with `LinkDeleted` in one transaction. Deleted links already leave the relatives list, the inactive-links list, and the duplicate and ancestor checks, so the pair can be linked again as a new link.
+  - **Errors:** `link.not_sole_maintainer` becomes a `NotPermittedException` (403) and `link.deleted` a `ConflictException` (409). An unknown link is 404 `link.not_found`. `link.birth_order_not_parent_maintainer` also becomes a `NotPermittedException`, so every "not the maintainer" error is 403.
+  - **Endpoint:** `DELETE /api/relationships/{id}`, 204 No Content.
+  - **Client:** "Delete link", with an inline confirmation that says deletion cannot be undone, on each relative of the person page where you maintain both people (where "Withdraw approval" shows when you maintain only one), and on each Approvals-page link where you maintain both people.
+- **Consequences:** Deleting a link a moment after the other maintainer's account took over one endpoint fails with 403, and the Client shows withdrawal on the next load. The derived-relationship part of #16's acceptance is checked once #21 exists.

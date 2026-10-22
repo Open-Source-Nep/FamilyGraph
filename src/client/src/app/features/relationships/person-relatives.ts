@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -10,14 +11,18 @@ import { RelationshipsService } from './relationships.service';
 
 type Side = 'parent' | 'child';
 
+/** How you can remove a link: withdraw your side's approval, or delete it when you maintain both people. */
+type Removal = { kind: 'withdraw'; endpoint: LinkEndpoint } | { kind: 'delete' };
+
 /**
  * A person's parents and children through active links, and a form to link one of your own
  * profiles as a parent or child (PRD 02). Adoptive links are labelled as such (PRD 10). Where you
- * maintain one of the two people, you can withdraw your approval of the link (PRD 03).
+ * maintain one of the two people, you can withdraw your approval of the link; where you maintain
+ * both, you can delete it (PRD 03, D-014).
  */
 @Component({
   selector: 'app-person-relatives',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [NgTemplateOutlet, ReactiveFormsModule, RouterLink],
   templateUrl: './person-relatives.html',
 })
 export class PersonRelatives {
@@ -36,7 +41,7 @@ export class PersonRelatives {
   protected readonly error = signal<string | null>(null);
   protected readonly notice = signal<string | null>(null);
   protected readonly name = computed(() => fullName(this.person()));
-  /** The link whose withdrawal waits for confirmation. */
+  /** The link whose withdrawal or deletion waits for confirmation. */
   protected readonly confirming = signal<string | null>(null);
   /** Renaming the person gives a new object but must not reload the lists. */
   private readonly personId = computed(() => this.person().id);
@@ -60,29 +65,37 @@ export class PersonRelatives {
   }
 
   /**
-   * Your side of the link to a relative, when you maintain exactly one of the two people. Someone
-   * who maintains both deletes the link instead (D-013, D-014).
+   * How you can remove the link to a relative: withdraw your side when you maintain exactly one of
+   * the two people, delete the link when you maintain both (D-013, D-014), or nothing.
    */
-  protected withdrawableSide(relative: Relative, relativeIs: Side): LinkEndpoint | null {
+  protected removal(relative: Relative, relativeIs: Side): Removal | null {
     const maintainsPerson = this.person().maintainedByYou;
-    if (maintainsPerson === relative.maintainedByYou) {
+    if (maintainsPerson && relative.maintainedByYou) {
+      return { kind: 'delete' };
+    }
+    if (!maintainsPerson && !relative.maintainedByYou) {
       return null;
     }
     const relativeSide: LinkEndpoint = relativeIs === 'parent' ? 'Parent' : 'Child';
     const personSide: LinkEndpoint = relativeIs === 'parent' ? 'Child' : 'Parent';
-    return maintainsPerson ? personSide : relativeSide;
+    return { kind: 'withdraw', endpoint: maintainsPerson ? personSide : relativeSide };
   }
 
-  protected async withdraw(relative: Relative, endpoint: LinkEndpoint): Promise<void> {
+  protected async remove(relative: Relative, removal: Removal): Promise<void> {
     this.saving.set(true);
     this.error.set(null);
     this.notice.set(null);
     try {
-      await this.relationships.disagree(relative.linkId, endpoint);
+      if (removal.kind === 'delete') {
+        await this.relationships.delete(relative.linkId);
+        this.notice.set(`You deleted the link to ${fullName(relative)}.`);
+      } else {
+        await this.relationships.disagree(relative.linkId, removal.endpoint);
+        this.notice.set(
+          `You withdrew your approval, so the link to ${fullName(relative)} is no longer active. You can restore it on the Approvals page.`,
+        );
+      }
       this.confirming.set(null);
-      this.notice.set(
-        `You withdrew your approval, so the link to ${fullName(relative)} is no longer active. You can restore it on the Approvals page.`,
-      );
       this.load(this.personId());
     } catch (error) {
       this.error.set(problemMessage(error));

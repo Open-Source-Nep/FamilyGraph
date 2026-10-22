@@ -9,9 +9,10 @@ using Server.Accounts;
 namespace Server.Relationships;
 
 /// <summary>
-/// Parent–child links (PRD 02, PRD 03, #14, #59): create a biological or adoptive link where you
-/// maintain at least one endpoint, approve or disagree for an endpoint you maintain, list the
-/// inactive links of your profiles, and list a person's parents and children through active links.
+/// Parent–child links (PRD 02, PRD 03, #14, #59, #61): create a biological or adoptive link where
+/// you maintain at least one endpoint, approve or disagree for an endpoint you maintain, delete a
+/// link whose two people you maintain, list the inactive links of your profiles, and list a
+/// person's parents and children through active links.
 /// </summary>
 [ApiController]
 [Authorize]
@@ -62,6 +63,18 @@ public sealed class RelationshipsController(RelationshipService relationships) :
     public async Task<LinkConsentResponse> Disagree(Guid id, LinkConsentRequest request, CancellationToken cancellationToken) =>
         LinkConsentResponse.From(await relationships.DisagreeAsync(
             ToLinkId(id), request.ToEndpoint(), User.AccountId(), cancellationToken));
+
+    /// <summary>
+    /// Deletes the link, in any consent state, when you maintain both people (D-014); 204. Anyone
+    /// else withdraws their approval instead. 403 <c>link.not_sole_maintainer</c>, 404
+    /// <c>link.not_found</c>, 409 <c>link.deleted</c>.
+    /// </summary>
+    [HttpDelete("{id:guid}")]
+    public async Task<NoContentResult> Delete(Guid id, CancellationToken cancellationToken)
+    {
+        await relationships.DeleteAsync(ToLinkId(id), User.AccountId(), cancellationToken);
+        return NoContent();
+    }
 
     [HttpGet("/api/people/{id:guid}/relatives")]
     public async Task<DirectRelativesResponse> ListDirectRelatives(Guid id, CancellationToken cancellationToken) =>

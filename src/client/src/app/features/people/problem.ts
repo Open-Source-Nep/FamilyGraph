@@ -20,8 +20,10 @@ const messages: Record<string, string> = {
   'link.consent_unchanged':
     'This link already has that approval. Reload the page to see its state.',
   'link.sole_maintainer_must_delete':
-    'You maintain both people on this link, so it cannot be declined or withdrawn.',
-  'link.deleted': 'This link has been deleted.',
+    'You maintain both people on this link, so delete it instead of declining or withdrawing it.',
+  'link.not_sole_maintainer':
+    'Only someone who maintains both people can delete this link. Withdraw your approval instead.',
+  'link.deleted': 'This link has been deleted. Reload the page to see the current links.',
 };
 
 export function problemMessage(error: unknown): string {
