@@ -14,7 +14,6 @@ import { ShownGraph } from './shown-graph';
 class StubDiagram {
   readonly graph = input.required<ShownGraph>();
   readonly selectedId = input<string | null>(null);
-  readonly compact = input(false);
   readonly selected = output<string>();
 }
 
@@ -78,10 +77,9 @@ describe('GraphView', () => {
     });
   });
 
-  const show = async (compact = false) => {
+  const show = async () => {
     fixture = TestBed.createComponent(GraphView);
     fixture.componentRef.setInput('id', 'maya');
-    fixture.componentRef.setInput('compact', compact);
     await fixture.whenStable();
   };
   const text = () => fixture.nativeElement.textContent as string;
@@ -105,13 +103,6 @@ describe('GraphView', () => {
     expect(text()).toContain('(adopted child)');
   });
 
-  it('remembers its centre for the home page', async () => {
-    localStorage.clear();
-    await show();
-
-    expect(localStorage.getItem('familygraph.graphCentre')).toBe('maya');
-  });
-
   it('loads more around an edge person (AC-08.5)', async () => {
     await show();
     expect(button('Load more around Maya Rai')).toBeUndefined();
@@ -133,19 +124,5 @@ describe('GraphView', () => {
 
     expect(diagram().selectedId()).toBe('gita');
     expect(fixture.nativeElement.querySelector('.selected').textContent).toContain('Gita Rai');
-  });
-
-  it('in compact mode asks to centre on the person selected in the diagram', async () => {
-    await show(true);
-    const recentred: string[] = [];
-    fixture.componentInstance.recentre.subscribe((id) => recentred.push(id));
-
-    expect(diagram().compact()).toBe(true);
-    diagram().selected.emit('maya');
-    diagram().selected.emit('gita');
-    await fixture.whenStable();
-
-    expect(recentred).toEqual(['gita']);
-    expect(diagram().selectedId()).toBeNull();
   });
 });

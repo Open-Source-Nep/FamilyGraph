@@ -1,0 +1,16 @@
+<h1 class="visually-hidden">Family graph</h1>
+@if (error(); as error) {
+  <p class="error" role="alert">{{ error }}</p>
+}
+@if (shown(); as shown) {
+  <app-graph-diagram [graph]="shown" [dots]="true" (selected)="open($event)" />
+  <nav class="people-links" aria-label="People in the family graph">
+    <ul>
+      @for (row of shown.people; track row.person.id) {
+        <li>
+          <a [routerLink]="['/people', row.person.id, 'graph']">{{ fullName(row.person) }}</a>
+        </li>
+      }
+    </ul>
+  </nav>
+}

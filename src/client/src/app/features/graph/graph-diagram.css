@@ -79,3 +79,7 @@
 .tooltip span {
   color: var(--muted);
 }
+
+.dots .canvas {
+  height: 22rem;
+}

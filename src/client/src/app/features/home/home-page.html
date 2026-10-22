@@ -12,25 +12,7 @@
         <a routerLink="/people/new">Add a person</a>
       </p>
     } @else {
-      <label class="centre-picker">
-        Centre the graph on
-        <select (change)="centreOn($any($event.target).value)">
-          <option value="" disabled [selected]="!centreIsYours()">Choose a profile</option>
-          @for (person of profiles; track person.id) {
-            <option [value]="person.id" [selected]="person.id === centreId()">
-              {{ fullName(person) }}
-            </option>
-          }
-        </select>
-      </label>
-      @if (centreId(); as id) {
-        <app-graph-view
-          [id]="id"
-          [compact]="true"
-          (notFound)="fallBack()"
-          (recentre)="centreOn($event)"
-        />
-      }
+      <app-home-graph [from]="profileIds()" />
     }
   }
 </section>

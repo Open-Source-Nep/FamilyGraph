@@ -127,14 +127,6 @@ button.link-button {
   padding: 0 1rem;
 }
 
-.centre-picker {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 1rem;
-}
-
 .name-form fieldset.choices {
   max-height: 16rem;
   overflow-y: auto;
@@ -162,4 +154,14 @@ button.link-button {
 
 .dialog h2 {
   margin-top: 0;
+}
+
+/* For screen readers only. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

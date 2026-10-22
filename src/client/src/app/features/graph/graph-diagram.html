@@ -1,12 +1,14 @@
-<div class="toolbar">
-  <ul class="legend" aria-label="Legend">
-    <li><span class="swatch biological"></span> Biological</li>
-    <li><span class="swatch adoptive"></span> Adoptive</li>
-    <li><span class="swatch more"></span> Has relatives not shown</li>
-  </ul>
-  <button type="button" class="secondary" (click)="fit()">Fit to screen</button>
-</div>
-<div class="stage">
+@if (!dots()) {
+  <div class="toolbar">
+    <ul class="legend" aria-label="Legend">
+      <li><span class="swatch biological"></span> Biological</li>
+      <li><span class="swatch adoptive"></span> Adoptive</li>
+      <li><span class="swatch more"></span> Has relatives not shown</li>
+    </ul>
+    <button type="button" class="secondary" (click)="fit()">Fit to screen</button>
+  </div>
+}
+<div class="stage" [class.dots]="dots()">
   <div #canvas class="canvas" role="img" [attr.aria-label]="summary()"></div>
   @if (hovered(); as hovered) {
     <div class="tooltip" aria-hidden="true" [style.left.px]="hovered.x" [style.top.px]="hovered.y">
