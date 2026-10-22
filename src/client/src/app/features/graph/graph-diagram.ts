@@ -14,8 +14,9 @@ import {
 import cytoscape, { Core, ElementDefinition } from 'cytoscape';
 import dagre, { DagreLayoutOptions } from 'cytoscape-dagre';
 
-import { fullName } from '../people/person';
-import { ShownGraph } from './shown-graph';
+import { fullName, initials } from '../people/person';
+import { LocalViewPerson } from './graph';
+import { ShownGraph, generationLabel } from './shown-graph';
 
 cytoscape.use(dagre);
 
@@ -27,10 +28,58 @@ const layout: DagreLayoutOptions = {
   padding: 24,
 };
 
+const compactLayout: DagreLayoutOptions = { ...layout, nodeSep: 14, rankSep: 40 };
+
+/** Avatar fills for compact mode, dark enough for white initials. */
+const avatarColours = [
+  '#c2410c',
+  '#b45309',
+  '#4d7c0f',
+  '#047857',
+  '#0e7490',
+  '#1d4ed8',
+  '#6d28d9',
+  '#be185d',
+];
+
+/** The same person always gets the same colour. */
+function avatarColour(personId: string): string {
+  let hash = 0;
+  for (const char of personId) {
+    hash = (hash * 31 + char.charCodeAt(0)) | 0;
+  }
+  return avatarColours[Math.abs(hash) % avatarColours.length];
+}
+
+const fontSize = 13;
+const avatarSize = 24;
+/** Space left of the avatar, between it and the name, and right of the name. */
+const gap = 8;
+const maxLabelWidth = 160;
+
+/** A coloured circle with the initials, drawn inside a name box. */
+function avatarImage(personInitials: string, colour: string): string {
+  const escaped = personInitials.replace(/[<>&'"]/g, (char) => `&#${char.charCodeAt(0)};`);
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${avatarSize}" height="${avatarSize}">` +
+    `<circle cx="12" cy="12" r="12" fill="${colour}"/>` +
+    `<text x="12" y="12" dy="0.35em" text-anchor="middle" fill="#ffffff" ` +
+    `font-family="system-ui, sans-serif" font-size="10" font-weight="bold">${escaped}</text></svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
+/** The person under the pointer, placed relative to the canvas. */
+interface Hovered {
+  row: LocalViewPerson;
+  x: number;
+  y: number;
+}
+
 /**
  * The tree diagram of the shown people (PRD 08, D-024): parents above children, laid out by
  * dagre and drawn by Cytoscape on a canvas. Adoptive links are dashed and people with relatives
- * not shown have a double border. The canvas is not keyboard or screen reader accessible, so the
+ * not shown have a double border. Each person has a coloured initial avatar and hovering shows their
+ * details. In compact mode (the home page) the avatar is the whole node, with no name. The canvas is not keyboard or screen reader accessible, so the
  * page always shows the text view next to it (AC-09.2).
  */
 @Component({
@@ -43,7 +92,13 @@ export class GraphDiagram {
 
   readonly graph = input.required<ShownGraph>();
   readonly selectedId = input<string | null>(null);
+  /** Small initial avatars instead of name boxes, with details on hover. */
+  readonly compact = input(false);
   readonly selected = output<string>();
+
+  protected readonly fullName = fullName;
+  protected readonly generationLabel = generationLabel;
+  protected readonly hovered = signal<Hovered | null>(null);
 
   protected readonly summary = computed(() => {
     const count = this.graph().people.length;
@@ -55,15 +110,31 @@ export class GraphDiagram {
 
   constructor() {
     afterNextRender(() => {
+      const container = this.canvas().nativeElement;
       const cy = cytoscape({
-        container: this.canvas().nativeElement,
-        style: this.style(),
+        container,
         minZoom: 0.2,
         maxZoom: 2.5,
         boxSelectionEnabled: false,
         autoungrabify: true,
       });
-      cy.on('tap', 'node', (event) => this.selected.emit(event.target.id()));
+      cy.on('tap', 'node', (event) => {
+        this.hovered.set(null);
+        this.selected.emit(event.target.id());
+      });
+      cy.on('mouseover', 'node', (event) => {
+        const row = this.graph().people.find((row) => row.person.id === event.target.id());
+        const position = event.target.renderedPosition();
+        const radius = event.target.renderedOuterHeight() / 2;
+        container.style.cursor = 'pointer';
+        this.hovered.set(row ? { row, x: position.x, y: position.y - radius } : null);
+      });
+      cy.on('mouseout', 'node', () => {
+        container.style.cursor = '';
+        this.hovered.set(null);
+      });
+      // The tooltip would drift from its node while panning or zooming.
+      cy.on('viewport', () => this.hovered.set(null));
       this.cy.set(cy);
     });
     inject(DestroyRef).onDestroy(() => this.cy()?.destroy());
@@ -74,11 +145,14 @@ export class GraphDiagram {
       if (!cy) {
         return;
       }
+      const compact = this.compact();
+      this.hovered.set(null);
       cy.batch(() => {
         cy.elements().remove();
+        cy.style(this.style(compact));
         cy.add(this.elements(this.graph()));
       });
-      cy.layout(layout).run();
+      cy.layout(compact ? compactLayout : layout).run();
     });
 
     effect(() => {
@@ -102,10 +176,18 @@ export class GraphDiagram {
 
   private elements(graph: ShownGraph): ElementDefinition[] {
     const ids = new Set(graph.people.map((row) => row.person.id));
+    const measure = this.textWidth();
     return [
       ...graph.people.map((row) => ({
         group: 'nodes' as const,
-        data: { id: row.person.id, label: fullName(row.person) },
+        data: {
+          id: row.person.id,
+          label: fullName(row.person),
+          initials: initials(row.person),
+          colour: avatarColour(row.person.id),
+          avatar: avatarImage(initials(row.person), avatarColour(row.person.id)),
+          width: gap * 3 + avatarSize + Math.min(maxLabelWidth, measure(fullName(row.person))),
+        },
         classes: [
           row.person.id === graph.centreId ? 'centre' : '',
           row.hasMore ? 'has-more' : '',
@@ -121,8 +203,22 @@ export class GraphDiagram {
     ];
   }
 
+  /** Measures a name in the diagram's font, to size its box around the avatar and the name. */
+  private textWidth(): (text: string) => number {
+    const context = document.createElement('canvas').getContext('2d');
+    if (!context) {
+      return (text) => text.length * fontSize * 0.6;
+    }
+    context.font = `${fontSize}px ${this.fontFamily()}`;
+    return (text) => Math.ceil(context.measureText(text).width);
+  }
+
+  private fontFamily(): string {
+    return getComputedStyle(this.host.nativeElement).fontFamily || 'system-ui, sans-serif';
+  }
+
   /** Colours come from the page's CSS custom properties, so the diagram follows the theme. */
-  private style(): cytoscape.StylesheetJson {
+  private style(compact: boolean): cytoscape.StylesheetJson {
     const css = getComputedStyle(this.host.nativeElement);
     const colour = (name: string, fallback: string) =>
       css.getPropertyValue(name).trim() || fallback;
@@ -130,28 +226,65 @@ export class GraphDiagram {
     const muted = colour('--muted', '#5b5b66');
     const accent = colour('--accent', '#2f5bd3');
     const background = colour('--surface', '#ffffff');
+    const nodes: cytoscape.StylesheetJson = compact
+      ? [
+          {
+            selector: 'node',
+            style: {
+              shape: 'ellipse',
+              label: 'data(initials)',
+              width: 30,
+              height: 30,
+              'text-valign': 'center',
+              'text-halign': 'center',
+              'font-size': '11px',
+              'font-weight': 'bold',
+              color: '#ffffff',
+              'background-color': 'data(colour)',
+              'border-width': 0,
+              'border-color': text,
+            },
+          },
+          { selector: 'node.has-more', style: { 'border-width': 4, 'border-style': 'double' } },
+          {
+            selector: 'node.centre',
+            style: { width: 38, height: 38, 'border-width': 3, 'border-color': accent },
+          },
+        ]
+      : [
+          {
+            selector: 'node',
+            style: {
+              shape: 'round-rectangle',
+              label: 'data(label)',
+              width: 'data(width)',
+              height: avatarSize + gap * 2,
+              'text-valign': 'center',
+              'text-halign': 'center',
+              // Moves the name right of the avatar; names too long for the box end in "…".
+              'text-margin-x': (avatarSize + gap) / 2,
+              'text-wrap': 'ellipsis',
+              'text-max-width': `${maxLabelWidth}px`,
+              'font-size': `${fontSize}px`,
+              'font-family': this.fontFamily(),
+              'background-image': 'data(avatar)',
+              'background-width': `${avatarSize}px`,
+              'background-height': `${avatarSize}px`,
+              'background-fit': 'none',
+              'background-position-x': `${gap}px`,
+              'background-position-y': '50%',
+              'background-clip': 'none',
+              color: text,
+              'background-color': background,
+              'border-width': 1,
+              'border-color': muted,
+            },
+          },
+          { selector: 'node.has-more', style: { 'border-width': 4, 'border-style': 'double' } },
+          { selector: 'node.centre', style: { 'border-color': accent, 'font-weight': 'bold' } },
+        ];
     return [
-      {
-        selector: 'node',
-        style: {
-          shape: 'round-rectangle',
-          label: 'data(label)',
-          width: 'label',
-          height: 'label',
-          padding: '10px',
-          'text-valign': 'center',
-          'text-halign': 'center',
-          'text-wrap': 'wrap',
-          'text-max-width': '140px',
-          'font-size': '13px',
-          color: text,
-          'background-color': background,
-          'border-width': 1,
-          'border-color': muted,
-        },
-      },
-      { selector: 'node.has-more', style: { 'border-width': 4, 'border-style': 'double' } },
-      { selector: 'node.centre', style: { 'border-color': accent, 'font-weight': 'bold' } },
+      ...nodes,
       {
         selector: 'node.selected',
         style: { 'border-color': accent, 'underlay-color': accent, 'underlay-opacity': 0.15 },

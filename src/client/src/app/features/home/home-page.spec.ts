@@ -13,7 +13,9 @@ import { HomePage } from './home-page';
 @Component({ selector: 'app-graph-view', template: '' })
 class StubGraphView {
   readonly id = input.required<string>();
+  readonly compact = input(false);
   readonly notFound = output<void>();
+  readonly recentre = output<string>();
 }
 
 const profile = (id: string, firstName: string): PersonSummary => ({
@@ -59,6 +61,17 @@ describe('HomePage', () => {
     await show();
 
     expect(centre()).toBe('maya');
+  });
+
+  it('shows compact nodes and centres on the person selected in the graph', async () => {
+    await show();
+    const view = graph().componentInstance as StubGraphView;
+    expect(view.compact()).toBe(true);
+
+    view.recentre.emit('rina');
+    await fixture.whenStable();
+
+    expect(centre()).toBe('rina');
   });
 
   it('centres on the person this browser last centred on', async () => {
