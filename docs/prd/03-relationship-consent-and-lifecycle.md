@@ -51,6 +51,15 @@ Define when a parent–child relationship is active, inactive, restored, or remo
 - An endpoint maintained by a different user starts as **pending**, whether or not it is claimed. The link stays inactive until that maintainer approves.
 - This defines what "subject to its maintainer's authority" means above. A link is active by default only when one user maintains both endpoints.
 
+## Consent transitions (agreed 2026-10-22)
+
+- Only an endpoint's current maintainer can approve or disagree for that endpoint, whether or not the profile is claimed.
+- A pending endpoint can approve or decline (disagree).
+- A disagreed endpoint can restore its approval. Nothing returns to pending.
+- Repeating an action that is already in effect is rejected.
+- A user who maintains both endpoints cannot disagree; they delete the link instead.
+- See D-013 in `docs/trd/open-decisions.md`.
+
 ## Open details
 
 - Exact event names and state-machine representation are implementation details, provided observable behavior matches these requirements.

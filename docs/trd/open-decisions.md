@@ -31,6 +31,7 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 - CI/CD, configuration and releases (D-012 below).
 - Business contains no DTOs or API contracts (D-010 places API models in Server).
 - **Domain enumerations (agreed 2026-10-22, PR #44 review):** closed sets of domain values are sealed classes deriving from `FamilyGraph.Business.BaseEnum<T>`, with one `public static readonly` field per value and a stable integer `Value` for persistence. C# `enum` is not used in the domain.
+- Consent state transitions (D-013 below).
 - **Name length (agreed 2026-10-21):** Business puts no length cap on name parts. Any storage or input limit is set later by persistence (#9) and API validation (D-010).
 
 ## Decisions to discuss next
@@ -226,3 +227,19 @@ For each major decision, record:
   - **Configuration:** standard ASP.NET Core configuration. `appsettings.json` holds safe defaults only. Instance-specific values (Google client ID and secret, admin emails, connection string, query limits) come from environment variables, listed in a documented `deploy/.env.example`. Secrets are never committed. Local development uses `dotnet user-secrets`.
   - **Releases:** semantic versions from Git tags (`vX.Y.Z`). A pushed tag builds the Docker image and publishes it to GitHub Container Registry (`ghcr.io/open-source-nep/familygraph`). Self-hosters pin a version in the compose file.
 - **Consequences:** #34 adds the CI workflow first and the release workflow after #33's Dockerfile. Required status checks on `main` are a repository setting for the maintainers.
+
+### D-013: Consent state transitions
+
+- **Status:** agreed (2026-10-22). Issue #15.
+- **Context:** PRD 03 sets the consent rules and leaves the state machine to implementation. D-009 fixes three per-endpoint states (approved, pending, disagreed) and derives "active" from them. Person has no claim status yet (#25). Every transition will write a consent audit event (#10).
+- **Options considered:** disagreement open to any endpoint maintainer, or to claimed persons only; allowing a pending endpoint to decline, or only to approve; a reset back to pending; rejecting repeated actions, or ignoring them; letting a sole maintainer of both endpoints disagree, or requiring deletion.
+- **Trade-offs:** Limiting disagreement to claimed persons needs a claim flag before #25 and a separate withdraw state. Without decline, a refusal leaves no record. A reset to pending has no basis in the PRD. Silently ignoring repeats hides client bugs and risks empty audit events.
+- **Decision:**
+  - Two operations, each on one endpoint and only by that endpoint's current maintainer (`link.consent_not_maintainer`). Nobody else, including administrators, can change an endpoint.
+  - **Approve:** pending → approved, or disagreed → approved (restoring approval). The other side's valid approval is kept. If the approval makes the link active, the cycle check runs first (PRD 02).
+  - **Disagree:** approved → disagreed (disagreement or withdrawal), or pending → disagreed (declining). The link is inactive immediately. Withdrawal and disagreement are the same transition; #10 and #16 distinguish them in the audit history where needed.
+  - No transition returns to pending.
+  - A request for the state an endpoint is already in is rejected (`link.consent_unchanged`).
+  - A user who maintains both endpoints cannot disagree; they delete the link instead (#16) (`link.sole_maintainer_must_delete`).
+  - Claims and merges have no operation on a link, so they cannot change consent.
+- **Consequences:** `EndpointApproval` gains `Disagreed` (value 3). `Approve` takes the parent's ancestor snapshot, which Application supplies. Audit events for each transition come with #10; Application, API and Client parts follow later.
