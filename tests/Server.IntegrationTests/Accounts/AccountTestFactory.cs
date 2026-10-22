@@ -19,7 +19,7 @@ namespace Server.IntegrationTests.Accounts;
 /// <summary>
 /// Runs the Server with in-memory account, people and link stores and a fake external sign-in, so the
 /// endpoints are tested without Google or a database. A request carrying <see cref="LoginHeader"/>
-/// arrives at the callback as if Google had just signed in that user.
+/// arrives at the sign-in completion as if Google had just signed in that user.
 /// </summary>
 public sealed class AccountTestFactory : WebApplicationFactory<Program>
 {
@@ -54,12 +54,12 @@ public sealed class AccountTestFactory : WebApplicationFactory<Program>
     });
 
     /// <summary>
-    /// Signs a new account in through the fake Google callback and returns the antiforgery token
+    /// Signs a new account in through the fake Google result and returns the antiforgery token
     /// for its state-changing requests.
     /// </summary>
     public static async Task<string> SignInAsync(HttpClient browser, string email, CancellationToken cancellationToken)
     {
-        using var callback = new HttpRequestMessage(HttpMethod.Get, "/api/account/sign-in/callback");
+        using var callback = new HttpRequestMessage(HttpMethod.Get, "/api/account/sign-in/complete");
         callback.Headers.Add(LoginHeader, $"{Guid.NewGuid()}|{email}|true");
         using var _ = await browser.SendAsync(callback, cancellationToken);
         using var account = await browser.GetAsync("/api/account", cancellationToken);

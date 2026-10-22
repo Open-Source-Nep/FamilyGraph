@@ -1,8 +1,8 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Service, computed, inject, signal } from '@angular/core';
 import { catchError, firstValueFrom, of, throwError } from 'rxjs';
 
-import { Account } from './account';
+import { Account, localReturnUrl } from './account';
 
 /**
  * Knows who is signed in. The server decides every permission; this only shapes the UI.
@@ -41,6 +41,22 @@ export class AuthService {
       },
     );
     return this.loading;
+  }
+
+  /**
+   * Passes the query string Google returned to `/google-callback` on to the server, which checks it,
+   * registers or updates the account and starts the session. Resolves to the local URL to go to.
+   */
+  async completeGoogleSignIn(googleResult: HttpParams): Promise<string> {
+    const { returnUrl } = await firstValueFrom(
+      this.http.get<{ returnUrl: string }>('/api/account/google-callback', {
+        params: googleResult,
+      }),
+    );
+    // Reloading also issues the XSRF-TOKEN cookie for the new session.
+    this.loading = null;
+    await this.load();
+    return localReturnUrl(returnUrl);
   }
 
   async signOut(): Promise<void> {
