@@ -15,6 +15,12 @@ public sealed class Person : AuditedEntity
         MaintainerId = maintainerId;
     }
 
+    /// <summary>For persistence, which sets the properties after construction.</summary>
+    private Person()
+    {
+        Name = null!;
+    }
+
     public PersonId Id { get; }
 
     public PersonName Name { get; private set; }

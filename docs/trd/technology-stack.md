@@ -39,7 +39,7 @@ Agreed (D-001):
 - `global.json` selects the Microsoft.Testing.Platform runner for `dotnet test`. xunit.v3 4.x does not support VSTest on the .NET 10 SDK.
 
 Agreed later:
-- EF Core provider: Npgsql (D-009); package versions are pinned when #9 adds them.
+- EF Core provider: Npgsql (D-009). Versions pinned in #9 (D-017): `Npgsql.EntityFrameworkCore.PostgreSQL` 10.0.3, `Microsoft.EntityFrameworkCore.Design` 10.0.4, `dotnet-ef` 10.0.4 (local tool in `.config/dotnet-tools.json`), `Testcontainers.PostgreSql` 4.16.0.
 - CI restore/build/test commands (D-012).
 
 Do not assume that template defaults are current or that all package major versions are mutually compatible.

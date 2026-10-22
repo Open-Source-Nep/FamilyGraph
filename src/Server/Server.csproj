@@ -4,6 +4,7 @@
         <TargetFramework>net10.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
+        <UserSecretsId>familygraph-server</UserSecretsId>
     </PropertyGroup>
 
     <!-- SPA Proxy: local development only. It is activated by ASPNETCORE_HOSTINGSTARTUPASSEMBLIES in launchSettings.json. -->

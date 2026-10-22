@@ -7,6 +7,18 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.4">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="FamilyGraph.Infrastructure.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
         <ProjectReference Include="..\FamilyGraph.Business\FamilyGraph.Business.csproj" />
         <ProjectReference Include="..\FamilyGraph.Application\FamilyGraph.Application.csproj" />
     </ItemGroup>
