@@ -7,6 +7,14 @@ const messages: Record<string, string> = {
   'person.first_name_required': 'Enter a first name.',
   'person.not_maintainer': 'Only the maintainer of this profile can change it.',
   'person.not_found': 'This profile does not exist.',
+  'link.not_endpoint_maintainer':
+    'You can only add a link when you maintain the parent or the child.',
+  'link.duplicate': 'These two people are already linked as parent and child.',
+  'link.self_link': 'A person cannot be their own parent.',
+  'link.cycle_detected':
+    'The child is already an ancestor of the parent, so this link would form a loop.',
+  'link.cycle_unverifiable':
+    'This link could not be checked for loops because the family tree above the parent is too large.',
 };
 
 export function problemMessage(error: unknown): string {

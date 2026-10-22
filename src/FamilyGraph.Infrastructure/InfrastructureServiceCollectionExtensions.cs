@@ -1,9 +1,11 @@
 using FamilyGraph.Application.Accounts;
 using FamilyGraph.Application.People;
 using FamilyGraph.Application.Persistence;
+using FamilyGraph.Application.Relationships;
 using FamilyGraph.Infrastructure.Identity;
 using FamilyGraph.Infrastructure.People;
 using FamilyGraph.Infrastructure.Persistence;
+using FamilyGraph.Infrastructure.Relationships;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -44,6 +46,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IAuditLog, EfAuditLog>();
         services.AddScoped<IPersonStore, EfPersonStore>();
         services.AddScoped<IPersonQueries, EfPersonQueries>();
+        services.AddScoped<IParentChildLinkStore, EfParentChildLinkStore>();
+        services.AddScoped<IRelationshipQueries, EfRelationshipQueries>();
         return services;
     }
 

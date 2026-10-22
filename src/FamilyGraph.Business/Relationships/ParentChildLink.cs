@@ -265,10 +265,10 @@ public sealed class ParentChildLink : AuditedEntity
 }
 
 public sealed class NotLinkEndpointMaintainerException()
-    : DomainException("link.not_endpoint_maintainer", "Only the maintainer of the parent or the child can create a link.");
+    : NotPermittedException("link.not_endpoint_maintainer", "Only the maintainer of the parent or the child can create a link.");
 
 public sealed class DuplicateLinkException()
-    : DomainException("link.duplicate", "A link between this parent and this child already exists.");
+    : ConflictException("link.duplicate", "A link between this parent and this child already exists.");
 
 public sealed class NotConsentMaintainerException()
     : DomainException("link.consent_not_maintainer", "Only the maintainer of this endpoint can change its approval.");

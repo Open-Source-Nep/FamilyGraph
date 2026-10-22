@@ -15,6 +15,9 @@ internal sealed class ParentChildLinkConfiguration : IEntityTypeConfiguration<Pa
     internal static readonly string ActiveFilter =
         $"deleted_at IS NULL AND parent_approval = {EndpointApproval.Approved.Value} AND child_approval = {EndpointApproval.Approved.Value}";
 
+    /// <summary>At most one non-deleted link per (parent, child) pair (PRD 10).</summary>
+    internal const string UniqueParentChildIndex = "ux_parent_child_links_parent_child";
+
     private const string NotDeletedFilter = "deleted_at IS NULL";
 
     public void Configure(EntityTypeBuilder<ParentChildLink> builder)
@@ -43,7 +46,7 @@ internal sealed class ParentChildLinkConfiguration : IEntityTypeConfiguration<Pa
         builder.HasOne<Person>().WithMany().HasForeignKey(link => link.ParentId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Person>().WithMany().HasForeignKey(link => link.ChildId).OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasIndex(link => new { link.ParentId, link.ChildId }, "ux_parent_child_links_parent_child")
+        builder.HasIndex(link => new { link.ParentId, link.ChildId }, UniqueParentChildIndex)
             .IsUnique()
             .HasFilter(NotDeletedFilter);
         builder.HasIndex(link => link.ParentId, "ix_parent_child_links_parent_active")

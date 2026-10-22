@@ -1,15 +1,19 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
+import { PersonRelatives } from '../relationships/person-relatives';
 import { PeopleService } from './people.service';
 import { Person, PersonName, fullName } from './person';
 import { PersonNameForm } from './person-name-form';
 import { problemMessage } from './problem';
 
-/** One profile. Its maintainer can rename it; the server enforces that (PRD 01). */
+/**
+ * One profile with its parents and children. Its maintainer can rename it; the server enforces
+ * that (PRD 01).
+ */
 @Component({
   selector: 'app-person-page',
-  imports: [PersonNameForm, RouterLink],
+  imports: [PersonNameForm, PersonRelatives, RouterLink],
   templateUrl: './person-page.html',
 })
 export class PersonPage {
