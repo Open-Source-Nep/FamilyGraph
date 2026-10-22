@@ -30,6 +30,7 @@
         <p class="hint">You maintain this profile.</p>
         <button type="button" (click)="editing.set(true)">Edit name</button>
       }
+      <p><a [routerLink]="['/people', person.id, 'graph']">Show the family graph</a></p>
       <app-person-relatives [person]="person" />
     }
   }

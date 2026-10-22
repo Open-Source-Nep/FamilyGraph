@@ -1,0 +1,128 @@
+<section class="panel graph-panel">
+  @if (error(); as error) {
+    <p class="error" role="alert">{{ error }}</p>
+  }
+
+  @if (shown(); as shown) {
+    @if (centre(); as centre) {
+      <h1>Family graph around {{ fullName(centre) }}</h1>
+      <p class="hint">
+        Showing {{ shown.people.length }} {{ shown.people.length === 1 ? 'person' : 'people' }}
+        through active links.
+        @if (truncated()) {
+          More relatives are in reach: load more around someone with a double border, or centre the
+          view on them.
+        }
+      </p>
+
+      <app-graph-diagram
+        [graph]="shown"
+        [selectedId]="selectedId()"
+        (selected)="selectedId.set($event)"
+      />
+
+      @if (selected(); as selected) {
+        <div class="selected" aria-live="polite">
+          <strong>{{ fullName(selected.person) }}</strong>
+          <div class="actions">
+            <a [routerLink]="['/people', selected.person.id]">Open profile</a>
+            @if (selected.person.id !== shown.centreId) {
+              <a [routerLink]="['/people', selected.person.id, 'graph']">Centre the view here</a>
+            }
+            @if (selected.hasMore && !full()) {
+              <button
+                type="button"
+                class="link-button"
+                [disabled]="loadingAround() !== null"
+                (click)="loadMore(selected.person.id)"
+              >
+                Load more around {{ fullName(selected.person) }}
+              </button>
+            }
+          </div>
+        </div>
+      } @else {
+        <p class="hint">Select someone in the diagram, or use the list below.</p>
+      }
+
+      @if (notice(); as notice) {
+        <p role="status">{{ notice }}</p>
+      }
+      @if (full()) {
+        <p class="hint">
+          The view shows {{ maxShownPeople }} people, the most it can. Centre the view on someone to
+          explore further.
+        </p>
+      }
+
+      <h2>People in this view</h2>
+      @for (group of generations(); track group.generation) {
+        <h3>{{ generationLabel(group.generation) }}</h3>
+        <ul class="graph-people">
+          @for (entry of group.people; track entry.row.person.id) {
+            <li [class.selected-person]="entry.row.person.id === selectedId()">
+              <a [routerLink]="['/people', entry.row.person.id]">{{
+                fullName(entry.row.person)
+              }}</a>
+              @if (entry.row.person.id === shown.centreId) {
+                <span class="hint"> (centre)</span>
+              }
+              @if (entry.parents.length) {
+                <div>
+                  Parents:
+                  @for (parent of entry.parents; track parent.link.id; let last = $last) {
+                    <a [routerLink]="['/people', parent.person.id]">{{
+                      fullName(parent.person)
+                    }}</a>
+                    @if (parent.link.type === 'Adoptive') {
+                      <span class="hint"> (adoptive parent)</span>
+                    }
+                    @if (!last) {
+                      <span>, </span>
+                    }
+                  }
+                </div>
+              }
+              @if (entry.children.length) {
+                <div>
+                  Children:
+                  @for (child of entry.children; track child.link.id; let last = $last) {
+                    <a [routerLink]="['/people', child.person.id]">{{ fullName(child.person) }}</a>
+                    @if (child.link.type === 'Adoptive') {
+                      <span class="hint"> (adopted child)</span>
+                    }
+                    @if (!last) {
+                      <span>, </span>
+                    }
+                  }
+                </div>
+              }
+              @if (entry.row.hasMore) {
+                <div class="actions">
+                  <span class="hint">Has relatives not shown.</span>
+                  @if (!full()) {
+                    <button
+                      type="button"
+                      class="link-button"
+                      [disabled]="loadingAround() !== null"
+                      (click)="loadMore(entry.row.person.id)"
+                    >
+                      Load more around {{ fullName(entry.row.person) }}
+                    </button>
+                  }
+                  @if (entry.row.person.id !== shown.centreId) {
+                    <a [routerLink]="['/people', entry.row.person.id, 'graph']">Centre here</a>
+                  }
+                </div>
+              }
+            </li>
+          }
+        </ul>
+      }
+
+      <app-person-connections [from]="centre" [candidates]="candidates()" />
+    }
+  }
+
+  <p><a [routerLink]="['/people', id()]">Back to the profile</a></p>
+</section>

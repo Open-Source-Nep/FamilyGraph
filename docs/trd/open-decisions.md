@@ -42,6 +42,7 @@ The technical decision log, plus any unresolved choices. Do not treat recommenda
 - Link approvals: use cases, inactive-links view and API (D-021 below).
 - Link deletion: use case, API and Client (D-022 below).
 - Graph exploration: local view, connection search and privacy projection (D-023 below, proposed).
+- Client graph view: rendering library and first slice (D-024 below).
 - **Name length (agreed 2026-10-21):** Business puts no length cap on name parts. Any storage or input limit is set later by persistence (#9) and API validation (D-010).
 
 ## Discussion topics (all agreed)
@@ -411,3 +412,19 @@ For each major decision, record:
   - **Timeout:** each graph query runs under `Graph:QueryTimeoutSeconds` (default 10) by cancelling it, which also stops it on the server. A timeout is 503 `graph.timeout`.
   - **Limits:** `Graph:ViewGenerations` (default 2, 1 to 4), `Graph:ViewPeople` (default 10, 1 to 500), `Graph:PathSearchPeople` (default 10,000), `Graph:MorePaths` (default 5). A value out of range stops the Server at startup.
 - **Consequences:** A view centred on an edge person returns people the client already shows, and its `hasMore` flags are relative to that response; #23 may add a "people already shown" filter if the client needs it. The search examines people nearest to the first person, so a longer alternative path may be missed near the limit. The existing relatives and inactive-links lists move to `PrivacyProjection` with #18. A seeded test with more than 10,000 people checks both queries stay well inside the timeout.
+
+### D-024: Client graph view
+
+- **Status:** proposed (2026-10-22). Issue #23. The library and the first slice were chosen by the user on 2026-10-22; the rest is proposed with the PR.
+- **Context:** PRD 08 asks for a tree and a fan diagram centred on one person, "load more" from edge people, adoptive links drawn differently with a legend, and step-by-step path explanations. PRD 09 asks that relationships can be understood as text as well. Views are bounded by D-009 and D-023 (10 people by default, at most 500 per response). Issue #23 makes the rendering library a dependency decision.
+- **Options considered:** hand-rolled SVG with no dependency; `d3-hierarchy` and `d3-shape` (trees only, a family graph has two parents per child); Cytoscape.js with the dagre layered layout; ELK.js (best layout, about 1.5 MB).
+- **Trade-offs:** Cytoscape gives a layered layout, pan, zoom and selection with no layout code of our own, at the cost of about 140 kB gzipped in the lazy graph chunk and a canvas that keyboard and screen reader users cannot use. The text view covers them (AC-09.2), so the canvas is never the only way to inspect relationships.
+- **Decision:**
+  - **Dependencies (agreed):** `cytoscape` `^3.34.4` and `cytoscape-dagre` `^4.0.1` (both MIT; `cytoscape-dagre` 4 bundles dagre and ships its own types). They load only with the graph page's lazy route.
+  - **First slice (agreed):** the tree diagram, the text view and the path view. The fan diagram is a follow-up.
+  - **Route:** `/people/:id/graph`, linked from the person page as "Show the family graph". "Centre the view here" navigates to another person's graph.
+  - **Diagram:** parents above children (dagre, top to bottom), one straight line per link so shared parents stay unambiguous. Adoptive links are dashed; people with relatives not shown have a double border; the centre has an accent border. A legend sits above the diagram. Colours come from the page's CSS custom properties. The canvas has `role="img"` and a summary that points to the list.
+  - **Text view:** every shown person grouped by generation relative to the centre, oldest first, each with their shown parents and children as links, adoptive ones marked "(adoptive parent)" or "(adopted child)", and "Load more around …" and "Centre here" where they have relatives not shown.
+  - **Load more:** the view centred on the edge person is merged into the shown people; new people get their generation shifted by the edge person's. A person keeps "has more" only while every merged view says so, and an edge person whose view added nobody loses it. The client keeps at most 500 people on screen and then asks to centre the view instead.
+  - **Path view:** "How is … related to someone?" with the other person chosen from the people shown and the profiles you maintain until person search (#22). It lists the shortest path step by step ("parent", "child", "adoptive parent", "adopted child"), notes "There are more connections between these people", and shows the further paths on request. An incomplete search with no path says none was found within the search limit.
+- **Consequences:** `Private` and `Deleted` placeholders render once #18 adds them to the API. The canvas is not covered by unit tests (jsdom has no canvas); the Playwright smoke test (D-006) should cover it. Highlighting a found path in the diagram is not part of this slice.

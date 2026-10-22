@@ -20,6 +20,8 @@
     "@angular/forms": "^22.2.3",
     "@angular/platform-browser": "^22.2.3",
     "@angular/router": "^22.2.3",
+    "cytoscape": "^3.34.4",
+    "cytoscape-dagre": "^4.0.1",
     "run-script-os": "^1.1.6",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
