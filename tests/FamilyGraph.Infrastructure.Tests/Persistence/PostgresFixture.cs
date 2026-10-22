@@ -20,24 +20,31 @@ public sealed class PostgresFixture : IAsyncLifetime
     public async ValueTask DisposeAsync() => await _container.DisposeAsync();
 
     /// <summary>Options for a new database that does not exist yet, with no migrations applied.</summary>
-    internal DbContextOptions<FamilyGraphDbContext> NewEmptyDatabase()
+    internal DbContextOptions<FamilyGraphDbContext> NewEmptyDatabase() => OptionsFor(NewConnectionString());
+
+    /// <summary>The connection string of a new database with every migration applied.</summary>
+    internal async Task<string> NewMigratedConnectionStringAsync()
     {
-        var connectionString = new NpgsqlConnectionStringBuilder(_container.GetConnectionString())
+        var connectionString = NewConnectionString();
+        await using var context = new FamilyGraphDbContext(OptionsFor(connectionString));
+        await context.Database.MigrateAsync(TestContext.Current.CancellationToken);
+        return connectionString;
+    }
+
+    private string NewConnectionString() =>
+        new NpgsqlConnectionStringBuilder(_container.GetConnectionString())
         {
             Database = "test_" + Guid.NewGuid().ToString("N"),
         }.ConnectionString;
 
+    private static DbContextOptions<FamilyGraphDbContext> OptionsFor(string connectionString)
+    {
         var options = new DbContextOptionsBuilder<FamilyGraphDbContext>();
         options.UseFamilyGraphNpgsql(connectionString);
         return options.Options;
     }
 
     /// <summary>Options for a new database with every migration applied.</summary>
-    internal async Task<DbContextOptions<FamilyGraphDbContext>> NewMigratedDatabaseAsync()
-    {
-        var options = NewEmptyDatabase();
-        await using var context = new FamilyGraphDbContext(options);
-        await context.Database.MigrateAsync(TestContext.Current.CancellationToken);
-        return options;
-    }
+    internal async Task<DbContextOptions<FamilyGraphDbContext>> NewMigratedDatabaseAsync() =>
+        OptionsFor(await NewMigratedConnectionStringAsync());
 }

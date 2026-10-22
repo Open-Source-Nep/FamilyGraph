@@ -1,0 +1,19 @@
+<section class="panel">
+  <h1>Your account</h1>
+
+  @if (account(); as account) {
+    <dl>
+      <dt>Email</dt>
+      <dd>
+        {{ account.email }}
+        @if (!account.emailVerified) {
+          (not verified by Google)
+        }
+      </dd>
+      <dt>Role</dt>
+      <dd>{{ isAdministrator() ? 'Administrator' : 'User' }}</dd>
+    </dl>
+  }
+
+  <button type="button" (click)="signOut()" [disabled]="signingOut()">Sign out</button>
+</section>

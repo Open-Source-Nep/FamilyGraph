@@ -35,7 +35,8 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 - Link removal (D-014 below).
 - Audit event model (D-015 below).
 - Birth order of children (D-016 below).
-- Persistence mapping (D-017 below; agreed when the #9 PR merges).
+- Persistence mapping (D-017 below).
+- Accounts, sign-in flow and sessions (D-018 below).
 - **Name length (agreed 2026-10-21):** Business puts no length cap on name parts. Any storage or input limit is set later by persistence (#9) and API validation (D-010).
 
 ## Decisions to discuss next
@@ -291,7 +292,7 @@ For each major decision, record:
 
 ### D-017: Persistence mapping
 
-- **Status:** proposed (2026-10-22) in the PR for issue #9; agreed when that PR is merged.
+- **Status:** agreed (2026-10-22). Issue #9, PR #51.
 - **Context:** D-009 picks PostgreSQL and EF Core and fixes the link columns and indexes. D-015 asks for an append-only audit table keyed by family, type, subject and actor. Business must not depend on EF Core (D-002), and its entities have private constructors and `BaseEnum` values. Identity packages arrive with #11 (D-008).
 - **Options considered:** mapping the domain entities directly, or separate persistence classes copied to and from the domain; the `EFCore.NamingConventions` package or a few lines of our own for snake_case names; audit event fields as columns per type, or as JSON.
 - **Trade-offs:** Separate persistence classes leave Business untouched but duplicate every entity and need hand-written change tracking. Direct mapping needs one private constructor on `Person`, because EF Core cannot pass a complex property to a constructor. A naming package is one more dependency for about thirty lines of code. Columns per event type would change the schema with every new event; JSON keeps one table and the indexed columns stay typed.
@@ -306,3 +307,23 @@ For each major decision, record:
   - Integration tests share one container per run and give each test its own migrated database.
 - **Consequences:** Store interfaces, `IUnitOfWork` and query services come with the first Application use cases, not #9. Local setup is in `docs/database.md`.
 
+### D-018: Accounts, sign-in flow and sessions
+
+- **Status:** agreed when the #11 PR merges (2026-10-22). Ash chose the account data; the rest applies D-008, D-010 and D-011.
+- **Context:** D-008 picks Google sign-in, ASP.NET Core Identity, the `User` and `Administrator` roles and config-defined admins. D-011 picks an Identity session cookie with CSRF protection. The product keeps personal data to a minimum, and an account is never a person profile (PRD 01).
+- **Options considered:** keeping only the email from Google, or also the name, or also the photo; a separate registration step, or registering on first sign-in; Identity's `SignInManager`, or signing in with the Identity cookie scheme directly.
+- **Trade-offs:** A name or photo would let the UI greet the user, but is more personal data to protect and erase, and no requirement needs it; a user's name belongs on their Person profile. A separate registration step adds a screen with nothing to ask. `SignInManager` brings password, lockout and security-stamp features that Google-only sign-in does not use and that need more configuration.
+- **Decision:**
+  - **Account data:** an account stores its Google user ID (as an Identity external login), its email and whether Google verified it. Nothing else. Sign-in requests only the `openid` and `email` scopes. The email is refreshed on every sign-in.
+  - **Registration:** the first Google sign-in creates the account with the `User` role. It never creates a Person (`AC-01.12`).
+  - **Administrators:** on every sign-in the account gets or loses `Administrator` by matching its verified email, ignoring case, against `Admin:Emails` (D-008).
+  - **Identity in Infrastructure:** `FamilyGraphDbContext` derives from `IdentityDbContext` with GUID keys. Tables are `user_accounts`, `user_account_logins`, `user_account_roles`, `user_account_claims`, `user_account_tokens`, `roles` and `role_claims`; the two roles are seeded by migration. Application owns `IAccountStore` and `AccountService`; Infrastructure implements the store with `UserManager`. The account ID is the domain's `AccountId`.
+  - **Endpoints** (`AccountController`, `/api/account`): `GET /api/account/sign-in?returnUrl=` starts Google sign-in (503 `account.sign_in_unavailable` when Google is not configured); `GET /api/account/sign-in/callback` creates or updates the account, starts the session and redirects to a local `returnUrl` only; `POST /api/account/sign-out` ends it; `GET /api/account` returns the own account or 401.
+  - **Session:** the Identity application cookie `FamilyGraph.Session` (`HttpOnly`, `Secure`, `SameSite=Lax`, sliding expiry) holds the account ID and roles. The API answers 401 and 403 instead of redirecting.
+  - **CSRF:** `GET /api/account` sets a readable `XSRF-TOKEN` cookie. Angular's `HttpClient` sends it back as `X-XSRF-TOKEN`, and a global filter rejects any non-GET request without a valid token (400 `request.antiforgery_invalid`).
+  - **Client:** a sign-in page, an account page with sign-out, and a guard that sends signed-out users to sign-in with a `returnUrl`. In development, `proxy.conf.json` forwards `/api` and `/signin-google` to the Server over HTTP, so HTTPS redirection runs outside Development only.
+  - **Packages:** `Microsoft.AspNetCore.Identity.EntityFrameworkCore` 10.0.4 (matches EF Core) in Infrastructure, `Microsoft.AspNetCore.Authentication.Google` 10.0.12 in Server (both named in D-008).
+- **Consequences:**
+  - The roles in a session are those of its sign-in. An administrator removed from `Admin:Emails` keeps the role until signing in again or the session expires. The first administrator-only endpoint decides whether to re-check per request.
+  - Self-hosters set `Authentication__Google__ClientId`, `Authentication__Google__ClientSecret` and `Admin__Emails__0` (see `docs/authentication.md`). Behind a TLS-terminating proxy, forwarded headers must be enabled so Google gets an `https` callback URL (#33).
+  - Account deletion and the erasure of the stored email come with #32.
