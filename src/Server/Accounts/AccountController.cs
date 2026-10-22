@@ -24,6 +24,9 @@ public sealed class AccountController(IAntiforgery antiforgery) : ControllerBase
     /// <summary>The cookie Angular's HttpClient reads and echoes in the <c>X-XSRF-TOKEN</c> header (D-011).</summary>
     internal const string XsrfCookie = "XSRF-TOKEN";
 
+    internal const string SignInFailedTitle = "Sign-in did not complete.";
+    internal const string SignInFailedCode = "account.sign_in_failed";
+
     [HttpGet]
     [Authorize]
     public async Task<ActionResult<AccountResponse>> Get([FromServices] AccountService accounts, CancellationToken cancellationToken)
@@ -40,7 +43,12 @@ public sealed class AccountController(IAntiforgery antiforgery) : ControllerBase
         return AccountResponse.From(account);
     }
 
-    /// <summary>Starts Google sign-in. The browser navigates here; it is not called with fetch.</summary>
+    /// <summary>
+    /// Starts Google sign-in. The browser navigates here; it is not called with fetch. Google returns
+    /// to the Client's <c>/google-callback</c> page, which passes the result to
+    /// <c>/api/account/google-callback</c>; the Google handler checks it and redirects to
+    /// <see cref="CompleteSignIn"/>.
+    /// </summary>
     [HttpGet("sign-in")]
     public async Task<IActionResult> SignIn(string? returnUrl)
     {
@@ -53,12 +61,17 @@ public sealed class AccountController(IAntiforgery antiforgery) : ControllerBase
                 extensions: new Dictionary<string, object?> { ["code"] = "account.sign_in_unavailable" });
         }
 
-        var callback = Url.Action(nameof(SignInCallback), new { returnUrl = LocalOrRoot(returnUrl) });
-        return Challenge(new AuthenticationProperties { RedirectUri = callback }, GoogleDefaults.AuthenticationScheme);
+        var complete = Url.Action(nameof(CompleteSignIn), new { returnUrl = LocalOrRoot(returnUrl) });
+        return Challenge(new AuthenticationProperties { RedirectUri = complete }, GoogleDefaults.AuthenticationScheme);
     }
 
-    [HttpGet("sign-in/callback")]
-    public async Task<IActionResult> SignInCallback(
+    /// <summary>
+    /// Creates or updates the account from the Google result and starts the session. The Client's
+    /// callback page reaches this through the Google handler's redirect, and navigates to the
+    /// returned local URL.
+    /// </summary>
+    [HttpGet("sign-in/complete")]
+    public async Task<ActionResult<SignInResponse>> CompleteSignIn(
         string? returnUrl, [FromServices] AccountService accounts, CancellationToken cancellationToken)
     {
         var external = await HttpContext.AuthenticateAsync(IdentityConstants.ExternalScheme);
@@ -69,7 +82,10 @@ public sealed class AccountController(IAntiforgery antiforgery) : ControllerBase
         var email = principal?.FindFirstValue(ClaimTypes.Email);
         if (!external.Succeeded || providerKey is null || email is null)
         {
-            return Redirect("/sign-in?failed=true");
+            return Problem(
+                statusCode: StatusCodes.Status401Unauthorized,
+                title: SignInFailedTitle,
+                extensions: new Dictionary<string, object?> { ["code"] = SignInFailedCode });
         }
 
         // Google is the only provider for now (D-008).
@@ -84,7 +100,7 @@ public sealed class AccountController(IAntiforgery antiforgery) : ControllerBase
         identity.AddClaims(account.Roles.Select(role => new Claim(ClaimTypes.Role, role)));
         await HttpContext.SignInAsync(IdentityConstants.ApplicationScheme, new ClaimsPrincipal(identity));
 
-        return LocalRedirect(LocalOrRoot(returnUrl));
+        return new SignInResponse(LocalOrRoot(returnUrl));
     }
 
     /// <summary>Ends the session. Protected against CSRF like every state-changing request (D-011).</summary>

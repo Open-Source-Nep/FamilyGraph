@@ -11,6 +11,13 @@ export const routes: Routes = [
     loadComponent: () => import('./features/account/sign-in-page').then((m) => m.SignInPage),
   },
   {
+    // Google's redirect URI; the page passes the result to the API (docs/authentication.md).
+    path: 'google-callback',
+    title: 'Signing in',
+    loadComponent: () =>
+      import('./features/account/google-callback-page').then((m) => m.GoogleCallbackPage),
+  },
+  {
     path: '',
     canActivateChild: [authGuard],
     children: [

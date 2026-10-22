@@ -1,4 +1,4 @@
-import { provideHttpClient } from '@angular/common/http';
+import { HttpParams, provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 
@@ -61,5 +61,30 @@ describe('AuthService', () => {
 
     expect(service.account()).toBeNull();
     expect(await service.load()).toBeNull();
+  });
+
+  it('completes Google sign-in through the API and loads the new account', async () => {
+    const loaded = service.load();
+    http.expectOne('/api/account').flush(null, { status: 401, statusText: 'Unauthorized' });
+    await loaded;
+
+    const completed = service.completeGoogleSignIn(
+      new HttpParams({ fromObject: { code: 'c', state: 's' } }),
+    );
+    http.expectOne('/api/account/google-callback?code=c&state=s').flush({ returnUrl: '/people' });
+    await Promise.resolve();
+    http.expectOne('/api/account').flush(maya);
+
+    expect(await completed).toBe('/people');
+    expect(service.account()).toEqual(maya);
+  });
+
+  it('never returns off the site after Google sign-in', async () => {
+    const completed = service.completeGoogleSignIn(new HttpParams());
+    http.expectOne('/api/account/google-callback').flush({ returnUrl: '//evil.example.org' });
+    await Promise.resolve();
+    http.expectOne('/api/account').flush(maya);
+
+    expect(await completed).toBe('/');
   });
 });
