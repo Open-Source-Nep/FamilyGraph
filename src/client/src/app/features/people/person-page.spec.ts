@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
+import { RelationshipsService } from '../relationships/relationships.service';
 import { PeopleService } from './people.service';
 import { Person } from './person';
 import { PersonPage } from './person-page';
@@ -14,6 +15,18 @@ describe('PersonPage', () => {
       providers: [
         provideRouter([]),
         { provide: PeopleService, useValue: { get: () => Promise.resolve(person) } },
+        {
+          provide: RelationshipsService,
+          useValue: {
+            listDirectRelatives: () =>
+              Promise.resolve({
+                parents: [],
+                parentsTruncated: false,
+                children: [],
+                childrenTruncated: false,
+              }),
+          },
+        },
       ],
     });
   });

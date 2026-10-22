@@ -85,6 +85,7 @@ public class ParentChildLinkTests
             () => ParentChildLink.Create(parent, child, ParentChildType.Biological, Carol, NoParents, NoAncestors(parent)));
 
         Assert.Equal("link.not_endpoint_maintainer", ex.Code);
+        Assert.IsAssignableFrom<NotPermittedException>(ex);
     }
 
     [Fact]
@@ -125,6 +126,7 @@ public class ParentChildLinkTests
             () => ParentChildLink.Create(parent, child, type, Alice, childParents, NoAncestors(parent)));
 
         Assert.Equal("link.duplicate", ex.Code);
+        Assert.IsAssignableFrom<ConflictException>(ex);
     }
 
     [Fact]

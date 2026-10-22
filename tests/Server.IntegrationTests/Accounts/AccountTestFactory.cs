@@ -3,6 +3,7 @@ using System.Text.Encodings.Web;
 using FamilyGraph.Application.Accounts;
 using FamilyGraph.Application.People;
 using FamilyGraph.Application.Persistence;
+using FamilyGraph.Application.Relationships;
 using FamilyGraph.Business.People;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
@@ -16,7 +17,7 @@ using Server.IntegrationTests.People;
 namespace Server.IntegrationTests.Accounts;
 
 /// <summary>
-/// Runs the Server with in-memory account and people stores and a fake external sign-in, so the
+/// Runs the Server with in-memory account, people and link stores and a fake external sign-in, so the
 /// endpoints are tested without Google or a database. A request carrying <see cref="LoginHeader"/>
 /// arrives at the callback as if Google had just signed in that user.
 /// </summary>
@@ -37,6 +38,8 @@ public sealed class AccountTestFactory : WebApplicationFactory<Program>
             services.AddSingleton<IAccountStore>(Store);
             services.AddSingleton<IPersonStore>(People);
             services.AddSingleton<IPersonQueries>(People);
+            services.AddSingleton<IParentChildLinkStore>(People);
+            services.AddSingleton<IRelationshipQueries>(People);
             services.AddSingleton<IAuditLog>(People);
             services.AddSingleton<IUnitOfWork>(People);
             services.Configure<AuthenticationOptions>(options =>

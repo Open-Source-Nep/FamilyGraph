@@ -1,0 +1,119 @@
+@if (relatives(); as relatives) {
+  <h2>Parents</h2>
+  @if (relatives.parents.length === 0) {
+    <p class="hint">No parents are linked.</p>
+  } @else {
+    <ul class="people">
+      @for (parent of relatives.parents; track parent.id) {
+        <li>
+          <a [routerLink]="['/people', parent.id]">{{ fullName(parent) }}</a>
+          @if (parent.type === 'Adoptive') {
+            <span class="hint"> (adoptive parent)</span>
+          }
+        </li>
+      }
+    </ul>
+    @if (relatives.parentsTruncated) {
+      <p class="hint">Only the first {{ relatives.parents.length }} parents are shown.</p>
+    }
+  }
+
+  <h2>Children</h2>
+  @if (relatives.children.length === 0) {
+    <p class="hint">No children are linked.</p>
+  } @else {
+    <ul class="people">
+      @for (child of relatives.children; track child.id) {
+        <li>
+          <a [routerLink]="['/people', child.id]">{{ fullName(child) }}</a>
+          @if (child.type === 'Adoptive') {
+            <span class="hint"> (adopted child)</span>
+          }
+        </li>
+      }
+    </ul>
+    @if (relatives.childrenTruncated) {
+      <p class="hint">Only the first {{ relatives.children.length }} children are shown.</p>
+    }
+  }
+}
+
+@if (notice(); as notice) {
+  <p role="status">{{ notice }}</p>
+}
+@if (error(); as error) {
+  <p class="error" role="alert">{{ error }}</p>
+}
+
+@if (adding()) {
+  <h2>Add a parent or child</h2>
+  @if (candidates(); as candidates) {
+    @if (candidates.length === 0) {
+      <p>
+        You can link {{ name() }} only to a profile you maintain.
+        <a routerLink="/people/new">Add a person</a> first.
+      </p>
+      <div class="actions">
+        <button type="button" class="secondary" (click)="adding.set(false)">Cancel</button>
+      </div>
+    } @else {
+      <form [formGroup]="form" (ngSubmit)="add()" class="name-form">
+        <fieldset>
+          <legend>Link one of your profiles as</legend>
+          <label>
+            <input type="radio" formControlName="side" value="parent" />
+            a parent of {{ name() }}
+          </label>
+          <label>
+            <input type="radio" formControlName="side" value="child" />
+            a child of {{ name() }}
+          </label>
+        </fieldset>
+
+        <label>
+          Profile
+          <select formControlName="otherId" required>
+            <option value="" disabled>Choose a profile you maintain</option>
+            @for (candidate of candidates; track candidate.id) {
+              <option [value]="candidate.id">{{ fullName(candidate) }}</option>
+            }
+          </select>
+        </label>
+        @if (form.controls.otherId.touched && form.controls.otherId.invalid) {
+          <p class="error" role="alert">Choose a profile.</p>
+        }
+        @if (candidatesTruncated()) {
+          <p class="hint">Only the first {{ candidates.length }} of your profiles are listed.</p>
+        }
+
+        <fieldset>
+          <legend>Relationship</legend>
+          <label>
+            <input type="radio" formControlName="type" value="Biological" />
+            Biological
+          </label>
+          <label>
+            <input type="radio" formControlName="type" value="Adoptive" />
+            Adoptive
+          </label>
+        </fieldset>
+
+        @if (!person().maintainedByYou) {
+          <p class="hint">
+            You do not maintain {{ name() }}, so the link stays inactive until its maintainer
+            approves it.
+          </p>
+        }
+
+        <div class="actions">
+          <button type="submit" [disabled]="saving()">Add link</button>
+          <button type="button" class="secondary" (click)="adding.set(false)">Cancel</button>
+        </div>
+      </form>
+    }
+  }
+} @else {
+  <p>
+    <button type="button" class="secondary" (click)="startAdding()">Add a parent or child</button>
+  </p>
+}

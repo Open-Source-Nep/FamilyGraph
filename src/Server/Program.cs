@@ -2,6 +2,7 @@ using FamilyGraph.Infrastructure;
 using Server.Accounts;
 using Server.Errors;
 using Server.People;
+using Server.Relationships;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,6 +10,7 @@ builder.Services.AddOpenApi();
 builder.Services.AddInfrastructure(builder.Configuration.GetConnectionString("FamilyGraph"));
 builder.Services.AddAccounts(builder.Configuration);
 builder.Services.AddPeople(builder.Configuration);
+builder.Services.AddRelationships(builder.Configuration);
 builder.Services.AddAntiforgery(options => options.HeaderName = "X-XSRF-TOKEN");
 builder.Services.AddControllers(options => options.Filters.Add<ValidateAntiforgeryFilter>());
 builder.Services.AddProblemDetails();

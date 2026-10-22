@@ -37,7 +37,8 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 - Birth order of children (D-016 below).
 - Persistence mapping (D-017 below).
 - Accounts, sign-in flow and sessions (D-018 below).
-- Person profile use cases, unit of work and API (D-019 below, proposed with #12).
+- Person profile use cases, unit of work and API (D-019 below).
+- Creating parent–child links: use case, ancestor query and API (D-020 below, proposed with #14).
 - **Name length (agreed 2026-10-21):** Business puts no length cap on name parts. Any storage or input limit is set later by persistence (#9) and API validation (D-010).
 
 ## Decisions to discuss next
@@ -331,7 +332,7 @@ For each major decision, record:
 
 ### D-019: Person profile use cases, unit of work and API
 
-- **Status:** proposed (2026-10-22). Issue #12. Agreed when the #12 PR merges.
+- **Status:** agreed (2026-10-22). Issue #12, PR #53.
 - **Context:** #12 is the first Application use case, so it brings the store interfaces, `IUnitOfWork` and query services that D-002 and D-017 deferred. D-015 has Application take and time-stamp audit events. D-010 sets the API shape, and D-017 leaves name length limits to API validation. Privacy settings and the `Private` placeholder come with #17 (PRD 05); until then every profile is Public, the PRD 05 default.
 - **Options considered:** saving audit events by scanning EF Core's change tracker in `SaveChanges`, or Application adding them to an audit log; whether to return a profile's maintainer account to other users; a length limit per name part of 100 or none.
 - **Trade-offs:** The change-tracker approach cannot forget events, but hides the time stamp and the event list in Infrastructure, against D-015. Naming the maintaining account to others reveals which account manages which profiles, which no requirement needs.
@@ -343,3 +344,18 @@ For each major decision, record:
   - **Validation:** each name part is at most 100 characters (400). A missing or blank first name is the domain rule `person.first_name_required` (422).
   - **Client:** `features/people` has the profiles-you-maintain list, an add-a-person page and a person page where the maintainer edits the name.
 - **Consequences:** Later use cases reuse `IAuditLog` and `IUnitOfWork` with their own stores. #17 puts the privacy projection in front of `IPersonQueries` before any Private profile exists. The link permission exceptions move to `NotPermittedException` with their API work (#14, #15, #16).
+
+### D-020: Creating parent–child links
+
+- **Status:** proposed (2026-10-22). Issue #14. Agreed when the #14 PR merges.
+- **Context:** The domain already decides who may create a link, the starting approvals, duplicates and cycles (PRD 02, PRD 03, D-013). #14 brings the use case, the bounded ancestor query D-009 asks for, the API and the Client. Person search (#22) and the local graph view (#20, #23) come later, and privacy placeholders come with #18.
+- **Options considered:** a recursive CTE for ancestors, or one query per generation from Application; returning a new link's per-endpoint approvals, or only whether it is active; showing pending links on a person's page, or active ones only; picking the other person by search, by pasted ID, or from the profiles you maintain.
+- **Trade-offs:** A recursive CTE is one round trip, and taking the union over (person, generation) visits each person at most once per generation, so pedigree collapse cannot blow it up. Showing only active links follows PRD 03 ("excluded from ordinary relationship views"); approving pending links is #15. Picking only from your own profiles needs no search, and still covers every allowed link, because the creator must maintain one endpoint: open the other person's page and link one of your profiles to it.
+- **Decision:**
+  - **Write side:** Application owns `IParentChildLinkStore` (non-deleted parents of a child, the ancestor snapshot, add). `RelationshipService.CreateLinkAsync` loads both people (404 `person.not_found` if either is missing), the child's parents and the parent's ancestors, calls `ParentChildLink.Create` and saves the link with its `LinkCreated` event in one transaction.
+  - **Ancestor query:** one recursive CTE over non-deleted links that walks one generation past `MaxGenerations` and returns one ancestor past `MaxAncestors`; either extra row makes the snapshot incomplete, so the link is rejected as unverifiable (AC-02.7). It also stops on a cycle that is already in the data.
+  - **Errors:** Business adds `ConflictException` (409, D-010). `DuplicateLinkException` derives from it and `NotLinkEndpointMaintainerException` from `NotPermittedException` (403). A unique-index violation from two simultaneous creations of the same pair is also reported as `link.duplicate`. Self-links and cycles stay 422.
+  - **Read side:** `IRelationshipQueries` lists a person's parents (by name) and children (birth order, then unordered by name, D-016) through active links only, each with its type and each cut at `Relationships:DirectRelativesLimit` (default 500) with a truncation flag.
+  - **Endpoints** (`RelationshipsController`, signed-in users only): `POST /api/relationships` with `parentId`, `childId` and `type` (`Biological` or `Adoptive`, otherwise 400) answers 201 with the link's ID, endpoints, type and `isActive`. It does not return per-endpoint approvals. `GET /api/people/{id}/relatives` returns the parents and children.
+  - **Client:** `features/relationships` adds the parents and children to the person page, with "adoptive parent" and "adopted child" labels (PRD 10), and a form that links one of your profiles as a parent or child of the person shown. A link that is not active yet is reported as waiting for the other maintainer's approval.
+- **Consequences:** #15 adds the list of links waiting for your approval and the approve and disagree endpoints. #18 blocks new links to a `Deleted` profile and puts placeholders on the relatives list. Two simultaneous requests that each add half of a cycle (A → B and B → A) can both pass the check, because each transaction cannot see the other; graph traversal already tolerates cycles (PRD 02). Closing that gap needs serializable transactions or a lock, which is left until it is seen in practice.
