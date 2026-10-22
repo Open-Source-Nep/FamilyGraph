@@ -24,7 +24,12 @@
         </select>
       </label>
       @if (centreId(); as id) {
-        <app-graph-view [id]="id" (notFound)="fallBack()" />
+        <app-graph-view
+          [id]="id"
+          [compact]="true"
+          (notFound)="fallBack()"
+          (recentre)="centreOn($event)"
+        />
       }
     }
   }

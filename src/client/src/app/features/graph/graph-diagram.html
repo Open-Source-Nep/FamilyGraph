@@ -6,4 +6,24 @@
   </ul>
   <button type="button" class="secondary" (click)="fit()">Fit to screen</button>
 </div>
-<div #canvas class="canvas" role="img" [attr.aria-label]="summary()"></div>
+<div class="stage">
+  <div #canvas class="canvas" role="img" [attr.aria-label]="summary()"></div>
+  @if (hovered(); as hovered) {
+    <div class="tooltip" aria-hidden="true" [style.left.px]="hovered.x" [style.top.px]="hovered.y">
+      <strong>{{ fullName(hovered.row.person) }}</strong>
+      <span>
+        @if (hovered.row.person.id === graph().centreId) {
+          Centre of the graph
+        } @else {
+          {{ generationLabel(hovered.row.generation) }}
+        }
+      </span>
+      @if (hovered.row.person.maintainedByYou) {
+        <span>Maintained by you</span>
+      }
+      @if (hovered.row.hasMore) {
+        <span>Has relatives not shown</span>
+      }
+    </div>
+  }
+</div>

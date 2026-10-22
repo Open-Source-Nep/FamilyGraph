@@ -17,7 +17,8 @@
     <app-graph-diagram
       [graph]="shown"
       [selectedId]="selectedId()"
-      (selected)="selectedId.set($event)"
+      [compact]="compact()"
+      (selected)="select($event)"
     />
 
     @if (selected(); as selected) {
@@ -40,8 +41,15 @@
           }
         </div>
       </div>
+    } @else if (compact()) {
+      <p class="hint">
+        Hover over someone for their details, select them to centre the graph on them, or use the
+        list below.
+      </p>
     } @else {
-      <p class="hint">Select someone in the diagram, or use the list below.</p>
+      <p class="hint">
+        Hover over someone for their details, select them in the diagram, or use the list below.
+      </p>
     }
 
     @if (notice(); as notice) {

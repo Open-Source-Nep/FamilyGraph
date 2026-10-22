@@ -14,6 +14,7 @@ import { ShownGraph } from './shown-graph';
 class StubDiagram {
   readonly graph = input.required<ShownGraph>();
   readonly selectedId = input<string | null>(null);
+  readonly compact = input(false);
   readonly selected = output<string>();
 }
 
@@ -77,9 +78,10 @@ describe('GraphView', () => {
     });
   });
 
-  const show = async () => {
+  const show = async (compact = false) => {
     fixture = TestBed.createComponent(GraphView);
     fixture.componentRef.setInput('id', 'maya');
+    fixture.componentRef.setInput('compact', compact);
     await fixture.whenStable();
   };
   const text = () => fixture.nativeElement.textContent as string;
@@ -87,6 +89,9 @@ describe('GraphView', () => {
     [...fixture.nativeElement.querySelectorAll('button')].find(
       (b: HTMLButtonElement) => b.textContent?.trim() === label,
     ) as HTMLButtonElement | undefined;
+  const diagram = () =>
+    fixture.debugElement.query((el) => el.name === 'app-graph-diagram')
+      .componentInstance as StubDiagram;
 
   it('shows a local view as a list by generation (AC-08.4, AC-09.2)', async () => {
     await show();
@@ -118,5 +123,29 @@ describe('GraphView', () => {
     expect(text()).toContain('2 generations above');
     expect(text()).toContain('Sita Rai');
     expect(button('Load more around Gita Rai')).toBeUndefined();
+  });
+
+  it('shows the person selected in the diagram', async () => {
+    await show();
+
+    diagram().selected.emit('gita');
+    await fixture.whenStable();
+
+    expect(diagram().selectedId()).toBe('gita');
+    expect(fixture.nativeElement.querySelector('.selected').textContent).toContain('Gita Rai');
+  });
+
+  it('in compact mode asks to centre on the person selected in the diagram', async () => {
+    await show(true);
+    const recentred: string[] = [];
+    fixture.componentInstance.recentre.subscribe((id) => recentred.push(id));
+
+    expect(diagram().compact()).toBe(true);
+    diagram().selected.emit('maya');
+    diagram().selected.emit('gita');
+    await fixture.whenStable();
+
+    expect(recentred).toEqual(['gita']);
+    expect(diagram().selectedId()).toBeNull();
   });
 });

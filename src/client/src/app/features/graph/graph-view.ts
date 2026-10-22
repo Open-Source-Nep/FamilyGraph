@@ -36,8 +36,12 @@ export class GraphView {
 
   /** The person at the centre. */
   readonly id = input.required<string>();
+  /** Small initial avatars with details on hover; selecting someone asks to centre on them. */
+  readonly compact = input(false);
   /** The centre is not a person you can see, so a host can choose someone else. */
   readonly notFound = output<void>();
+  /** In compact mode, someone else was selected in the diagram: the host centres on them. */
+  readonly recentre = output<string>();
 
   protected readonly fullName = fullName;
   protected readonly generationLabel = generationLabel;
@@ -98,6 +102,14 @@ export class GraphView {
       (list) => this.maintained.set(list.people),
       () => undefined,
     );
+  }
+
+  protected select(personId: string): void {
+    if (!this.compact()) {
+      this.selectedId.set(personId);
+    } else if (personId !== this.id()) {
+      this.recentre.emit(personId);
+    }
   }
 
   /** Loads the people nearest to an edge person into the view (AC-08.5). */

@@ -27,3 +27,11 @@ export const maxNamePartLength = 100;
 export function fullName(name: PersonName): string {
   return [name.firstName, name.middleName, name.lastName].filter(Boolean).join(' ');
 }
+
+/** "MR" for Maya Rai, "M" for Maya: the first letters of the first and last names. */
+export function initials(name: PersonName): string {
+  return [name.firstName, name.lastName]
+    .map((part) => Array.from(part?.trim() ?? '')[0] ?? '')
+    .join('')
+    .toLocaleUpperCase();
+}
