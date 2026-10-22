@@ -76,79 +76,125 @@
 @if (notice(); as notice) {
   <p role="status">{{ notice }}</p>
 }
+@if (outcomes().length > 0) {
+  <ul class="people" role="status" aria-label="Links you added">
+    @for (outcome of outcomes(); track $index) {
+      @switch (outcome.state) {
+        @case ('active') {
+          <li>{{ outcome.name }}: linked.</li>
+        }
+        @case ('pending') {
+          <li>
+            {{ outcome.name }}: saved, but not active until the maintainer of {{ name() }} approves
+            it.
+          </li>
+        }
+        @case ('failed') {
+          <li class="error">{{ outcome.name }}: not linked. {{ outcome.reason }}</li>
+        }
+      }
+    }
+  </ul>
+}
 @if (error(); as error) {
   <p class="error" role="alert">{{ error }}</p>
 }
 
 @if (adding()) {
-  <h2>Add a parent or child</h2>
+  <h2>Add parents or children</h2>
   @if (candidates(); as candidates) {
-    @if (candidates.length === 0) {
-      <p>
-        You can link {{ name() }} only to a profile you maintain.
-        <a routerLink="/people/new">Add a person</a> first.
-      </p>
+    <form [formGroup]="form" (ngSubmit)="add()" class="name-form">
+      <fieldset>
+        <legend>Link your profiles as</legend>
+        <label>
+          <input type="radio" formControlName="side" value="parent" />
+          parents of {{ name() }}
+        </label>
+        <label>
+          <input type="radio" formControlName="side" value="child" />
+          children of {{ name() }}
+        </label>
+      </fieldset>
+
+      <fieldset class="choices">
+        <legend>Profiles</legend>
+        @for (candidate of candidates; track candidate.id) {
+          <label>
+            <input
+              type="checkbox"
+              [value]="candidate.id"
+              [checked]="isSelected(candidate.id)"
+              (change)="toggle(candidate.id, $any($event.target).checked)"
+            />
+            {{ fullName(candidate) }}
+          </label>
+        } @empty {
+          <p class="hint">You maintain no other profiles yet.</p>
+        }
+        <p>
+          <button type="button" class="link-button" (click)="openNewPerson()">
+            Add a new person
+          </button>
+        </p>
+      </fieldset>
+      @if (selectionMissing()) {
+        <p class="error" role="alert">Choose at least one profile.</p>
+      }
+      @if (candidatesTruncated()) {
+        <p class="hint">Only the first {{ candidates.length }} of your profiles are listed.</p>
+      }
+
+      <fieldset>
+        <legend>Relationship</legend>
+        <label>
+          <input type="radio" formControlName="type" value="Biological" />
+          Biological
+        </label>
+        <label>
+          <input type="radio" formControlName="type" value="Adoptive" />
+          Adoptive
+        </label>
+      </fieldset>
+
+      @if (!person().maintainedByYou) {
+        <p class="hint">
+          You do not maintain {{ name() }}, so the links stay inactive until its maintainer approves
+          them.
+        </p>
+      }
+
       <div class="actions">
+        <button type="submit" [disabled]="saving()">
+          {{ selected().length > 1 ? 'Add ' + selected().length + ' links' : 'Add link' }}
+        </button>
         <button type="button" class="secondary" (click)="adding.set(false)">Cancel</button>
       </div>
-    } @else {
-      <form [formGroup]="form" (ngSubmit)="add()" class="name-form">
-        <fieldset>
-          <legend>Link one of your profiles as</legend>
-          <label>
-            <input type="radio" formControlName="side" value="parent" />
-            a parent of {{ name() }}
-          </label>
-          <label>
-            <input type="radio" formControlName="side" value="child" />
-            a child of {{ name() }}
-          </label>
-        </fieldset>
-
-        <label>
-          Profile
-          <select formControlName="otherId" required>
-            <option value="" disabled>Choose a profile you maintain</option>
-            @for (candidate of candidates; track candidate.id) {
-              <option [value]="candidate.id">{{ fullName(candidate) }}</option>
-            }
-          </select>
-        </label>
-        @if (form.controls.otherId.touched && form.controls.otherId.invalid) {
-          <p class="error" role="alert">Choose a profile.</p>
-        }
-        @if (candidatesTruncated()) {
-          <p class="hint">Only the first {{ candidates.length }} of your profiles are listed.</p>
-        }
-
-        <fieldset>
-          <legend>Relationship</legend>
-          <label>
-            <input type="radio" formControlName="type" value="Biological" />
-            Biological
-          </label>
-          <label>
-            <input type="radio" formControlName="type" value="Adoptive" />
-            Adoptive
-          </label>
-        </fieldset>
-
-        @if (!person().maintainedByYou) {
-          <p class="hint">
-            You do not maintain {{ name() }}, so the link stays inactive until its maintainer
-            approves it.
-          </p>
-        }
-
-        <div class="actions">
-          <button type="submit" [disabled]="saving()">Add link</button>
-          <button type="button" class="secondary" (click)="adding.set(false)">Cancel</button>
-        </div>
-      </form>
-    }
+    </form>
   }
 } @else {
   <p>
-    <button type="button" class="secondary" (click)="startAdding()">Add a parent or child</button>
+    <button type="button" class="secondary" (click)="startAdding()">Add parents or children</button>
   </p>
 }
+
+<!-- Outside the link form: a form cannot hold another form. -->
+<dialog
+  #newPersonDialog
+  class="dialog"
+  aria-labelledby="new-person-title"
+  (close)="closeNewPerson()"
+>
+  @if (creatingPerson()) {
+    <h2 id="new-person-title">Add a new person</h2>
+    <p class="hint">Only a first name is needed. You will maintain this profile.</p>
+    @if (personError(); as personError) {
+      <p class="error" role="alert">{{ personError }}</p>
+    }
+    <app-person-name-form
+      submitLabel="Add person"
+      [busy]="saving()"
+      (saved)="createPerson($event)"
+      (cancelled)="closeNewPerson()"
+    />
+  }
+</dialog>
