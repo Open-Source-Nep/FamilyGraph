@@ -5,6 +5,8 @@ namespace FamilyGraph.Business.Relationships;
 /// <summary>
 /// A directly registered parent–child fact (PRD 02). Consent is tracked per endpoint (PRD 03):
 /// the link is active only when both the parent side and the child side have approved.
+/// Each endpoint's maintainer moves that endpoint between states with <see cref="Approve"/> and
+/// <see cref="Disagree"/> (D-013); no one else can change it.
 /// </summary>
 public sealed class ParentChildLink
 {
@@ -79,6 +81,90 @@ public sealed class ParentChildLink
             maintainsParent ? EndpointApproval.Approved : EndpointApproval.Pending,
             maintainsChild ? EndpointApproval.Approved : EndpointApproval.Pending);
     }
+
+    /// <summary>
+    /// Approves the link for <paramref name="endpoint"/>, from pending or from disagreed (restoring
+    /// approval). The other side's valid approval is kept, so this can reactivate the link; if it
+    /// does, the cycle check runs again first (PRD 02).
+    /// </summary>
+    /// <param name="parentAncestors">The ancestors of the parent through non-deleted links.</param>
+    public void Approve(Person endpoint, AccountId actorId, AncestorSnapshot parentAncestors)
+    {
+        ArgumentNullException.ThrowIfNull(parentAncestors);
+
+        var isParentSide = IsParentSide(endpoint, actorId);
+        if (ApprovalOf(isParentSide) == EndpointApproval.Approved)
+        {
+            throw new ConsentUnchangedException();
+        }
+
+        if (ApprovalOf(!isParentSide) == EndpointApproval.Approved)
+        {
+            LinkCycleCheck.EnsureNoCycle(ParentId, ChildId, parentAncestors);
+        }
+
+        SetApproval(isParentSide, EndpointApproval.Approved);
+    }
+
+    /// <summary>
+    /// Records disagreement for <paramref name="endpoint"/>, from approved or from pending
+    /// (declining). The link becomes inactive immediately. When one account maintains both
+    /// endpoints it must delete the link instead (#16).
+    /// </summary>
+    public void Disagree(Person endpoint, Person otherEndpoint, AccountId actorId)
+    {
+        ArgumentNullException.ThrowIfNull(otherEndpoint);
+
+        var isParentSide = IsParentSide(endpoint, actorId);
+        if (otherEndpoint.Id != (isParentSide ? ChildId : ParentId))
+        {
+            throw new ArgumentException("The other endpoint must be the other person on this link.", nameof(otherEndpoint));
+        }
+
+        if (otherEndpoint.IsMaintainedBy(actorId))
+        {
+            throw new SoleMaintainerMustDeleteException();
+        }
+
+        if (ApprovalOf(isParentSide) == EndpointApproval.Disagreed)
+        {
+            throw new ConsentUnchangedException();
+        }
+
+        SetApproval(isParentSide, EndpointApproval.Disagreed);
+    }
+
+    /// <summary>Checks that the actor maintains the endpoint and tells which side it is.</summary>
+    private bool IsParentSide(Person endpoint, AccountId actorId)
+    {
+        ArgumentNullException.ThrowIfNull(endpoint);
+
+        if (endpoint.Id != ParentId && endpoint.Id != ChildId)
+        {
+            throw new ArgumentException("The person is not an endpoint of this link.", nameof(endpoint));
+        }
+
+        if (!endpoint.IsMaintainedBy(actorId))
+        {
+            throw new NotConsentMaintainerException();
+        }
+
+        return endpoint.Id == ParentId;
+    }
+
+    private EndpointApproval ApprovalOf(bool parentSide) => parentSide ? ParentApproval : ChildApproval;
+
+    private void SetApproval(bool parentSide, EndpointApproval approval)
+    {
+        if (parentSide)
+        {
+            ParentApproval = approval;
+        }
+        else
+        {
+            ChildApproval = approval;
+        }
+    }
 }
 
 public sealed class NotLinkEndpointMaintainerException()
@@ -86,3 +172,14 @@ public sealed class NotLinkEndpointMaintainerException()
 
 public sealed class DuplicateLinkException()
     : DomainException("link.duplicate", "A link between this parent and this child already exists.");
+
+public sealed class NotConsentMaintainerException()
+    : DomainException("link.consent_not_maintainer", "Only the maintainer of this endpoint can change its approval.");
+
+public sealed class ConsentUnchangedException()
+    : DomainException("link.consent_unchanged", "This endpoint is already in the requested approval state.");
+
+public sealed class SoleMaintainerMustDeleteException()
+    : DomainException(
+        "link.sole_maintainer_must_delete",
+        "You maintain both people on this link, so delete the link instead of disagreeing with it.");
