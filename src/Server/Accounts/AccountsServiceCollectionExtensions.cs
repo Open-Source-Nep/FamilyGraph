@@ -42,14 +42,15 @@ public static class AccountsServiceCollectionExtensions
                 options.ExpireTimeSpan = TimeSpan.FromMinutes(5);
             });
 
-        var google = configuration.GetSection("Authentication:Google");
-        if (!string.IsNullOrEmpty(google["ClientId"]))
+        var google = GoogleSignInSettings.From(configuration);
+        services.AddSingleton(google);
+        if (google.Enabled)
         {
             authentication.AddGoogle(options =>
             {
                 options.SignInScheme = IdentityConstants.ExternalScheme;
-                options.ClientId = google["ClientId"]!;
-                options.ClientSecret = google["ClientSecret"]
+                options.ClientId = google.ClientId!;
+                options.ClientSecret = google.ClientSecret
                     ?? throw new InvalidOperationException("Authentication:Google:ClientSecret is not configured.");
                 // An account keeps only the Google ID and email (D-018), so the profile scope is not requested.
                 options.Scope.Clear();

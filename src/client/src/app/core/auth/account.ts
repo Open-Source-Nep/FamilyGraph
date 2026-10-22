@@ -8,5 +8,10 @@ export interface Account {
 
 /** Where the browser goes to sign in with Google. The first sign-in registers the account. */
 export function signInUrl(returnUrl: string): string {
-  return `/api/account/sign-in?returnUrl=${encodeURIComponent(returnUrl)}`;
+  return `/api/account/sign-in?returnUrl=${encodeURIComponent(localReturnUrl(returnUrl))}`;
+}
+
+/** Keeps a return URL on this site; anything else becomes the home page. The server checks too. */
+export function localReturnUrl(returnUrl: string | null | undefined): string {
+  return returnUrl && /^\/(?![/\\])/.test(returnUrl) ? returnUrl : '/';
 }

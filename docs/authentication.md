@@ -10,6 +10,8 @@ FamilyGraph signs users in with Google only (D-008). The first sign-in creates t
 | `Authentication:Google:ClientSecret` | `Authentication__Google__ClientSecret` | Google OAuth client secret. Never commit it. |
 | `Admin:Emails` | `Admin__Emails__0`, `Admin__Emails__1`, ... | Email addresses that get the `Administrator` role. |
 
+The Client never reads these settings or talks to Google. It loads `GET /api/configuration` when it starts, which says only whether Google sign-in is configured, and the sign-in button navigates to `/api/account/sign-in`.
+
 An account gets or loses `Administrator` each time it signs in, by matching its Google-verified email against `Admin:Emails`. A change to the list takes effect at the user's next sign-in. There is no in-app way to promote or demote anyone.
 
 ## Creating a Google OAuth client
