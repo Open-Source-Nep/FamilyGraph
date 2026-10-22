@@ -1,4 +1,5 @@
 using FamilyGraph.Application.Accounts;
+using FamilyGraph.Application.Graph;
 using FamilyGraph.Application.People;
 using FamilyGraph.Application.Persistence;
 using FamilyGraph.Application.Relationships;
@@ -48,6 +49,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IPersonQueries, EfPersonQueries>();
         services.AddScoped<IParentChildLinkStore, EfParentChildLinkStore>();
         services.AddScoped<IRelationshipQueries, EfRelationshipQueries>();
+        services.AddScoped<IGraphQueries, EfGraphQueries>();
         return services;
     }
 

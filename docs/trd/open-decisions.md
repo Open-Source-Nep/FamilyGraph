@@ -40,7 +40,8 @@ The technical decision log, plus any unresolved choices. Do not treat recommenda
 - Person profile use cases, unit of work and API (D-019 below).
 - Creating parent–child links: use case, ancestor query and API (D-020 below).
 - Link approvals: use cases, inactive-links view and API (D-021 below).
-- Link deletion: use case, API and Client (D-022 below, proposed).
+- Link deletion: use case, API and Client (D-022 below).
+- Graph exploration: local view, connection search and privacy projection (D-023 below, proposed).
 - **Name length (agreed 2026-10-21):** Business puts no length cap on name parts. Any storage or input limit is set later by persistence (#9) and API validation (D-010).
 
 ## Discussion topics (all agreed)
@@ -384,7 +385,7 @@ For each major decision, record:
 
 ### D-022: Link deletion end to end
 
-- **Status:** proposed (2026-10-22). Issue #61, the Application, API and Client parts of #16.
+- **Status:** agreed (2026-10-22). Issue #61, the Application, API and Client parts of #16.
 - **Context:** D-014 fixes deletion in the domain: only an account that maintains both endpoints deletes, in any consent state, finally, and a deleted link rejects every further change. D-021 put withdrawal on the person page and the Approvals page and left deletion to #16. D-015 already records `LinkDeleted`, distinct from the consent events.
 - **Options considered:** `DELETE /api/relationships/{id}` or a `POST .../delete` action next to approve and disagree; 200 with the link or 204; the status of `link.deleted` (409 conflict, 404 or 410 gone, or 422 as before); where the Client offers deletion.
 - **Trade-offs:** `DELETE` is the plain HTTP verb for removal, and no state is left for the caller to show. 404 or 410 would tell a non-maintainer that the link existed and was deleted, which D-014 hides by checking authority first; 409 matches `link.consent_unchanged` as a change that conflicts with the link's current state.
@@ -394,3 +395,19 @@ For each major decision, record:
   - **Endpoint:** `DELETE /api/relationships/{id}`, 204 No Content.
   - **Client:** "Delete link", with an inline confirmation that says deletion cannot be undone, on each relative of the person page where you maintain both people (where "Withdraw approval" shows when you maintain only one), and on each Approvals-page link where you maintain both people.
 - **Consequences:** Deleting a link a moment after the other maintainer's account took over one endpoint fails with 403, and the Client shows withdrawal on the next load. The derived-relationship part of #16's acceptance is checked once #21 exists.
+
+### D-023: Graph exploration API
+
+- **Status:** proposed (2026-10-22). Issue #20. The choice of people in a local view was agreed with the user on 2026-10-22.
+- **Context:** D-009 fixes the limits (2 generations each way, at most 4; 10 people, at most 500; 10,000 people examined for "how are two people related"; a query timeout) and recursive CTEs. D-010 fixes "has more" and "load more" instead of pagination, and one privacy component for every read path. PRD 08 asks for the shortest path plus up to 5 more. Privacy settings and deleted profiles come with #18, so every profile is Public for now (PRD 05). Path explanations, labels and adoption wording are #21; the visual view is #23.
+- **Options considered:** which people fill a local view (nearest first in any direction, ancestors and descendants only, or a direction chosen by the client); walking in recursive CTEs or per generation in Application; finding paths in SQL or in a pure Business service over a bounded set of links; how "more paths" are counted; a command timeout or a cancelled query.
+- **Trade-offs:** Nearest-first shows siblings and the other parent of your children in the first view, at the cost of a fan or tree layout needing to place them. Paths in SQL would need path arrays per walk, which grow fast in a family graph; loading the links between the nearest 10,000 people and searching them in memory keeps the CTE simple, and every shortest path to a reached person lies inside that set. A Npgsql command timeout applies per read, so a walk that streams rows slowly would never hit it.
+- **Decision:**
+  - **Local view (agreed):** the centre and the people nearest to it in any direction over active links, closest first (parents, children, then siblings, grandparents, grandchildren and so on), within `Graph:ViewGenerations` generations above or below the centre. People of the same distance are ordered by the closest generation, then ancestors before descendants, then ID. The walk also stops at twice as many links as generations (4 by default), so second cousins wait for "load more".
+  - **Read side:** `IGraphQueries` in Application, `EfGraphQueries` in Infrastructure. The local view is one recursive CTE that keeps one row per (person, distance, generation), then the nearest `Graph:ViewPeople` people, plus one more row to tell it was cut short. Each person's `HasMore` is an `EXISTS` check for an active link to someone not in the view. The connection search walks breadth first with one row per person and stops at `Graph:PathSearchPeople` people (default 10,000), then loads the active links between them.
+  - **Paths:** `RelationshipPaths` in Business is a pure k-shortest simple paths search (Yen's algorithm) over those links: the shortest path, then up to `Graph:MorePaths` (default 5) more, ordered by length and then by link IDs. One more is searched for, to tell that further paths exist. No path repeats a person, so a cycle is tolerated.
+  - **Privacy:** `PrivacyProjection` in Application is the only way to create a `PersonReference`, which graph read models return. Query services return `PersonRecord`. Until #18 it passes every name through; #18 adds the `Private` and `Deleted` placeholders there.
+  - **Endpoints:** `GET /api/people/{id}/graph` returns the centre, the people (each with its generation, `hasMore` and whether you maintain it), the active links between them with their type, and `isTruncated`. "Load more" around an edge person is the same request centred on them. `GET /api/people/{id}/connections/{otherId}` returns the paths, each step with its link, `Parent` or `Child` and the link type, plus `morePathsExist` and `searchComplete`. When the search is not complete, no path means "no connection found within the search limit". Unknown people are 404 `person.not_found`.
+  - **Timeout:** each graph query runs under `Graph:QueryTimeoutSeconds` (default 10) by cancelling it, which also stops it on the server. A timeout is 503 `graph.timeout`.
+  - **Limits:** `Graph:ViewGenerations` (default 2, 1 to 4), `Graph:ViewPeople` (default 10, 1 to 500), `Graph:PathSearchPeople` (default 10,000), `Graph:MorePaths` (default 5). A value out of range stops the Server at startup.
+- **Consequences:** A view centred on an edge person returns people the client already shows, and its `hasMore` flags are relative to that response; #23 may add a "people already shown" filter if the client needs it. The search examines people nearest to the first person, so a longer alternative path may be missed near the limit. The existing relatives and inactive-links lists move to `PrivacyProjection` with #18. A seeded test with more than 10,000 people checks both queries stay well inside the timeout.
