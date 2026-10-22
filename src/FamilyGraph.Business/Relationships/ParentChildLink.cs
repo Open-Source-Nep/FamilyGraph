@@ -6,7 +6,8 @@ namespace FamilyGraph.Business.Relationships;
 /// A directly registered parent–child fact (PRD 02). Consent is tracked per endpoint (PRD 03):
 /// the link is active only when both the parent side and the child side have approved.
 /// Each endpoint's maintainer moves that endpoint between states with <see cref="Approve"/> and
-/// <see cref="Disagree"/> (D-013); no one else can change it.
+/// <see cref="Disagree"/> (D-013); no one else can change it. An account that maintains both
+/// endpoints removes the link with <see cref="Delete"/> instead (D-014).
 /// </summary>
 public sealed class ParentChildLink
 {
@@ -38,7 +39,13 @@ public sealed class ParentChildLink
 
     public EndpointApproval ChildApproval { get; private set; }
 
-    public bool IsActive => ParentApproval == EndpointApproval.Approved && ChildApproval == EndpointApproval.Approved;
+    /// <summary>When the link was deleted, or <see langword="null"/> while it exists (D-009).</summary>
+    public DateTimeOffset? DeletedAt { get; private set; }
+
+    public bool IsDeleted => DeletedAt is not null;
+
+    public bool IsActive =>
+        !IsDeleted && ParentApproval == EndpointApproval.Approved && ChildApproval == EndpointApproval.Approved;
 
     /// <summary>
     /// Creates a link. The creator must maintain at least one endpoint; their endpoint(s) start
@@ -93,6 +100,7 @@ public sealed class ParentChildLink
         ArgumentNullException.ThrowIfNull(parentAncestors);
 
         var isParentSide = IsParentSide(endpoint, actorId);
+        EnsureNotDeleted();
         if (ApprovalOf(isParentSide) == EndpointApproval.Approved)
         {
             throw new ConsentUnchangedException();
@@ -116,6 +124,7 @@ public sealed class ParentChildLink
         ArgumentNullException.ThrowIfNull(otherEndpoint);
 
         var isParentSide = IsParentSide(endpoint, actorId);
+        EnsureNotDeleted();
         if (otherEndpoint.Id != (isParentSide ? ChildId : ParentId))
         {
             throw new ArgumentException("The other endpoint must be the other person on this link.", nameof(otherEndpoint));
@@ -132,6 +141,39 @@ public sealed class ParentChildLink
         }
 
         SetApproval(isParentSide, EndpointApproval.Disagreed);
+    }
+
+    /// <summary>
+    /// Deletes the link, in any consent state. Only an account that maintains both endpoints may
+    /// do this; anyone else withdraws their own approval with <see cref="Disagree"/> (PRD 03, D-014).
+    /// Deletion is final and only sets <see cref="DeletedAt"/>, so the link's history is kept.
+    /// </summary>
+    public void Delete(Person parent, Person child, AccountId actorId, DateTimeOffset deletedAt)
+    {
+        ArgumentNullException.ThrowIfNull(parent);
+        ArgumentNullException.ThrowIfNull(child);
+
+        if (parent.Id != ParentId || child.Id != ChildId)
+        {
+            throw new ArgumentException("The parent and child must be the people on this link.");
+        }
+
+        if (!parent.IsMaintainedBy(actorId) || !child.IsMaintainedBy(actorId))
+        {
+            throw new NotSoleMaintainerException();
+        }
+
+        EnsureNotDeleted();
+
+        DeletedAt = deletedAt;
+    }
+
+    private void EnsureNotDeleted()
+    {
+        if (IsDeleted)
+        {
+            throw new LinkDeletedException();
+        }
     }
 
     /// <summary>Checks that the actor maintains the endpoint and tells which side it is.</summary>
@@ -183,3 +225,11 @@ public sealed class SoleMaintainerMustDeleteException()
     : DomainException(
         "link.sole_maintainer_must_delete",
         "You maintain both people on this link, so delete the link instead of disagreeing with it.");
+
+public sealed class NotSoleMaintainerException()
+    : DomainException(
+        "link.not_sole_maintainer",
+        "Only someone who maintains both people on this link can delete it. Withdraw your approval instead.");
+
+public sealed class LinkDeletedException()
+    : DomainException("link.deleted", "This link has been deleted.");
