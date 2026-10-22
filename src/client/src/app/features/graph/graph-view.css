@@ -1,8 +1,3 @@
-.graph-panel {
-  max-width: 64rem;
-  padding: 0 1rem;
-}
-
 .selected {
   display: flex;
   flex-wrap: wrap;
