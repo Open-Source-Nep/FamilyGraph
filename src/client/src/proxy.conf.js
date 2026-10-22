@@ -1,0 +1,25 @@
+const process = require('process');
+
+const target = process.env.ASPNETCORE_HTTPS_PORT
+  ? `https://localhost:${process.env.ASPNETCORE_HTTPS_PORT}`
+  : process.env.ASPNETCORE_URLS
+    ? process.env.ASPNETCORE_URLS.split(';')[0]
+    : 'http://localhost:5039';
+
+const PROXY_CONFIG = [
+  {
+    context: ['/api'],
+    target,
+    changeOrigin: true,
+    secure: false,
+  },
+  {
+    context: ['/hubs'],
+    target,
+    changeOrigin: true,
+    secure: false,
+    ws: true,
+  },
+];
+
+module.exports = PROXY_CONFIG;
