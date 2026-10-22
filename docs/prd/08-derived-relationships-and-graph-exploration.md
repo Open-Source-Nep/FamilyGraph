@@ -19,6 +19,7 @@ Enable people to explore a large interconnected family graph without treating de
 
 - The client offers a fan diagram and a tree diagram centred on one person.
 - A view shows the centre person and a limited number of related people (about 10 by default, configurable per instance). People at the edge with further relatives show a "load more" control that expands the view around them.
+- The related people are the ones nearest to the centre person in any direction, closest first: parents and children, then siblings, grandparents and grandchildren, and so on, within a limited number of generations above and below.
 - Adoptive links are drawn differently from biological links (e.g. dashed) with a legend. The exact styling is a UI decision.
 
 ## Relationship explanations

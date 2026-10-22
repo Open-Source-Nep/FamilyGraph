@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using FamilyGraph.Application.Accounts;
+using FamilyGraph.Application.Graph;
 using FamilyGraph.Application.People;
 using FamilyGraph.Application.Persistence;
 using FamilyGraph.Application.Relationships;
@@ -11,12 +12,13 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Server.Accounts;
+using Server.IntegrationTests.Graph;
 using Server.IntegrationTests.People;
 
 namespace Server.IntegrationTests.Accounts;
 
 /// <summary>
-/// Runs the Server with in-memory account, people and link stores and a fake Google ID token
+/// Runs the Server with in-memory account, people and link stores, graph queries and a fake Google ID token
 /// validator, so the endpoints are tested without Google or a database. A fake ID token is
 /// "subject|email|verified|nonce" (see <see cref="IdToken"/>).
 /// </summary>
@@ -24,9 +26,13 @@ public sealed class AccountTestFactory : WebApplicationFactory<Program>
 {
     public const string AdministratorEmail = "admin@example.org";
 
+    public AccountTestFactory() => Graph = new InMemoryGraph(People);
+
     public InMemoryAccountStore Store { get; } = new();
 
     public InMemoryPeople People { get; } = new();
+
+    public InMemoryGraph Graph { get; }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -41,6 +47,7 @@ public sealed class AccountTestFactory : WebApplicationFactory<Program>
             services.AddSingleton<IRelationshipQueries>(People);
             services.AddSingleton<IAuditLog>(People);
             services.AddSingleton<IUnitOfWork>(People);
+            services.AddSingleton<IGraphQueries>(Graph);
             services.AddSingleton<IGoogleIdTokenValidator, FakeIdTokenValidator>();
         });
     }
