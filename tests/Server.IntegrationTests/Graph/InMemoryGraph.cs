@@ -62,6 +62,31 @@ public sealed class InMemoryGraph(InMemoryPeople store) : IGraphQueries
         return Task.FromResult(new LinkNeighbourhood([.. ActiveLinks()], IsComplete: true));
     }
 
+    public Task<OverviewData> OverviewAsync(
+        IReadOnlyCollection<PersonId> startIds, AccountId viewerId, int peopleLimit, CancellationToken cancellationToken)
+    {
+        ThrowIfTimingOut();
+        var reached = startIds.Distinct().ToList();
+        var seen = reached.ToHashSet();
+        for (var index = 0; index < reached.Count && reached.Count <= peopleLimit; index++)
+        {
+            foreach (var (other, _) in Neighbours(reached[index]))
+            {
+                if (seen.Add(other))
+                {
+                    reached.Add(other);
+                }
+            }
+        }
+
+        var shown = reached.Take(peopleLimit).ToList();
+        var ids = shown.ToHashSet();
+        return Task.FromResult(new OverviewData(
+            [.. shown.Select(id => Record(id, viewerId))],
+            [.. ActiveLinks().Where(link => ids.Contains(link.ParentId) && ids.Contains(link.ChildId))],
+            reached.Count > shown.Count));
+    }
+
     public Task<IReadOnlyList<PersonRecord>> PeopleAsync(
         IReadOnlyCollection<PersonId> ids, AccountId viewerId, CancellationToken cancellationToken) =>
         Task.FromResult<IReadOnlyList<PersonRecord>>(

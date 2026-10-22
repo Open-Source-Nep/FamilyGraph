@@ -16,6 +16,8 @@ internal sealed class InMemoryGraph(InMemoryPeople store) : IGraphQueries
 
     public int? LastSearchLimit { get; private set; }
 
+    public int? LastOverviewLimit { get; private set; }
+
     /// <summary>Makes every connection search report that it stopped at its people limit.</summary>
     public bool SearchHitsLimit { get; set; }
 
@@ -64,6 +66,31 @@ internal sealed class InMemoryGraph(InMemoryPeople store) : IGraphQueries
     {
         LastSearchLimit = peopleLimit;
         return Task.FromResult(new LinkNeighbourhood([.. ActiveLinks()], !SearchHitsLimit));
+    }
+
+    public Task<OverviewData> OverviewAsync(
+        IReadOnlyCollection<PersonId> startIds, AccountId viewerId, int peopleLimit, CancellationToken cancellationToken)
+    {
+        LastOverviewLimit = peopleLimit;
+        var reached = startIds.Distinct().ToList();
+        var seen = reached.ToHashSet();
+        for (var index = 0; index < reached.Count && reached.Count <= peopleLimit; index++)
+        {
+            foreach (var (other, _) in Neighbours(reached[index]))
+            {
+                if (seen.Add(other))
+                {
+                    reached.Add(other);
+                }
+            }
+        }
+
+        var shown = reached.Take(peopleLimit).ToList();
+        var ids = shown.ToHashSet();
+        return Task.FromResult(new OverviewData(
+            [.. shown.Select(id => Record(id, viewerId))],
+            [.. ActiveLinks().Where(link => ids.Contains(link.ParentId) && ids.Contains(link.ChildId))],
+            reached.Count > shown.Count));
     }
 
     public Task<IReadOnlyList<PersonRecord>> PeopleAsync(

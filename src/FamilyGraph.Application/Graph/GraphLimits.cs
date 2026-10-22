@@ -14,6 +14,10 @@ public sealed record GraphLimits
 
     public const int MaxViewPeople = 500;
 
+    public const int DefaultOverviewPeople = 500;
+
+    public const int MaxOverviewPeople = 500;
+
     public const int DefaultPathSearchPeople = 10_000;
 
     public const int DefaultMorePaths = 5;
@@ -25,7 +29,8 @@ public sealed record GraphLimits
         int viewPeople = DefaultViewPeople,
         int pathSearchPeople = DefaultPathSearchPeople,
         int morePaths = DefaultMorePaths,
-        int queryTimeoutSeconds = DefaultQueryTimeoutSeconds)
+        int queryTimeoutSeconds = DefaultQueryTimeoutSeconds,
+        int overviewPeople = DefaultOverviewPeople)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(viewGenerations, 1);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(viewGenerations, MaxViewGenerations);
@@ -34,12 +39,15 @@ public sealed record GraphLimits
         ArgumentOutOfRangeException.ThrowIfLessThan(pathSearchPeople, 1);
         ArgumentOutOfRangeException.ThrowIfNegative(morePaths);
         ArgumentOutOfRangeException.ThrowIfLessThan(queryTimeoutSeconds, 1);
+        ArgumentOutOfRangeException.ThrowIfLessThan(overviewPeople, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(overviewPeople, MaxOverviewPeople);
 
         ViewGenerations = viewGenerations;
         ViewPeople = viewPeople;
         PathSearchPeople = pathSearchPeople;
         MorePaths = morePaths;
         QueryTimeoutSeconds = queryTimeoutSeconds;
+        OverviewPeople = overviewPeople;
     }
 
     /// <summary>How many generations above and below the centre a local view reaches.</summary>
@@ -47,6 +55,9 @@ public sealed record GraphLimits
 
     /// <summary>How many people a local view returns besides its centre.</summary>
     public int ViewPeople { get; }
+
+    /// <summary>How many people the overview of everyone connected to your profiles returns.</summary>
+    public int OverviewPeople { get; }
 
     /// <summary>How many people a search for how two people are related examines.</summary>
     public int PathSearchPeople { get; }

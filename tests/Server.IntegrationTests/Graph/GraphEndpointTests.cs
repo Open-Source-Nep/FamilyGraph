@@ -14,6 +14,7 @@ public class GraphEndpointTests(AccountTestFactory factory) : IClassFixture<Acco
     [Trait("AC", "AC-05.6")]
     [InlineData("/api/people/0199f6a2-0000-7000-8000-000000000001/graph")]
     [InlineData("/api/people/0199f6a2-0000-7000-8000-000000000001/connections/0199f6a2-0000-7000-8000-000000000002")]
+    [InlineData("/api/graph/overview")]
     public async Task Graph_reads_require_a_session(string url)
     {
         using var browser = factory.CreateBrowser();
@@ -62,6 +63,42 @@ public class GraphEndpointTests(AccountTestFactory factory) : IClassFixture<Acco
 
         Assert.Equal(["Maya"], view!.People.Select(row => row.Person.FirstName));
         Assert.Empty(view.Links);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-08.4")]
+    public async Task Overview_returns_everyone_connected_to_your_profiles_in_one_response()
+    {
+        var (other, otherToken) = await SignInAsync(UniqueEmail());
+        var stranger = await CreatePersonAsync(other, otherToken, "Hari");
+        var (browser, token) = await SignInAsync(UniqueEmail());
+        var mother = await CreatePersonAsync(browser, token, "Sita");
+        var you = await CreatePersonAsync(browser, token, "Maya");
+        var daughter = await CreatePersonAsync(browser, token, "Rina");
+        (await CreateLinkAsync(browser, token, mother, you, "Biological")).Dispose();
+        (await CreateLinkAsync(browser, token, you, daughter, "Adoptive")).Dispose();
+        (await CreateLinkAsync(browser, token, stranger, daughter, "Biological")).Dispose();
+
+        var overview = await browser.GetFromJsonAsync<GraphOverviewResponse>("/api/graph/overview", Cancellation);
+
+        // The link from Hari waits for the other account's approval, so Hari is not reached.
+        Assert.Equal(["Maya", "Rina", "Sita"], overview!.People.Select(person => person.FirstName).Order());
+        Assert.All(overview.People, person => Assert.True(person.MaintainedByYou));
+        Assert.Equal(
+            [(mother, you, "Biological"), (you, daughter, "Adoptive")],
+            overview.Links.Select(link => (link.ParentId, link.ChildId, link.Type)).OrderByDescending(link => link.Item3));
+        Assert.False(overview.IsTruncated);
+    }
+
+    [Fact]
+    public async Task Overview_without_profiles_is_empty()
+    {
+        var (browser, _) = await SignInAsync(UniqueEmail());
+
+        var overview = await browser.GetFromJsonAsync<GraphOverviewResponse>("/api/graph/overview", Cancellation);
+
+        Assert.Empty(overview!.People);
+        Assert.Empty(overview.Links);
     }
 
     [Fact]

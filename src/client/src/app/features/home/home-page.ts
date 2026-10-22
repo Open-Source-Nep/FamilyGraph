@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { AuthService } from '../../core/auth/auth.service';
@@ -22,7 +22,6 @@ export class HomePage {
   protected readonly account = inject(AuthService).account;
   protected readonly profiles = signal<PersonSummary[] | null>(null);
   protected readonly error = signal<string | null>(null);
-  protected readonly profileIds = computed(() => this.profiles()?.map((person) => person.id) ?? []);
 
   constructor() {
     this.people.listMaintained().then(

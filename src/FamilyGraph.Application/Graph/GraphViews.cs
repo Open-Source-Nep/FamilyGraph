@@ -14,6 +14,13 @@ public sealed record LocalViewPerson(PersonReference Person, int Generation, boo
 public sealed record LocalView(
     PersonId CentreId, IReadOnlyList<LocalViewPerson> People, IReadOnlyList<GraphLink> Links, bool IsTruncated);
 
+/// <summary>
+/// Everyone connected through active links to the profiles the viewer maintains, nearest first, up
+/// to the configured limit, and the active links between them (D-024). Nobody is the centre.
+/// <see cref="IsTruncated"/> says more people were in reach.
+/// </summary>
+public sealed record Overview(IReadOnlyList<PersonReference> People, IReadOnlyList<GraphLink> Links, bool IsTruncated);
+
 /// <summary>A step of a path: the link, how the person reached relates to the previous one, and that person.</summary>
 public sealed record ConnectionStep(GraphLink Link, StepRelation Relation, PersonReference Person);
 

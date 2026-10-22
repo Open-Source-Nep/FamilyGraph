@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Service, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-import { Connections, LocalView } from './graph';
+import { Connections, GraphOverview, LocalView } from './graph';
 
 /** Graph exploration requests. The server bounds every query and walks only active links. */
 @Service()
@@ -14,6 +14,11 @@ export class GraphService {
     return firstValueFrom(
       this.http.get<LocalView>(`/api/people/${encodeURIComponent(personId)}/graph`),
     );
+  }
+
+  /** Everyone connected to your profiles, in one bounded response, for the home page. */
+  overview(): Promise<GraphOverview> {
+    return firstValueFrom(this.http.get<GraphOverview>('/api/graph/overview'));
   }
 
   connections(personId: string, otherId: string): Promise<Connections> {

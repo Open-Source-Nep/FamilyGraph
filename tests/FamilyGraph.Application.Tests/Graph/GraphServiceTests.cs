@@ -114,11 +114,67 @@ public class GraphServiceTests
     }
 
     [Fact]
+    [Trait("AC", "AC-08.4")]
+    public async Task Overview_shows_everyone_connected_to_your_profiles_up_to_the_configured_limit()
+    {
+        var mother = AddPerson("Sita", Bob);
+        var you = AddPerson("Maya", Alice);
+        var daughter = AddPerson("Rina", Bob);
+        var other = AddPerson("Anil", Alice);
+        _ = AddPerson("Hari", Bob);
+        AddLink(mother, you);
+        AddLink(you, daughter, ParentChildType.Adoptive);
+
+        var overview = await Service(new GraphLimits(overviewPeople: 4)).OverviewAsync(Alice, Cancellation);
+
+        Assert.Equal(4, _graph.LastOverviewLimit);
+        Assert.Equal(
+            ["Anil", "Maya", "Sita", "Rina"],
+            overview.People.Select(person => person.Name.FirstName));
+        Assert.Equal([true, true, false, false], overview.People.Select(person => person.MaintainedByViewer));
+        Assert.Equal(2, overview.Links.Count);
+        Assert.False(overview.IsTruncated);
+
+        var cut = await Service(new GraphLimits(overviewPeople: 2)).OverviewAsync(Alice, Cancellation);
+
+        Assert.Equal(2, cut.People.Count);
+        Assert.True(cut.IsTruncated);
+    }
+
+    [Fact]
+    public async Task Overview_without_profiles_is_empty()
+    {
+        _ = AddPerson("Hari", Bob);
+
+        var overview = await Service().OverviewAsync(Alice, Cancellation);
+
+        Assert.Empty(overview.People);
+        Assert.Empty(overview.Links);
+        Assert.False(overview.IsTruncated);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-08.1")]
+    public async Task Overview_uses_only_active_links()
+    {
+        var you = AddPerson("Maya", Alice);
+        var mother = AddPerson("Sita", Bob);
+        var link = AddLink(mother, you);
+        link.Disagree(_store.People[mother], _store.People[you], Bob);
+
+        var overview = await Service().OverviewAsync(Alice, Cancellation);
+
+        Assert.Equal(["Maya"], overview.People.Select(person => person.Name.FirstName));
+        Assert.Empty(overview.Links);
+    }
+
+    [Fact]
     public void Limits_beyond_their_maximums_are_refused()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => new GraphLimits(viewGenerations: GraphLimits.MaxViewGenerations + 1));
         Assert.Throws<ArgumentOutOfRangeException>(() => new GraphLimits(viewPeople: GraphLimits.MaxViewPeople + 1));
         Assert.Throws<ArgumentOutOfRangeException>(() => new GraphLimits(pathSearchPeople: 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new GraphLimits(overviewPeople: GraphLimits.MaxOverviewPeople + 1));
     }
 
     private PersonId AddPerson(string firstName, AccountId maintainer)

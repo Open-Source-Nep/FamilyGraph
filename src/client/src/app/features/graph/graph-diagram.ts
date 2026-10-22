@@ -79,8 +79,8 @@ interface Hovered {
  * The tree diagram of the shown people (PRD 08, D-024): parents above children, laid out by
  * dagre and drawn by Cytoscape on a canvas. Adoptive links are dashed and people with relatives
  * not shown have a double border. Each person has a coloured initial avatar and hovering shows their
- * details. The dots mode (the home page) draws each person as a small coloured dot, with no names,
- * legend or details. The canvas is not keyboard or screen reader accessible, so the page always
+ * details. The dots mode (the home page) draws each person as a small coloured dot, with no legend
+ * or details; hovering shows only their name. The canvas is not keyboard or screen reader accessible, so the page always
  * offers the same people as links or text next to it (AC-09.2).
  */
 @Component({
@@ -93,7 +93,7 @@ export class GraphDiagram {
 
   readonly graph = input.required<ShownGraph>();
   readonly selectedId = input<string | null>(null);
-  /** Only dots and lines: no names, legend, tooltip, centre or "has more" borders. */
+  /** Only dots and lines, with the name alone on hover: no legend, centre or "has more" borders. */
   readonly dots = input(false);
   readonly selected = output<string>();
 
@@ -131,9 +131,7 @@ export class GraphDiagram {
         const position = event.target.renderedPosition();
         const radius = event.target.renderedOuterHeight() / 2;
         container.style.cursor = 'pointer';
-        if (!this.dots()) {
-          this.hovered.set(row ? { row, x: position.x, y: position.y - radius } : null);
-        }
+        this.hovered.set(row ? { row, x: position.x, y: position.y - radius } : null);
       });
       cy.on('mouseout', 'node', () => {
         container.style.cursor = '';

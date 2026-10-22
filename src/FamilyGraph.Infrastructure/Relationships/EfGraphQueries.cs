@@ -63,10 +63,10 @@ internal sealed class EfGraphQueries(FamilyGraphDbContext context, GraphLimits l
                 WHERE link.child_id = shown.id AND link.parent_id <> ALL (@ids) AND {Active})
         """;
 
-    /// <summary>Parameters: <c>@start</c>, <c>@row_limit</c>.</summary>
+    /// <summary>Parameters: <c>@starts</c>, the people to start from, and <c>@row_limit</c>.</summary>
     private static readonly string ReachedSql = $"""
         WITH RECURSIVE reached (person_id) AS (
-            SELECT @start
+            SELECT origin.id FROM unnest(@starts) AS origin (id)
             UNION
             SELECT step.person_id
             FROM reached
@@ -137,12 +137,31 @@ internal sealed class EfGraphQueries(FamilyGraphDbContext context, GraphLimits l
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(peopleLimit);
 
-        var reached = await RunAsync(token => context.Database.SqlQueryRaw<Guid>(ReachedSql,
-            new NpgsqlParameter<Guid>("start", personId.Value),
-            new NpgsqlParameter<int>("row_limit", peopleLimit + 1)).ToListAsync(token), cancellationToken);
+        var reached = await ReachedAsync([personId.Value], peopleLimit + 1, cancellationToken);
 
         var examined = reached.Take(peopleLimit).ToArray();
         return new LinkNeighbourhood(await LinksBetweenAsync(examined, cancellationToken), reached.Count == examined.Length);
+    }
+
+    /// <summary>
+    /// The same breadth-first walk as <see cref="LinksAroundAsync"/>, from all the starting people
+    /// at once, so the people returned are the nearest to any of them. One person past the limit
+    /// tells that more were in reach.
+    /// </summary>
+    public async Task<OverviewData> OverviewAsync(
+        IReadOnlyCollection<PersonId> startIds, AccountId viewerId, int peopleLimit, CancellationToken cancellationToken)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(peopleLimit);
+
+        var reached = await ReachedAsync([.. startIds.Select(id => id.Value)], peopleLimit + 1, cancellationToken);
+        var shown = reached.Take(peopleLimit).ToArray();
+        var people = (await PeopleAsync([.. shown.Select(id => new PersonId(id))], viewerId, cancellationToken))
+            .ToDictionary(person => person.Id.Value);
+
+        return new OverviewData(
+            [.. shown.Where(people.ContainsKey).Select(id => people[id])],
+            await LinksBetweenAsync(shown, cancellationToken),
+            reached.Count > shown.Length);
     }
 
     public async Task<IReadOnlyList<PersonRecord>> PeopleAsync(
@@ -159,6 +178,11 @@ internal sealed class EfGraphQueries(FamilyGraphDbContext context, GraphLimits l
         return [.. rows.Select(row => new PersonRecord(
             new PersonId(row.Id), new PersonName(row.FirstName, row.MiddleName, row.LastName), row.MaintainedByViewer))];
     }
+
+    private Task<List<Guid>> ReachedAsync(Guid[] starts, int rowLimit, CancellationToken cancellationToken) =>
+        RunAsync(token => context.Database.SqlQueryRaw<Guid>(ReachedSql,
+            new NpgsqlParameter<Guid[]>("starts", starts),
+            new NpgsqlParameter<int>("row_limit", rowLimit)).ToListAsync(token), cancellationToken);
 
     private async Task<IReadOnlyList<GraphLink>> LinksBetweenAsync(Guid[] ids, CancellationToken cancellationToken)
     {

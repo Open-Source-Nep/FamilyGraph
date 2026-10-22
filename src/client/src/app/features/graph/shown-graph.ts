@@ -1,12 +1,13 @@
-import { GraphLink, GraphPerson, LocalView, LocalViewPerson } from './graph';
+import { GraphLink, GraphOverview, GraphPerson, LocalView, LocalViewPerson } from './graph';
 
 /**
- * The people and links on screen: a local view plus the views loaded around edge people (AC-08.5).
+ * The people and links on screen: a local view plus the views loaded around edge people (AC-08.5),
+ * or the home page's overview, which has no centre (`centreId` null, every generation 0).
  * `generation` is relative to the first view's centre. People keep the order they were found in,
  * nearest first.
  */
 export interface ShownGraph {
-  centreId: string;
+  centreId: string | null;
   people: LocalViewPerson[];
   links: GraphLink[];
 }
@@ -16,6 +17,15 @@ export const maxShownPeople = 500;
 
 export function fromView(view: LocalView): ShownGraph {
   return { centreId: view.centreId, people: view.people, links: view.links };
+}
+
+/** The overview as people on screen: nobody is the centre and nobody has more to load. */
+export function fromOverview(overview: GraphOverview): ShownGraph {
+  return {
+    centreId: null,
+    people: overview.people.map((person) => ({ person, generation: 0, hasMore: false })),
+    links: overview.links,
+  };
 }
 
 /**

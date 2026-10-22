@@ -26,6 +26,14 @@ public interface IGraphQueries
     /// </summary>
     Task<LinkNeighbourhood> LinksAroundAsync(PersonId personId, int peopleLimit, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// The first <paramref name="peopleLimit"/> people reached from any of
+    /// <paramref name="startIds"/> in breadth-first order, nearest first, with the active links
+    /// between them (D-023).
+    /// </summary>
+    Task<OverviewData> OverviewAsync(
+        IReadOnlyCollection<PersonId> startIds, AccountId viewerId, int peopleLimit, CancellationToken cancellationToken);
+
     /// <summary>The given people, for privacy projection. Unknown IDs are left out.</summary>
     Task<IReadOnlyList<PersonRecord>> PeopleAsync(
         IReadOnlyCollection<PersonId> ids, AccountId viewerId, CancellationToken cancellationToken);
@@ -40,6 +48,12 @@ public sealed record LocalViewPersonData(PersonRecord Person, int Generation, bo
 /// <summary>The people of a local view, nearest first, and the active links between them.</summary>
 public sealed record LocalViewData(
     IReadOnlyList<LocalViewPersonData> People, IReadOnlyList<GraphLink> Links, bool IsTruncated);
+
+/// <summary>
+/// The people reached from the starting people, nearest first, and the active links between them.
+/// <see cref="IsTruncated"/> says more people were in reach.
+/// </summary>
+public sealed record OverviewData(IReadOnlyList<PersonRecord> People, IReadOnlyList<GraphLink> Links, bool IsTruncated);
 
 /// <summary><see cref="IsComplete"/> is false when the search stopped at its people limit.</summary>
 public sealed record LinkNeighbourhood(IReadOnlyList<GraphLink> Links, bool IsComplete);
