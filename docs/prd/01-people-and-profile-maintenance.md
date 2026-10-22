@@ -8,6 +8,7 @@ Define person profiles, account separation, and profile-maintainer authority.
 
 - A `Person` is a real-world individual represented in the graph. A person does not need a user account.
 - A `UserAccount` is an authenticated application user. It may claim and maintain a person profile.
+- Creating a user account does not create a person profile.
 - A contributor may create multiple person profiles.
 - Creating a person initially requires only a name.
 - A person's name has a first name (required), a middle name (optional), and a last name (optional). No other profile data is required.
@@ -43,6 +44,7 @@ Define person profiles, account separation, and profile-maintainer authority.
 - `AC-01.9` Deleting an account assigns its maintained profiles to the first available administrator, without changing any relationship's consent state.
 - `AC-01.10` A claimed person deleting their account can choose to delete their own profile or leave it assigned to an administrator.
 - `AC-01.11` An administrator can approve a succession request for a profile inherited by an administrator or whose maintainer is unavailable.
+- `AC-01.12` Registering or signing in to an account does not create a person profile.
 
 ## Open details
 

@@ -1,0 +1,10 @@
+{
+  "/api": {
+    "target": "http://localhost:5039",
+    "secure": false
+  },
+  "/signin-google": {
+    "target": "http://localhost:5039",
+    "secure": false
+  }
+}

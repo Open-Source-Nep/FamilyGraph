@@ -1,1 +1,49 @@
-/* You can add global styles to this file, and also import other style files */
+:root {
+  --text: #1f1f24;
+  --muted: #5b5b66;
+  --border: #d9d9e0;
+  --accent: #2f5bd3;
+  --error: #b3261e;
+  font-family: system-ui, sans-serif;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+body {
+  margin: 0;
+}
+
+.panel {
+  max-width: 32rem;
+  margin: 2rem auto;
+}
+
+.error {
+  color: var(--error);
+}
+
+.button,
+button {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--accent);
+  border-radius: 0.375rem;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+dt {
+  color: var(--muted);
+}
+
+dd {
+  margin: 0 0 0.75rem;
+}

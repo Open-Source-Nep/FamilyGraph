@@ -55,7 +55,7 @@ Infrastructure references Application only to implement Application-owned interf
 - Server configures authentication middleware and endpoint authorization.
 - Identity framework types should not automatically become the FamilyGraph domain model.
 - Keep user accounts separate from person profiles, as required by the product.
-- Sign-in method, roles and admin assignment are agreed in D-008 (`open-decisions.md`). The cookie or token session approach remains open.
+- Sign-in method, roles and admin assignment are agreed in D-008 (`open-decisions.md`). Sessions are Identity cookies (D-011); the account model and sign-in flow are in D-018.
 
 ## Rules
 

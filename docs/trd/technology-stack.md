@@ -40,6 +40,7 @@ Agreed (D-001):
 
 Agreed later:
 - EF Core provider: Npgsql (D-009). Versions pinned in #9 (D-017): `Npgsql.EntityFrameworkCore.PostgreSQL` 10.0.3, `Microsoft.EntityFrameworkCore.Design` 10.0.4, `dotnet-ef` 10.0.4 (local tool in `.config/dotnet-tools.json`), `Testcontainers.PostgreSql` 4.16.0.
+- Identity packages pinned in #11 (D-018): `Microsoft.AspNetCore.Identity.EntityFrameworkCore` 10.0.4, `Microsoft.AspNetCore.Authentication.Google` 10.0.12.
 - CI restore/build/test commands (D-012).
 
 Do not assume that template defaults are current or that all package major versions are mutually compatible.
