@@ -30,6 +30,14 @@ Do not add guardianship, step-parent, foster-parent, or other parent categories 
 - The ancestor check is bounded. If it reaches its limit before it can rule out a cycle, the link is rejected with an explanation that it could not be verified as cycle-free. The concrete limits are a technical decision.
 - Graph traversal must still tolerate cycles defensively.
 
+## Birth order of children (agreed 2026-10-22)
+
+- A parent's children have a birth order, eldest first. It sorts that parent's children in views and path explanations only. It is not used to derive relationships or labels (PRD 08).
+- The order is set manually per parent. No birth dates are stored. Each parent has their own order, so half siblings are ordered within each parent's list.
+- Only the parent profile's maintainer changes the order. It needs no consent and never changes a link's consent state or whether it is active. Every change is audited (PRD 07).
+- A newly linked child is unordered until the parent's maintainer places it. Views list ordered children first, then unordered ones by name.
+- Pending and inactive links keep their position, but only active links are shown.
+
 ## Acceptance criteria
 
 - `AC-02.1` A user can create biological and adoptive parent–child relationships.
@@ -39,6 +47,9 @@ Do not add guardianship, step-parent, foster-parent, or other parent categories 
 - `AC-02.5` Inactive/disagreed parent–child links are excluded from normal graph traversal and derived relationships.
 - `AC-02.6` Creating or reactivating a link is rejected when the proposed child is already an ancestor of the proposed parent through active, pending, or inactive links.
 - `AC-02.7` When the bounded ancestor check cannot rule out a cycle, the link is rejected with an explanation that it could not be verified as cycle-free.
+- `AC-02.8` A parent's maintainer can place that parent's children in birth order, eldest first; children left out are unordered.
+- `AC-02.9` Only the parent's maintainer can change the order, and changing it never changes consent or link activity.
+- `AC-02.10` A newly linked child is unordered until placed.
 
 ## Open details
 

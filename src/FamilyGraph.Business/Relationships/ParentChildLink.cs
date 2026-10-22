@@ -44,6 +44,13 @@ public sealed class ParentChildLink
 
     public bool IsDeleted => DeletedAt is not null;
 
+    /// <summary>
+    /// The child's birth-order position among the parent's children (1 is the eldest), or
+    /// <see langword="null"/> while the parent's maintainer has not placed the child (D-016).
+    /// Set only through <see cref="ChildBirthOrder.Arrange"/>; it never affects consent.
+    /// </summary>
+    public int? BirthOrder { get; private set; }
+
     public bool IsActive =>
         !IsDeleted && ParentApproval == EndpointApproval.Approved && ChildApproval == EndpointApproval.Approved;
 
@@ -167,6 +174,8 @@ public sealed class ParentChildLink
 
         DeletedAt = deletedAt;
     }
+
+    internal void SetBirthOrder(int? position) => BirthOrder = position;
 
     private void EnsureNotDeleted()
     {

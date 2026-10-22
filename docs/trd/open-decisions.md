@@ -33,6 +33,7 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 - **Domain enumerations (agreed 2026-10-22, PR #44 review):** closed sets of domain values are sealed classes deriving from `FamilyGraph.Business.BaseEnum<T>`, with one `public static readonly` field per value and a stable integer `Value` for persistence. C# `enum` is not used in the domain.
 - Consent state transitions (D-013 below).
 - Link removal (D-014 below).
+- Birth order of children (D-016 below).
 - **Name length (agreed 2026-10-21):** Business puts no length cap on name parts. Any storage or input limit is set later by persistence (#9) and API validation (D-010).
 
 ## Decisions to discuss next
@@ -258,3 +259,16 @@ For each major decision, record:
   - Maintainers on different accounts remove a link by withdrawing approval (Disagree, D-013), which they can later restore.
   - Delete and Disagree are separate operations, so their audit events (#10) are distinct.
 - **Consequences:** `ParentChildLink` gains `Delete`, `DeletedAt` and `IsDeleted`; Application supplies the timestamp. Audit events come with #10; Application, API and Client parts follow later.
+
+### D-016: Birth order of children
+
+- **Status:** agreed (2026-10-22). Issue #48.
+- **Context:** Ash requires that the order of a parent's children matters. PRD 02 now defines it as a display-only birth order, set manually per parent by the parent's maintainer, with new children unordered. Profiles store no birth date, and a parent's children can include half siblings with a different other parent.
+- **Options considered:** a position on each parent–child link, or a separate ordering aggregate per parent; contiguous positions or sparse ranks; replacing the whole order at once, or moving one child at a time; rejecting an unchanged order, or ignoring it.
+- **Trade-offs:** A position on the link needs no new aggregate and is removed with the link. Replacing the whole order keeps positions unique and contiguous without renumbering rules, and the order of one parent is small. Moving one child at a time is a client convenience that can be built on top. Rejecting an unchanged order matches D-013 and avoids empty audit events.
+- **Decision:**
+  - `ParentChildLink.BirthOrder` is a nullable position among the parent's children (1 is the eldest). `null` means unordered, and every new link starts unordered.
+  - `ChildBirthOrder.Arrange` is a pure Business service. Application supplies all of the parent's non-deleted links and the list of links to place, eldest first. Listed links get positions 1, 2, …; the rest become unordered.
+  - Only the parent's maintainer may arrange (`link.birth_order_not_parent_maintainer`). A link not belonging to the parent (`link.birth_order_unknown_child`), a link listed twice (`link.birth_order_duplicate_child`) or an order identical to the current one (`link.birth_order_unchanged`) is rejected.
+  - Arranging never touches consent, activity or deletion. Pending and inactive links can be placed; deleted links are not passed in, and their old position is ignored.
+- **Consequences:** #10 needs a "children reordered" audit event for the parent. Read models sort children by position, then unordered children by name. Application, API and Client parts follow later.
