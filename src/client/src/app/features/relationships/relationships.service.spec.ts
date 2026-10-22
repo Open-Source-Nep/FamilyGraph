@@ -72,4 +72,12 @@ describe('RelationshipsService', () => {
     disagreement.flush(link);
     expect(await disagreed).toEqual(link);
   });
+
+  it('deletes a link with a DELETE', async () => {
+    const deleted = service.delete('l1');
+    const request = http.expectOne('/api/relationships/l1');
+    expect(request.request.method).toBe('DELETE');
+    request.flush(null, { status: 204, statusText: 'No Content' });
+    await deleted;
+  });
 });

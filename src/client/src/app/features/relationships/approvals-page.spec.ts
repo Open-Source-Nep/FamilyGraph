@@ -45,6 +45,10 @@ describe('ApprovalsPage', () => {
             listInactive: () => Promise.resolve(list),
             approve: consent('approve'),
             disagree: consent('disagree'),
+            delete: (linkId: string) => {
+              calls.push(['delete', linkId, 'Parent']);
+              return Promise.resolve();
+            },
           },
         },
       ],
@@ -137,7 +141,7 @@ describe('ApprovalsPage', () => {
     expect(calls).toEqual([['approve', 'l2', 'Child']]);
   });
 
-  it('offers only approval when you maintain both people', async () => {
+  it('offers approval and deletion, not declining, when you maintain both people', async () => {
     list = {
       links: [
         link(
@@ -150,7 +154,36 @@ describe('ApprovalsPage', () => {
     };
     await render();
 
-    expect(buttons()).toEqual(['Approve for Sita']);
+    expect(buttons()).toEqual(['Approve for Sita', 'Delete link']);
+  });
+
+  it('deletes a link whose two people you maintain after confirming', async () => {
+    list = {
+      links: [
+        link(
+          'l4',
+          endpoint('p6', 'Sita', 'Disagreed', true),
+          endpoint('p4', 'Maya', 'Approved', true),
+        ),
+      ],
+      isTruncated: false,
+    };
+    await render();
+
+    await click('Delete link');
+    expect(text()).toContain('Delete this link? This cannot be undone.');
+    expect(calls).toEqual([]);
+
+    await click('Delete');
+
+    expect(calls).toEqual([['delete', 'l4', 'Parent']]);
+    expect(text()).toContain('You deleted Sita as parent of Maya.');
+  });
+
+  it('offers no deletion when someone else maintains one of the people', async () => {
+    await render();
+
+    expect(buttons()).not.toContain('Delete link');
   });
 
   it('says when nothing is waiting', async () => {

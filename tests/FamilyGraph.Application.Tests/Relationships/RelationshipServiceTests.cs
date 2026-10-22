@@ -289,6 +289,79 @@ public class RelationshipServiceTests
             () => Service().ApproveAsync(LinkId.New(), LinkEndpoint.Parent, Alice, Cancellation));
         await Assert.ThrowsAsync<LinkNotFoundException>(
             () => Service().DisagreeAsync(LinkId.New(), LinkEndpoint.Parent, Alice, Cancellation));
+        await Assert.ThrowsAsync<LinkNotFoundException>(
+            () => Service().DeleteAsync(LinkId.New(), Alice, Cancellation));
+    }
+
+    [Fact]
+    [Trait("AC", "AC-03.4")]
+    public async Task Sole_maintainer_deletes_the_link_and_it_leaves_every_list()
+    {
+        var parent = AddPerson("Hari", Alice);
+        var child = AddPerson("Maya", Alice);
+        var service = Service();
+        var created = await service.CreateLinkAsync(parent, child, ParentChildType.Biological, Alice, Cancellation);
+
+        await service.DeleteAsync(created.Id, Alice, Cancellation);
+
+        Assert.Equal(Now, _store.Links[created.Id].DeletedAt);
+        Assert.Equal(new LinkDeleted(created.Id, Now, Alice), _store.AuditEvents[^1].Event);
+        Assert.Equal(2, _store.SaveCount);
+        Assert.Empty((await service.ListDirectRelativesAsync(child, Alice, Cancellation)).Parents);
+        Assert.Empty((await service.ListInactiveLinksAsync(Alice, Cancellation)).Links);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-03.4")]
+    public async Task Different_maintainers_cannot_delete_and_withdrawal_records_a_distinct_event()
+    {
+        var parent = AddPerson("Hari", Bob);
+        var child = AddPerson("Maya", Alice);
+        var service = Service();
+        var created = await service.CreateLinkAsync(parent, child, ParentChildType.Biological, Alice, Cancellation);
+        await service.ApproveAsync(created.Id, LinkEndpoint.Parent, Bob, Cancellation);
+
+        await Assert.ThrowsAsync<NotSoleMaintainerException>(
+            () => service.DeleteAsync(created.Id, Alice, Cancellation));
+        await Assert.ThrowsAsync<NotSoleMaintainerException>(
+            () => service.DeleteAsync(created.Id, Admin, Cancellation));
+        Assert.False(_store.Links[created.Id].IsDeleted);
+        Assert.Equal(2, _store.SaveCount);
+
+        await service.DisagreeAsync(created.Id, LinkEndpoint.Child, Alice, Cancellation);
+
+        Assert.IsType<LinkEndpointDisagreed>(_store.AuditEvents[^1].Event);
+        Assert.DoesNotContain(_store.AuditEvents, saved => saved.Event is LinkDeleted);
+    }
+
+    [Fact]
+    public async Task Deleted_link_accepts_no_further_change()
+    {
+        var parent = AddPerson("Hari", Alice);
+        var child = AddPerson("Maya", Alice);
+        var service = Service();
+        var created = await service.CreateLinkAsync(parent, child, ParentChildType.Biological, Alice, Cancellation);
+        await service.DeleteAsync(created.Id, Alice, Cancellation);
+
+        await Assert.ThrowsAsync<LinkDeletedException>(() => service.DeleteAsync(created.Id, Alice, Cancellation));
+        await Assert.ThrowsAsync<LinkDeletedException>(
+            () => service.ApproveAsync(created.Id, LinkEndpoint.Parent, Alice, Cancellation));
+        Assert.Equal(2, _store.SaveCount);
+    }
+
+    [Fact]
+    public async Task Deleted_link_can_be_created_again_as_a_new_link()
+    {
+        var parent = AddPerson("Hari", Alice);
+        var child = AddPerson("Maya", Alice);
+        var service = Service();
+        var first = await service.CreateLinkAsync(parent, child, ParentChildType.Biological, Alice, Cancellation);
+        await service.DeleteAsync(first.Id, Alice, Cancellation);
+
+        var second = await service.CreateLinkAsync(parent, child, ParentChildType.Adoptive, Alice, Cancellation);
+
+        Assert.NotEqual(first.Id, second.Id);
+        Assert.Equal(parent, Assert.Single((await service.ListDirectRelativesAsync(child, Alice, Cancellation)).Parents).Id);
     }
 
     [Fact]

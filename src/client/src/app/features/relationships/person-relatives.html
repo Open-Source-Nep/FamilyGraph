@@ -10,20 +10,11 @@
           @if (parent.type === 'Adoptive') {
             <span class="hint"> (adoptive parent)</span>
           }
-          @if (withdrawableSide(parent, 'parent'); as side) {
-            @if (confirming() === parent.linkId) {
-              <div class="actions">
-                <span>Withdraw your approval? The link stops being active.</span>
-                <button type="button" [disabled]="saving()" (click)="withdraw(parent, side)">
-                  Withdraw
-                </button>
-                <button type="button" class="secondary" (click)="confirming.set(null)">Keep</button>
-              </div>
-            } @else {
-              <button type="button" class="link-button" (click)="confirming.set(parent.linkId)">
-                Withdraw approval
-              </button>
-            }
+          @if (removal(parent, 'parent'); as removal) {
+            <ng-container
+              [ngTemplateOutlet]="removeLink"
+              [ngTemplateOutletContext]="{ $implicit: parent, removal }"
+            />
           }
         </li>
       }
@@ -44,20 +35,11 @@
           @if (child.type === 'Adoptive') {
             <span class="hint"> (adopted child)</span>
           }
-          @if (withdrawableSide(child, 'child'); as side) {
-            @if (confirming() === child.linkId) {
-              <div class="actions">
-                <span>Withdraw your approval? The link stops being active.</span>
-                <button type="button" [disabled]="saving()" (click)="withdraw(child, side)">
-                  Withdraw
-                </button>
-                <button type="button" class="secondary" (click)="confirming.set(null)">Keep</button>
-              </div>
-            } @else {
-              <button type="button" class="link-button" (click)="confirming.set(child.linkId)">
-                Withdraw approval
-              </button>
-            }
+          @if (removal(child, 'child'); as removal) {
+            <ng-container
+              [ngTemplateOutlet]="removeLink"
+              [ngTemplateOutletContext]="{ $implicit: child, removal }"
+            />
           }
         </li>
       }
@@ -67,6 +49,29 @@
     }
   }
 }
+
+<ng-template #removeLink let-relative let-removal="removal">
+  @if (confirming() === relative.linkId) {
+    <div class="actions">
+      @if (removal.kind === 'delete') {
+        <span>Delete this link? This cannot be undone; you can add the link again later.</span>
+        <button type="button" [disabled]="saving()" (click)="remove(relative, removal)">
+          Delete
+        </button>
+      } @else {
+        <span>Withdraw your approval? The link stops being active.</span>
+        <button type="button" [disabled]="saving()" (click)="remove(relative, removal)">
+          Withdraw
+        </button>
+      }
+      <button type="button" class="secondary" (click)="confirming.set(null)">Keep</button>
+    </div>
+  } @else {
+    <button type="button" class="link-button" (click)="confirming.set(relative.linkId)">
+      {{ removal.kind === 'delete' ? 'Delete link' : 'Withdraw approval' }}
+    </button>
+  }
+</ng-template>
 
 @if (notice(); as notice) {
   <p role="status">{{ notice }}</p>

@@ -6,8 +6,8 @@ using FamilyGraph.Business.Relationships;
 namespace FamilyGraph.Application.Relationships;
 
 /// <summary>
-/// Creates parent–child links, changes an endpoint's approval and lists a person's parents and
-/// children (PRD 02, PRD 03, #14, #59). <see cref="ParentChildLink"/> enforces who may create or
+/// Creates parent–child links, changes an endpoint's approval, deletes links and lists a person's
+/// parents and children (PRD 02, PRD 03, #14, #59, #61). <see cref="ParentChildLink"/> enforces who may create or
 /// approve a link, the per-endpoint approvals, duplicates and cycles; this service loads what it
 /// needs to check them and saves each change with its audit events.
 /// </summary>
@@ -82,6 +82,18 @@ public sealed class RelationshipService(
         await SaveAsync(link, cancellationToken);
 
         return LinkConsentView.From(link, parent, child, actorId);
+    }
+
+    /// <summary>
+    /// Deletes the link, in any consent state, when the actor maintains both endpoints (D-014).
+    /// Deletion is final; the link stays stored for its history and leaves every list.
+    /// </summary>
+    public async Task DeleteAsync(LinkId linkId, AccountId actorId, CancellationToken cancellationToken)
+    {
+        var (link, parent, child) = await LoadAsync(linkId, cancellationToken);
+
+        link.Delete(parent, child, actorId, time.GetUtcNow());
+        await SaveAsync(link, cancellationToken);
     }
 
     /// <summary>The inactive links of the profiles the account maintains (D-021).</summary>

@@ -45,11 +45,13 @@ describe('PersonRelatives', () => {
   let fixture: ComponentFixture<PersonRelatives>;
   let created: NewLink[];
   let disagreed: [string, LinkEndpoint][];
+  let deleted: string[];
   let active: boolean;
 
   beforeEach(async () => {
     created = [];
     disagreed = [];
+    deleted = [];
     active = true;
     TestBed.configureTestingModule({
       providers: [
@@ -65,6 +67,10 @@ describe('PersonRelatives', () => {
             disagree: (linkId: string, endpoint: LinkEndpoint) => {
               disagreed.push([linkId, endpoint]);
               return Promise.resolve({});
+            },
+            delete: (linkId: string) => {
+              deleted.push(linkId);
+              return Promise.resolve();
             },
           },
         },
@@ -114,7 +120,7 @@ describe('PersonRelatives', () => {
       li.textContent?.replace(/\s+/g, ' ').trim(),
     );
 
-    expect(items).toEqual(['Hari Rai (adoptive parent)', 'Sita Withdraw approval']);
+    expect(items).toEqual(['Hari Rai (adoptive parent) Delete link', 'Sita Withdraw approval']);
     expect(text()).toContain('No children are linked.');
   });
 
@@ -162,5 +168,33 @@ describe('PersonRelatives', () => {
     // Maya is the child on the link to Sita, and you maintain Maya.
     expect(disagreed).toEqual([['l3', 'Child']]);
     expect(text()).toContain('no longer active');
+  });
+
+  it('deletes a link whose two people you maintain after confirming', async () => {
+    // You maintain both Maya and Hari, so the link can be deleted but not withdrawn (D-014).
+    expect(button('Delete link')).toBeTruthy();
+    button('Delete link').click();
+    await fixture.whenStable();
+    expect(text()).toContain('Delete this link?');
+    expect(deleted).toEqual([]);
+
+    button('Delete').click();
+    await fixture.whenStable();
+
+    expect(deleted).toEqual(['l2']);
+    expect(disagreed).toEqual([]);
+    expect(text()).toContain('You deleted the link to Hari Rai.');
+  });
+
+  it('offers withdrawal, not deletion, when you maintain only the relative', async () => {
+    fixture.componentRef.setInput('person', { ...maya, id: 'p9', maintainedByYou: false });
+    await fixture.whenStable();
+
+    // You maintain Hari only, and neither Maya nor Sita here, so only Hari's link can be withdrawn.
+    const labels = [...fixture.nativeElement.querySelectorAll('button')].map(
+      (element: HTMLButtonElement) => element.textContent?.trim(),
+    );
+    expect(labels.filter((label) => label === 'Withdraw approval')).toHaveLength(1);
+    expect(labels).not.toContain('Delete link');
   });
 });

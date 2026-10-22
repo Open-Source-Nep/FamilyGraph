@@ -280,6 +280,39 @@ public class RelationshipPersistenceServicesTests(PostgresFixture postgres)
         Assert.True(cut.IsTruncated);
     }
 
+    [Fact]
+    [Trait("AC", "AC-03.4")]
+    public async Task Deletion_is_saved_with_its_audit_event_and_the_pair_can_be_linked_again()
+    {
+        await using var services = await NewServicesAsync();
+        var parent = TestData.NewPerson(Maintainer, "Hari");
+        var child = TestData.NewPerson(Maintainer, "Maya");
+        var link = TestData.NewLink(parent, child, Maintainer);
+        await SaveAsync(services, parent, child, link);
+
+        await using (var scope = services.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<RelationshipService>()
+                .DeleteAsync(link.Id, Maintainer, Cancellation);
+        }
+
+        await using (var scope = services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<FamilyGraphDbContext>();
+            var saved = await context.Set<ParentChildLink>().SingleAsync(Cancellation);
+            var types = await context.Set<AuditEventRecord>()
+                .Where(record => record.SubjectId == link.Id.Value)
+                .Select(record => record.Type)
+                .ToListAsync(Cancellation);
+
+            Assert.True(saved.IsDeleted);
+            Assert.Equal([nameof(LinkDeleted)], types);
+            var again = await scope.ServiceProvider.GetRequiredService<RelationshipService>()
+                .CreateLinkAsync(parent.Id, child.Id, ParentChildType.Biological, Maintainer, Cancellation);
+            Assert.NotEqual(link.Id, again.Id);
+        }
+    }
+
     private static async Task<PersonId> SavePersonAsync(ServiceProvider services, string firstName)
     {
         var person = TestData.NewPerson(Maintainer, firstName);

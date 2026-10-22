@@ -36,6 +36,21 @@
                     {{ action.label }}
                   </button>
                 }
+                @if (deletable(link)) {
+                  @if (confirming() === link.id) {
+                    <span>Delete this link? This cannot be undone.</span>
+                    <button type="button" [disabled]="saving()" (click)="delete(link)">
+                      Delete
+                    </button>
+                    <button type="button" class="secondary" (click)="confirming.set(null)">
+                      Keep
+                    </button>
+                  } @else {
+                    <button type="button" class="secondary" (click)="confirming.set(link.id)">
+                      Delete link
+                    </button>
+                  }
+                }
               </div>
             } @else {
               <div class="hint">{{ status(link) }}</div>
