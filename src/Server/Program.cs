@@ -4,7 +4,7 @@ using Server.Accounts;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
-builder.Services.AddInfrastructure(builder.Configuration.GetConnectionString("FamilyGraph"));
+builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddAccounts(builder.Configuration);
 builder.Services.AddAntiforgery(options => options.HeaderName = "X-XSRF-TOKEN");
 builder.Services.AddControllers(options => options.Filters.Add<ValidateAntiforgeryFilter>());

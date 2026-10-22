@@ -4,14 +4,14 @@ FamilyGraph stores everything in one PostgreSQL database through EF Core (D-008,
 
 ## Configuration
 
-The Server reads the connection string `FamilyGraph`. It is never committed (D-012).
+The Server builds its connection from the `Database` section. Each key is an Npgsql connection string keyword (`Host`, `Port`, `Database`, `Username`, `Password`, `SSL Mode`, ...); an unknown key stops the Server at startup. The password is never committed (D-012).
 
 | Where | How to set it |
 |---|---|
-| Self-hosted instance | Environment variable `ConnectionStrings__FamilyGraph`, e.g. `Host=db;Database=familygraph;Username=familygraph;Password=...` |
-| Local development | `dotnet user-secrets set ConnectionStrings:FamilyGraph "<connection string>" --project src/Server` |
+| Self-hosted instance | Environment variables `Database__Host=db`, `Database__Database=familygraph`, `Database__Username=familygraph`, `Database__Password=...` |
+| Local development | `appsettings.Development.json` sets `localhost`, `familygraph` and `familygraph`; set the password with `dotnet user-secrets set Database:Password "<password>" --project src/Server` |
 
-The Server starts without a connection string, but any request that uses the database fails until one is set.
+The Server starts without `Database:Host`, but any request that uses the database fails until it is set.
 
 Self-hosted instances run migrations as a separate step before the app starts; the app never migrates at startup (D-011). The Docker image, compose file and migration bundle come with #33.
 
@@ -28,8 +28,7 @@ Self-hosted instances run migrations as a separate step before the app starts; t
 2. Point the Server at it:
 
    ```bash
-   dotnet user-secrets set ConnectionStrings:FamilyGraph \
-     "Host=localhost;Database=familygraph;Username=familygraph;Password=familygraph" --project src/Server
+   dotnet user-secrets set Database:Password familygraph --project src/Server
    ```
 
 3. Apply the migrations (`dotnet tool restore` installs the pinned `dotnet-ef` once):

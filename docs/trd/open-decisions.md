@@ -302,7 +302,7 @@ For each major decision, record:
   - Name parts are `text` with no length limit in the database; any input limit is API validation (D-010).
   - Columns, keys and foreign keys get lower snake_case names from a small convention in Infrastructure; tables and indexes are named in their configurations.
   - `audit_events` has `id` (UUID v7), `occurred_at`, `family`, `type` (the event record's name), `actor_id`, `subject_id` (the link or person) and `data` (`jsonb` with the event's other fields; IDs as strings, `BaseEnum` values as integers). It has no foreign keys. Every audit event type must name its subject, and a test checks this.
-  - The context is a plain `DbContext` until #11 derives it from `IdentityDbContext`. It is internal to Infrastructure; Server calls `AddInfrastructure` with the connection string `FamilyGraph`.
+  - The context is a plain `DbContext` until #11 derives it from `IdentityDbContext`. It is internal to Infrastructure; Server calls `AddInfrastructure` with its configuration; the connection is built from the `Database` section, one Npgsql keyword per key (changed from the `ConnectionStrings:FamilyGraph` string on 2026-10-22).
   - Packages: `Npgsql.EntityFrameworkCore.PostgreSQL` 10.0.3, `Microsoft.EntityFrameworkCore.Design` 10.0.4 (build-time only), the `dotnet-ef` 10.0.4 local tool, and `Testcontainers.PostgreSql` 4.16.0 in `FamilyGraph.Infrastructure.Tests`. Tests and local docs use the `postgres:18-alpine` image.
   - Integration tests share one container per run and give each test its own migrated database.
 - **Consequences:** Store interfaces, `IUnitOfWork` and query services come with the first Application use cases, not #9. Local setup is in `docs/database.md`.
