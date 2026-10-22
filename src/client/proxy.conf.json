@@ -1,10 +1,12 @@
 {
   "/api": {
     "target": "http://localhost:5039",
-    "secure": false
+    "secure": false,
+    "xfwd": true
   },
   "/signin-google": {
     "target": "http://localhost:5039",
-    "secure": false
+    "secure": false,
+    "xfwd": true
   }
 }

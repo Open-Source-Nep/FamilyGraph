@@ -11,7 +11,7 @@
     <PropertyGroup>
         <SpaRoot>..\client</SpaRoot>
         <SpaProxyLaunchCommand>npm start</SpaProxyLaunchCommand>
-        <SpaProxyServerUrl>http://localhost:4200</SpaProxyServerUrl>
+        <SpaProxyServerUrl>https://localhost:4200</SpaProxyServerUrl>
     </PropertyGroup>
 
     <ItemGroup>

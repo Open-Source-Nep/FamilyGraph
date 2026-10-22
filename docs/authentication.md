@@ -19,7 +19,7 @@ An account gets or loses `Administrator` each time it signs in, by matching its 
 1. In the Google Cloud console, open **APIs & Services → Credentials** and create an **OAuth client ID** of type **Web application**.
 2. Add an authorised redirect URI for each address the app is served from, ending in `/signin-google`:
    - a self-hosted instance: `https://<your-domain>/signin-google`
-   - local development: `http://localhost:4200/signin-google`
+   - local development: `https://localhost:4200/signin-google`
 3. The consent screen needs only the `openid` and `email` scopes.
 
 Behind a reverse proxy that terminates HTTPS, set `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` so the app builds an `https` redirect URI.
@@ -32,7 +32,7 @@ dotnet user-secrets set Authentication:Google:ClientSecret "<client secret>" --p
 dotnet user-secrets set "Admin:Emails:0" "you@example.org" --project src/Server
 ```
 
-The database must be set up as in `docs/database.md`. Run `dotnet run --project src/Server` and open `http://localhost:4200`. The Angular dev server forwards `/api` and `/signin-google` to the Server (`src/client/proxy.conf.json`).
+The database must be set up as in `docs/database.md`. Run `dotnet run --project src/Server` and open `https://localhost:4200`. The Angular dev server serves HTTPS with the ASP.NET Core development certificate (`src/client/aspnetcore-https.js` exports it on first start). It forwards `/api` and `/signin-google` to the Server over HTTP (`src/client/proxy.conf.json`) with `X-Forwarded-*` headers, and the Development profiles set `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true`, so the Server builds an `https` redirect URI. Open the app on `localhost`, not `127.0.0.1`: Google matches the redirect URI exactly.
 
 ## Sessions and CSRF
 
