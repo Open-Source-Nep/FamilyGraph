@@ -1,5 +1,5 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Service, computed, inject, signal } from '@angular/core';
 import { catchError, firstValueFrom, of, throwError } from 'rxjs';
 
 import { Account } from './account';
@@ -9,7 +9,7 @@ import { Account } from './account';
  * Requests send the session cookie, and HttpClient adds the X-XSRF-TOKEN header to
  * state-changing requests from the XSRF-TOKEN cookie.
  */
-@Injectable({ providedIn: 'root' })
+@Service()
 export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly current = signal<Account | null>(null);
