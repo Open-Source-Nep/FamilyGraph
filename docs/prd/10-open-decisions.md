@@ -12,6 +12,7 @@ This file is intentionally unresolved. Claude Code must not silently invent deci
 - **Decided (2026-10-21):** duplicate or contradictory relationships from a merge are resolved by the reviewers choosing one link to keep. See PRD 06.
 - **Decided (2026-10-21):** at most one parent–child link per ordered pair (parent, child), so the same pair cannot have both a biological and an adoptive link.
 - **Decided (2026-10-21):** no limit on the number of parents, of either type.
+- **Decided (2026-10-22):** a parent's children have a birth order for display only, set manually per parent by the parent's maintainer, with no consent and no birth dates. New children are unordered until placed. Rejected alternatives: an optional birth date on Person; letting the child's maintainer reorder; child-side approval of order changes. See PRD 02.
 
 ## Claims and identity
 - **Decided (2026-10-21):** a maintainer is unavailable after 30 days without response (configurable) or when their account no longer exists. See PRD 04.

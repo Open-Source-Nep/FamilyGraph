@@ -34,6 +34,7 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 - Consent state transitions (D-013 below).
 - Link removal (D-014 below).
 - Audit event model (D-015 below).
+- Birth order of children (D-016 below).
 - **Name length (agreed 2026-10-21):** Business puts no length cap on name parts. Any storage or input limit is set later by persistence (#9) and API validation (D-010).
 
 ## Decisions to discuss next
@@ -270,6 +271,19 @@ For each major decision, record:
   - Business entities (`AuditedEntity`) record an `AuditEvent` in every successful operation. Rejected operations record nothing. Application takes the events with `TakeEvents()`, stamps the time and saves them with the change.
   - Each event has a family (`AuditFamily`: relationship consent, identity claim, profile, merge, administrative), a type (its record type), subject IDs and the acting account.
   - Events hold IDs, types and states only, never names or other personal values. A rename records that it happened, not the names.
-  - Consent events, one per transition: `LinkCreated`, `LinkEndpointApproved` (pending → approved), `LinkApprovalRestored` (disagreed → approved), `LinkEndpointDeclined` (pending → disagreed), `LinkEndpointDisagreed` (approved → disagreed, which includes withdrawal), `LinkDeleted`. Profile events: `PersonCreated`, `PersonRenamed`.
+  - Consent events, one per transition: `LinkCreated`, `LinkEndpointApproved` (pending → approved), `LinkApprovalRestored` (disagreed → approved), `LinkEndpointDeclined` (pending → disagreed), `LinkEndpointDisagreed` (approved → disagreed, which includes withdrawal), `LinkDeleted`. Profile events: `PersonCreated`, `PersonRenamed`, `LinkBirthOrderChanged` (D-016).
   - Claim, merge and administrative event types are added with their features. Restricted payloads (claim evidence, admin rationale) are stored apart from general events, so general audit reads cannot reach them.
 - **Consequences:** Persistence (#9) stores events in an append-only table keyed by family, type, subject and actor, with no foreign key to the active rows so records outlive deletion. Visibility and the reconstruction query come with #27 and #28.
+
+### D-016: Birth order of children
+
+- **Status:** agreed (2026-10-22). Issue #48.
+- **Context:** Ash requires that the order of a parent's children matters. PRD 02 now defines it as a display-only birth order, set manually per parent by the parent's maintainer, with new children unordered. Profiles store no birth date, and a parent's children can include half siblings with a different other parent.
+- **Options considered:** a number field on each parent–child link, set one link at a time; a separate service that replaces a parent's whole order with contiguous positions.
+- **Trade-offs:** A number on the link needs no new class and keeps the rule on the aggregate that owns it. It does not keep numbers unique or contiguous across siblings, which a sort key does not need. A whole-order service guarantees that, but adds a class and needs all of the parent's links for every change (rejected in PR #49 review).
+- **Decision:**
+  - `ParentChildLink.BirthOrder` is a nullable number (lower is elder). `null` means unordered, and every new link starts unordered.
+  - `ParentChildLink.SetBirthOrder(parent, actor, number)` sets or clears it. Only the parent's maintainer may (`link.birth_order_not_parent_maintainer`). The number must be 1 or greater (`link.birth_order_invalid`). Setting the current value is rejected (`link.birth_order_unchanged`), and a deleted link rejects it (`link.deleted`).
+  - Setting it never touches consent or activity, so pending and inactive links can be placed.
+- Every change records a `LinkBirthOrderChanged` audit event (D-015) with the link, the parent and the new number. It is in the profile family, not relationship consent, because it needs no consent.
+- **Consequences:** Read models sort a parent's children by number, then by name for equal numbers and unordered children. Application, API and Client parts follow later.

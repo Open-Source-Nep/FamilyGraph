@@ -45,6 +45,13 @@ public sealed class ParentChildLink : AuditedEntity
 
     public bool IsDeleted => DeletedAt is not null;
 
+    /// <summary>
+    /// The child's birth-order number among the parent's children (lower is elder), or
+    /// <see langword="null"/> while the parent's maintainer has not placed the child (D-016).
+    /// It only sorts children for display and never affects consent.
+    /// </summary>
+    public int? BirthOrder { get; private set; }
+
     public bool IsActive =>
         !IsDeleted && ParentApproval == EndpointApproval.Approved && ChildApproval == EndpointApproval.Approved;
 
@@ -181,6 +188,41 @@ public sealed class ParentChildLink : AuditedEntity
         Record(new LinkDeleted(Id, deletedAt, actorId));
     }
 
+    /// <summary>
+    /// Sets the child's birth-order number, or clears it with <see langword="null"/>. Only the
+    /// parent's maintainer may do this; it needs no consent and never changes the link's
+    /// consent state or activity (PRD 02, D-016).
+    /// </summary>
+    public void SetBirthOrder(Person parent, AccountId actorId, int? birthOrder)
+    {
+        ArgumentNullException.ThrowIfNull(parent);
+
+        if (parent.Id != ParentId)
+        {
+            throw new ArgumentException("The person must be the parent on this link.", nameof(parent));
+        }
+
+        if (!parent.IsMaintainedBy(actorId))
+        {
+            throw new NotParentMaintainerException();
+        }
+
+        EnsureNotDeleted();
+
+        if (birthOrder is < 1)
+        {
+            throw new InvalidBirthOrderException();
+        }
+
+        if (birthOrder == BirthOrder)
+        {
+            throw new BirthOrderUnchangedException();
+        }
+
+        BirthOrder = birthOrder;
+        Record(new LinkBirthOrderChanged(Id, ParentId, birthOrder, actorId));
+    }
+
     private void EnsureNotDeleted()
     {
         if (IsDeleted)
@@ -243,6 +285,15 @@ public sealed class NotSoleMaintainerException()
     : DomainException(
         "link.not_sole_maintainer",
         "Only someone who maintains both people on this link can delete it. Withdraw your approval instead.");
+
+public sealed class NotParentMaintainerException()
+    : DomainException("link.birth_order_not_parent_maintainer", "Only the parent's maintainer can change the order of their children.");
+
+public sealed class InvalidBirthOrderException()
+    : DomainException("link.birth_order_invalid", "A birth-order number must be 1 or greater.");
+
+public sealed class BirthOrderUnchangedException()
+    : DomainException("link.birth_order_unchanged", "The child already has this birth-order number.");
 
 public sealed class LinkDeletedException()
     : DomainException("link.deleted", "This link has been deleted.");

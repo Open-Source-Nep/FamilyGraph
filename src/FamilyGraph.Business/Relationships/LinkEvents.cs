@@ -42,3 +42,13 @@ public sealed record LinkEndpointDisagreed(LinkId LinkId, PersonId Endpoint, Acc
 
 /// <summary>Deleted by the account that maintains both endpoints (D-014).</summary>
 public sealed record LinkDeleted(LinkId LinkId, DateTimeOffset DeletedAt, AccountId ActorId) : LinkEvent(LinkId, ActorId);
+
+/// <summary>
+/// The parent's maintainer set or cleared a child's birth order (D-016). It needs no consent, so it
+/// is a profile event, not a relationship-consent event.
+/// </summary>
+public sealed record LinkBirthOrderChanged(LinkId LinkId, PersonId ParentId, int? BirthOrder, AccountId ActorId)
+    : AuditEvent(ActorId)
+{
+    public override AuditFamily Family => AuditFamily.Profile;
+}
