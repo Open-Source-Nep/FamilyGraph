@@ -5,14 +5,15 @@ import { RouterLink } from '@angular/router';
 import { PeopleService } from '../people/people.service';
 import { Person, PersonSummary, fullName } from '../people/person';
 import { problemMessage } from '../people/problem';
-import { DirectRelatives, ParentChildType } from './relationship';
+import { DirectRelatives, LinkEndpoint, ParentChildType, Relative } from './relationship';
 import { RelationshipsService } from './relationships.service';
 
 type Side = 'parent' | 'child';
 
 /**
  * A person's parents and children through active links, and a form to link one of your own
- * profiles as a parent or child (PRD 02). Adoptive links are labelled as such (PRD 10).
+ * profiles as a parent or child (PRD 02). Adoptive links are labelled as such (PRD 10). Where you
+ * maintain one of the two people, you can withdraw your approval of the link (PRD 03).
  */
 @Component({
   selector: 'app-person-relatives',
@@ -35,6 +36,8 @@ export class PersonRelatives {
   protected readonly error = signal<string | null>(null);
   protected readonly notice = signal<string | null>(null);
   protected readonly name = computed(() => fullName(this.person()));
+  /** The link whose withdrawal waits for confirmation. */
+  protected readonly confirming = signal<string | null>(null);
   /** Renaming the person gives a new object but must not reload the lists. */
   private readonly personId = computed(() => this.person().id);
 
@@ -51,8 +54,41 @@ export class PersonRelatives {
       this.adding.set(false);
       this.error.set(null);
       this.notice.set(null);
+      this.confirming.set(null);
       this.load(id);
     });
+  }
+
+  /**
+   * Your side of the link to a relative, when you maintain exactly one of the two people. Someone
+   * who maintains both deletes the link instead (D-013, D-014).
+   */
+  protected withdrawableSide(relative: Relative, relativeIs: Side): LinkEndpoint | null {
+    const maintainsPerson = this.person().maintainedByYou;
+    if (maintainsPerson === relative.maintainedByYou) {
+      return null;
+    }
+    const relativeSide: LinkEndpoint = relativeIs === 'parent' ? 'Parent' : 'Child';
+    const personSide: LinkEndpoint = relativeIs === 'parent' ? 'Child' : 'Parent';
+    return maintainsPerson ? personSide : relativeSide;
+  }
+
+  protected async withdraw(relative: Relative, endpoint: LinkEndpoint): Promise<void> {
+    this.saving.set(true);
+    this.error.set(null);
+    this.notice.set(null);
+    try {
+      await this.relationships.disagree(relative.linkId, endpoint);
+      this.confirming.set(null);
+      this.notice.set(
+        `You withdrew your approval, so the link to ${fullName(relative)} is no longer active. You can restore it on the Approvals page.`,
+      );
+      this.load(this.personId());
+    } catch (error) {
+      this.error.set(problemMessage(error));
+    } finally {
+      this.saving.set(false);
+    }
   }
 
   protected async startAdding(): Promise<void> {

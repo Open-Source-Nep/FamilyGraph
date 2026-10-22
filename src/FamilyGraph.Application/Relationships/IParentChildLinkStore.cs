@@ -9,6 +9,9 @@ namespace FamilyGraph.Application.Relationships;
 /// </summary>
 public interface IParentChildLinkStore
 {
+    /// <summary>The link, deleted or not, for a change; <see langword="null"/> if it does not exist.</summary>
+    Task<ParentChildLink?> FindAsync(LinkId id, CancellationToken cancellationToken);
+
     /// <summary>The parents of <paramref name="childId"/> through non-deleted links.</summary>
     Task<IReadOnlySet<PersonId>> ParentsOfAsync(PersonId childId, CancellationToken cancellationToken);
 

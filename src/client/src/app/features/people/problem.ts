@@ -15,6 +15,13 @@ const messages: Record<string, string> = {
     'The child is already an ancestor of the parent, so this link would form a loop.',
   'link.cycle_unverifiable':
     'This link could not be checked for loops because the family tree above the parent is too large.',
+  'link.not_found': 'This link does not exist.',
+  'link.consent_not_maintainer': 'Only the maintainer of this profile can change its approval.',
+  'link.consent_unchanged':
+    'This link already has that approval. Reload the page to see its state.',
+  'link.sole_maintainer_must_delete':
+    'You maintain both people on this link, so it cannot be declined or withdrawn.',
+  'link.deleted': 'This link has been deleted.',
 };
 
 export function problemMessage(error: unknown): string {

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using FamilyGraph.Application.Relationships;
 using FamilyGraph.Business.Relationships;
 
 namespace Server.Relationships;
@@ -17,4 +18,14 @@ public sealed class CreateLinkRequest
     public string? Type { get; init; }
 
     internal ParentChildType ToType() => ParentChildType.FromName(Type!);
+}
+
+/// <summary>Which endpoint of the link to approve or disagree for: <c>Parent</c> or <c>Child</c> (400 otherwise).</summary>
+public sealed class LinkConsentRequest
+{
+    [Required]
+    [AllowedValues(nameof(LinkEndpoint.Parent), nameof(LinkEndpoint.Child))]
+    public string? Endpoint { get; init; }
+
+    internal LinkEndpoint ToEndpoint() => LinkEndpoint.FromName(Endpoint!);
 }

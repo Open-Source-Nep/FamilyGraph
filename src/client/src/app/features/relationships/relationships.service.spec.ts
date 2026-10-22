@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 
-import { CreatedLink, DirectRelatives } from './relationship';
+import { CreatedLink, DirectRelatives, LinkConsent, LinkConsentList } from './relationship';
 import { RelationshipsService } from './relationships.service';
 
 describe('RelationshipsService', () => {
@@ -47,5 +47,29 @@ describe('RelationshipsService', () => {
     http.expectOne('/api/people/p1/relatives').flush(relatives);
 
     expect(await listed).toEqual(relatives);
+  });
+
+  it('lists the inactive links of your profiles', async () => {
+    const list: LinkConsentList = { links: [], isTruncated: false };
+    const listed = service.listInactive();
+    http.expectOne('/api/relationships/inactive').flush(list);
+
+    expect(await listed).toEqual(list);
+  });
+
+  it('approves and disagrees for one endpoint with a POST', async () => {
+    const link = { id: 'l1', isActive: true } as LinkConsent;
+    const approved = service.approve('l1', 'Parent');
+    const approval = http.expectOne('/api/relationships/l1/approve');
+    expect(approval.request.method).toBe('POST');
+    expect(approval.request.body).toEqual({ endpoint: 'Parent' });
+    approval.flush(link);
+    expect(await approved).toEqual(link);
+
+    const disagreed = service.disagree('l1', 'Child');
+    const disagreement = http.expectOne('/api/relationships/l1/disagree');
+    expect(disagreement.request.body).toEqual({ endpoint: 'Child' });
+    disagreement.flush(link);
+    expect(await disagreed).toEqual(link);
   });
 });

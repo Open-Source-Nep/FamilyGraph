@@ -4,7 +4,7 @@ import { provideRouter } from '@angular/router';
 import { PeopleService } from '../people/people.service';
 import { Person } from '../people/person';
 import { PersonRelatives } from './person-relatives';
-import { CreatedLink, DirectRelatives, NewLink } from './relationship';
+import { CreatedLink, DirectRelatives, LinkEndpoint, NewLink } from './relationship';
 import { RelationshipsService } from './relationships.service';
 
 const maya: Person = {
@@ -17,8 +17,24 @@ const maya: Person = {
 
 const relatives: DirectRelatives = {
   parents: [
-    { id: 'p2', firstName: 'Hari', middleName: null, lastName: 'Rai', type: 'Adoptive' },
-    { id: 'p3', firstName: 'Sita', middleName: null, lastName: null, type: 'Biological' },
+    {
+      linkId: 'l2',
+      id: 'p2',
+      firstName: 'Hari',
+      middleName: null,
+      lastName: 'Rai',
+      type: 'Adoptive',
+      maintainedByYou: true,
+    },
+    {
+      linkId: 'l3',
+      id: 'p3',
+      firstName: 'Sita',
+      middleName: null,
+      lastName: null,
+      type: 'Biological',
+      maintainedByYou: false,
+    },
   ],
   parentsTruncated: false,
   children: [],
@@ -28,10 +44,12 @@ const relatives: DirectRelatives = {
 describe('PersonRelatives', () => {
   let fixture: ComponentFixture<PersonRelatives>;
   let created: NewLink[];
+  let disagreed: [string, LinkEndpoint][];
   let active: boolean;
 
   beforeEach(async () => {
     created = [];
+    disagreed = [];
     active = true;
     TestBed.configureTestingModule({
       providers: [
@@ -43,6 +61,10 @@ describe('PersonRelatives', () => {
             create: (link: NewLink): Promise<CreatedLink> => {
               created.push(link);
               return Promise.resolve({ ...link, id: 'l1', isActive: active });
+            },
+            disagree: (linkId: string, endpoint: LinkEndpoint) => {
+              disagreed.push([linkId, endpoint]);
+              return Promise.resolve({});
             },
           },
         },
@@ -92,7 +114,7 @@ describe('PersonRelatives', () => {
       li.textContent?.replace(/\s+/g, ' ').trim(),
     );
 
-    expect(items).toEqual(['Hari Rai (adoptive parent)', 'Sita']);
+    expect(items).toEqual(['Hari Rai (adoptive parent)', 'Sita Withdraw approval']);
     expect(text()).toContain('No children are linked.');
   });
 
@@ -127,5 +149,18 @@ describe('PersonRelatives', () => {
 
     expect(created).toEqual([{ parentId: 'p4', childId: 'p1', type: 'Biological' }]);
     expect(text()).toContain('not active yet');
+  });
+
+  it('withdraws your approval of a link to a profile someone else maintains after confirming', async () => {
+    button('Withdraw approval').click();
+    await fixture.whenStable();
+    expect(text()).toContain('Withdraw your approval?');
+
+    button('Withdraw').click();
+    await fixture.whenStable();
+
+    // Maya is the child on the link to Sita, and you maintain Maya.
+    expect(disagreed).toEqual([['l3', 'Child']]);
+    expect(text()).toContain('no longer active');
   });
 });
