@@ -28,9 +28,9 @@ const layout: DagreLayoutOptions = {
   padding: 24,
 };
 
-const compactLayout: DagreLayoutOptions = { ...layout, nodeSep: 14, rankSep: 40 };
+const dotsLayout: DagreLayoutOptions = { ...layout, nodeSep: 10, rankSep: 28, padding: 16 };
 
-/** Avatar fills for compact mode, dark enough for white initials. */
+/** Avatar and dot fills, dark enough for white initials. */
 const avatarColours = [
   '#c2410c',
   '#b45309',
@@ -79,8 +79,9 @@ interface Hovered {
  * The tree diagram of the shown people (PRD 08, D-024): parents above children, laid out by
  * dagre and drawn by Cytoscape on a canvas. Adoptive links are dashed and people with relatives
  * not shown have a double border. Each person has a coloured initial avatar and hovering shows their
- * details. In compact mode (the home page) the avatar is the whole node, with no name. The canvas is not keyboard or screen reader accessible, so the
- * page always shows the text view next to it (AC-09.2).
+ * details. The dots mode (the home page) draws each person as a small coloured dot, with no names,
+ * legend or details. The canvas is not keyboard or screen reader accessible, so the page always
+ * offers the same people as links or text next to it (AC-09.2).
  */
 @Component({
   selector: 'app-graph-diagram',
@@ -92,8 +93,8 @@ export class GraphDiagram {
 
   readonly graph = input.required<ShownGraph>();
   readonly selectedId = input<string | null>(null);
-  /** Small initial avatars instead of name boxes, with details on hover. */
-  readonly compact = input(false);
+  /** Only dots and lines: no names, legend, tooltip, centre or "has more" borders. */
+  readonly dots = input(false);
   readonly selected = output<string>();
 
   protected readonly fullName = fullName;
@@ -102,7 +103,10 @@ export class GraphDiagram {
 
   protected readonly summary = computed(() => {
     const count = this.graph().people.length;
-    return `Family diagram of ${count} ${count === 1 ? 'person' : 'people'}. The list of people below has the same relationships.`;
+    const diagram = `Family diagram of ${count} ${count === 1 ? 'person' : 'people'}.`;
+    return this.dots()
+      ? diagram
+      : `${diagram} The list of people below has the same relationships.`;
   });
 
   private readonly canvas = viewChild.required<ElementRef<HTMLElement>>('canvas');
@@ -127,7 +131,9 @@ export class GraphDiagram {
         const position = event.target.renderedPosition();
         const radius = event.target.renderedOuterHeight() / 2;
         container.style.cursor = 'pointer';
-        this.hovered.set(row ? { row, x: position.x, y: position.y - radius } : null);
+        if (!this.dots()) {
+          this.hovered.set(row ? { row, x: position.x, y: position.y - radius } : null);
+        }
       });
       cy.on('mouseout', 'node', () => {
         container.style.cursor = '';
@@ -145,14 +151,19 @@ export class GraphDiagram {
       if (!cy) {
         return;
       }
-      const compact = this.compact();
+      const dots = this.dots();
       this.hovered.set(null);
       cy.batch(() => {
         cy.elements().remove();
-        cy.style(this.style(compact));
+        cy.style(this.style(dots));
         cy.add(this.elements(this.graph()));
       });
-      cy.layout(compact ? compactLayout : layout).run();
+      cy.layout(dots ? dotsLayout : layout).run();
+      // A small family would otherwise be zoomed in until the dots are no longer small.
+      if (dots && cy.zoom() > 1) {
+        cy.zoom(1);
+        cy.center();
+      }
     });
 
     effect(() => {
@@ -218,7 +229,7 @@ export class GraphDiagram {
   }
 
   /** Colours come from the page's CSS custom properties, so the diagram follows the theme. */
-  private style(compact: boolean): cytoscape.StylesheetJson {
+  private style(dots: boolean): cytoscape.StylesheetJson {
     const css = getComputedStyle(this.host.nativeElement);
     const colour = (name: string, fallback: string) =>
       css.getPropertyValue(name).trim() || fallback;
@@ -226,29 +237,11 @@ export class GraphDiagram {
     const muted = colour('--muted', '#5b5b66');
     const accent = colour('--accent', '#2f5bd3');
     const background = colour('--surface', '#ffffff');
-    const nodes: cytoscape.StylesheetJson = compact
+    const nodes: cytoscape.StylesheetJson = dots
       ? [
           {
             selector: 'node',
-            style: {
-              shape: 'ellipse',
-              label: 'data(initials)',
-              width: 30,
-              height: 30,
-              'text-valign': 'center',
-              'text-halign': 'center',
-              'font-size': '11px',
-              'font-weight': 'bold',
-              color: '#ffffff',
-              'background-color': 'data(colour)',
-              'border-width': 0,
-              'border-color': text,
-            },
-          },
-          { selector: 'node.has-more', style: { 'border-width': 4, 'border-style': 'double' } },
-          {
-            selector: 'node.centre',
-            style: { width: 38, height: 38, 'border-width': 3, 'border-color': accent },
+            style: { shape: 'ellipse', width: 12, height: 12, 'background-color': 'data(colour)' },
           },
         ]
       : [
@@ -292,13 +285,16 @@ export class GraphDiagram {
       {
         selector: 'edge',
         style: {
-          width: 1.5,
+          width: dots ? 1 : 1.5,
           'line-color': muted,
           // Taxi edges share segments, which blurs who is whose parent; each link gets its own line.
           'curve-style': 'bezier',
         },
       },
-      { selector: 'edge.adoptive', style: { 'line-style': 'dashed', 'line-dash-pattern': [6, 4] } },
+      {
+        selector: 'edge.adoptive',
+        style: { 'line-style': 'dashed', 'line-dash-pattern': dots ? [3, 3] : [6, 4] },
+      },
     ];
   }
 }

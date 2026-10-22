@@ -6,7 +6,6 @@ import { PeopleService } from '../people/people.service';
 import { PersonSummary, fullName } from '../people/person';
 import { problemMessage } from '../people/problem';
 import { GraphDiagram } from './graph-diagram';
-import { rememberCentre } from './graph-centre';
 import { GraphService } from './graph.service';
 import { ConnectionCandidate, PersonConnections } from './person-connections';
 import {
@@ -22,7 +21,7 @@ import {
  * The family graph around a person (PRD 08, #23): a tree diagram of the people nearest to them,
  * expandable from people with relatives not shown (AC-08.4, AC-08.5), the same people as a
  * navigable list (AC-09.2), and how the person is related to someone else (AC-08.6). Shown on
- * the home page and on a person's graph page; the browser remembers the last centre for home.
+ * a person's graph page.
  */
 @Component({
   selector: 'app-graph-view',
@@ -36,12 +35,8 @@ export class GraphView {
 
   /** The person at the centre. */
   readonly id = input.required<string>();
-  /** Small initial avatars with details on hover; selecting someone asks to centre on them. */
-  readonly compact = input(false);
   /** The centre is not a person you can see, so a host can choose someone else. */
   readonly notFound = output<void>();
-  /** In compact mode, someone else was selected in the diagram: the host centres on them. */
-  readonly recentre = output<string>();
 
   protected readonly fullName = fullName;
   protected readonly generationLabel = generationLabel;
@@ -86,7 +81,6 @@ export class GraphView {
           if (this.id() === id) {
             this.shown.set(fromView(view));
             this.truncated.set(view.isTruncated);
-            rememberCentre(id);
           }
         },
         (error: unknown) => {
@@ -102,14 +96,6 @@ export class GraphView {
       (list) => this.maintained.set(list.people),
       () => undefined,
     );
-  }
-
-  protected select(personId: string): void {
-    if (!this.compact()) {
-      this.selectedId.set(personId);
-    } else if (personId !== this.id()) {
-      this.recentre.emit(personId);
-    }
   }
 
   /** Loads the people nearest to an edge person into the view (AC-08.5). */
