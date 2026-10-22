@@ -1,0 +1,31 @@
+<section class="panel graph-panel">
+  @if (error(); as error) {
+    <p class="error" role="alert">{{ error }}</p>
+  }
+
+  @if (profiles(); as profiles) {
+    @if (profiles.length === 0) {
+      <h1>FamilyGraph</h1>
+      <p>Signed in as {{ account()?.email }}.</p>
+      <p>
+        Your family graph appears here once you add a profile.
+        <a routerLink="/people/new">Add a person</a>
+      </p>
+    } @else {
+      <label class="centre-picker">
+        Centre the graph on
+        <select (change)="centreOn($any($event.target).value)">
+          <option value="" disabled [selected]="!centreIsYours()">Choose a profile</option>
+          @for (person of profiles; track person.id) {
+            <option [value]="person.id" [selected]="person.id === centreId()">
+              {{ fullName(person) }}
+            </option>
+          }
+        </select>
+      </label>
+      @if (centreId(); as id) {
+        <app-graph-view [id]="id" (notFound)="fallBack()" />
+      }
+    }
+  }
+</section>

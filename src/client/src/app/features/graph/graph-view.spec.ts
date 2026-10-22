@@ -5,7 +5,7 @@ import { provideRouter } from '@angular/router';
 import { PeopleService } from '../people/people.service';
 import { GraphPerson, LocalView } from './graph';
 import { GraphDiagram } from './graph-diagram';
-import { GraphPage } from './graph-page';
+import { GraphView } from './graph-view';
 import { GraphService } from './graph.service';
 import { ShownGraph } from './shown-graph';
 
@@ -25,8 +25,8 @@ const person = (id: string, firstName: string): GraphPerson => ({
   maintainedByYou: false,
 });
 
-describe('GraphPage', () => {
-  let fixture: ComponentFixture<GraphPage>;
+describe('GraphView', () => {
+  let fixture: ComponentFixture<GraphView>;
   let views: Record<string, LocalView>;
 
   beforeEach(() => {
@@ -71,14 +71,14 @@ describe('GraphPage', () => {
         },
       ],
     });
-    TestBed.overrideComponent(GraphPage, {
+    TestBed.overrideComponent(GraphView, {
       remove: { imports: [GraphDiagram] },
       add: { imports: [StubDiagram] },
     });
   });
 
   const show = async () => {
-    fixture = TestBed.createComponent(GraphPage);
+    fixture = TestBed.createComponent(GraphView);
     fixture.componentRef.setInput('id', 'maya');
     await fixture.whenStable();
   };
@@ -98,6 +98,13 @@ describe('GraphPage', () => {
     expect(headings).toEqual(['1 generation above', 'Same generation', '1 generation below']);
     expect(text()).toContain('More relatives are in reach');
     expect(text()).toContain('(adopted child)');
+  });
+
+  it('remembers its centre for the home page', async () => {
+    localStorage.clear();
+    await show();
+
+    expect(localStorage.getItem('familygraph.graphCentre')).toBe('maya');
   });
 
   it('loads more around an edge person (AC-08.5)', async () => {
