@@ -1,12 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- No tests yet: accept "zero tests ran" (exit code 8). Remove when the first test is added. -->
-  <PropertyGroup>
-    <TestingPlatformCommandLineArguments>$(TestingPlatformCommandLineArguments) --ignore-exit-code 8</TestingPlatformCommandLineArguments>
-  </PropertyGroup>
+  <!-- Integration tests against a disposable PostgreSQL started by Testcontainers (D-009). Docker is required. -->
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\FamilyGraph.Infrastructure\FamilyGraph.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Testcontainers.PostgreSql" Version="4.16.0" />
   </ItemGroup>
 
 </Project>

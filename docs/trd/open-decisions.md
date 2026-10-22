@@ -35,6 +35,7 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 - Link removal (D-014 below).
 - Audit event model (D-015 below).
 - Birth order of children (D-016 below).
+- Persistence mapping (D-017 below; agreed when the #9 PR merges).
 - **Name length (agreed 2026-10-21):** Business puts no length cap on name parts. Any storage or input limit is set later by persistence (#9) and API validation (D-010).
 
 ## Decisions to discuss next
@@ -287,3 +288,21 @@ For each major decision, record:
   - Setting it never touches consent or activity, so pending and inactive links can be placed.
 - Every change records a `LinkBirthOrderChanged` audit event (D-015) with the link, the parent and the new number. It is in the profile family, not relationship consent, because it needs no consent.
 - **Consequences:** Read models sort a parent's children by number, then by name for equal numbers and unordered children. Application, API and Client parts follow later.
+
+### D-017: Persistence mapping
+
+- **Status:** proposed (2026-10-22) in the PR for issue #9; agreed when that PR is merged.
+- **Context:** D-009 picks PostgreSQL and EF Core and fixes the link columns and indexes. D-015 asks for an append-only audit table keyed by family, type, subject and actor. Business must not depend on EF Core (D-002), and its entities have private constructors and `BaseEnum` values. Identity packages arrive with #11 (D-008).
+- **Options considered:** mapping the domain entities directly, or separate persistence classes copied to and from the domain; the `EFCore.NamingConventions` package or a few lines of our own for snake_case names; audit event fields as columns per type, or as JSON.
+- **Trade-offs:** Separate persistence classes leave Business untouched but duplicate every entity and need hand-written change tracking. Direct mapping needs one private constructor on `Person`, because EF Core cannot pass a complex property to a constructor. A naming package is one more dependency for about thirty lines of code. Columns per event type would change the schema with every new event; JSON keeps one table and the indexed columns stay typed.
+- **Decision:**
+  - EF Core maps the domain entities directly, with fluent configurations in Infrastructure only. `Person` gains a private parameterless constructor for materialization; Business still references nothing.
+  - Typed IDs are `uuid`. `BaseEnum` values are stored by their integer `Value`, with check constraints limiting each column to the declared values. The database also rejects self-links and birth-order numbers below 1.
+  - Name parts are `text` with no length limit in the database; any input limit is API validation (D-010).
+  - Columns, keys and foreign keys get lower snake_case names from a small convention in Infrastructure; tables and indexes are named in their configurations.
+  - `audit_events` has `id` (UUID v7), `occurred_at`, `family`, `type` (the event record's name), `actor_id`, `subject_id` (the link or person) and `data` (`jsonb` with the event's other fields; IDs as strings, `BaseEnum` values as integers). It has no foreign keys. Every audit event type must name its subject, and a test checks this.
+  - The context is a plain `DbContext` until #11 derives it from `IdentityDbContext`. It is internal to Infrastructure; Server calls `AddInfrastructure` with the connection string `FamilyGraph`.
+  - Packages: `Npgsql.EntityFrameworkCore.PostgreSQL` 10.0.3, `Microsoft.EntityFrameworkCore.Design` 10.0.4 (build-time only), the `dotnet-ef` 10.0.4 local tool, and `Testcontainers.PostgreSql` 4.16.0 in `FamilyGraph.Infrastructure.Tests`. Tests and local docs use the `postgres:18-alpine` image.
+  - Integration tests share one container per run and give each test its own migrated database.
+- **Consequences:** Store interfaces, `IUnitOfWork` and query services come with the first Application use cases, not #9. Local setup is in `docs/database.md`.
+
