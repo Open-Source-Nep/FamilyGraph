@@ -1,0 +1,24 @@
+<form [formGroup]="form" (ngSubmit)="submit()" class="name-form">
+  <label>
+    First name
+    <input formControlName="firstName" autocomplete="off" [attr.maxlength]="maxLength" required />
+  </label>
+  @if (form.controls.firstName.touched && form.controls.firstName.invalid) {
+    <p class="error" role="alert">Enter a first name.</p>
+  }
+
+  <label>
+    Middle name <span class="hint">(optional)</span>
+    <input formControlName="middleName" autocomplete="off" [attr.maxlength]="maxLength" />
+  </label>
+
+  <label>
+    Last name <span class="hint">(optional)</span>
+    <input formControlName="lastName" autocomplete="off" [attr.maxlength]="maxLength" />
+  </label>
+
+  <div class="actions">
+    <button type="submit" [disabled]="busy()">{{ submitLabel() }}</button>
+    <button type="button" class="secondary" (click)="cancelled.emit()">Cancel</button>
+  </div>
+</form>

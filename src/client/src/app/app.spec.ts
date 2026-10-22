@@ -16,7 +16,7 @@ describe('App', () => {
     }).compileComponents();
   });
 
-  it('shows the account link only when signed in', async () => {
+  it('shows the people and account links only when signed in', async () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     const element = fixture.nativeElement as HTMLElement;
@@ -24,6 +24,7 @@ describe('App', () => {
 
     account.set({ id: '1', email: 'maya@example.org', emailVerified: true, roles: ['User'] });
     await fixture.whenStable();
-    expect(element.querySelector('nav a')?.textContent).toContain('Account');
+    const links = [...element.querySelectorAll('nav a')].map((link) => link.textContent);
+    expect(links).toEqual(['People', 'Account']);
   });
 });

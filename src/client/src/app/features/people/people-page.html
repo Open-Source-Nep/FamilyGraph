@@ -1,0 +1,28 @@
+<section class="panel">
+  <h1>Profiles you maintain</h1>
+
+  <p>
+    <a class="button" routerLink="/people/new">Add a person</a>
+  </p>
+
+  @if (error(); as error) {
+    <p class="error" role="alert">{{ error }}</p>
+  }
+
+  @if (list(); as list) {
+    @if (list.people.length === 0) {
+      <p>You do not maintain any profiles yet.</p>
+    } @else {
+      <ul class="people">
+        @for (person of list.people; track person.id) {
+          <li>
+            <a [routerLink]="['/people', person.id]">{{ fullName(person) }}</a>
+          </li>
+        }
+      </ul>
+      @if (list.isTruncated) {
+        <p class="hint">Only the first {{ list.people.length }} profiles are shown.</p>
+      }
+    }
+  }
+</section>

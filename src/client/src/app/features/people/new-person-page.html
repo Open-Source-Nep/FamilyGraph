@@ -1,0 +1,18 @@
+<section class="panel">
+  <h1>Add a person</h1>
+  <p>
+    Only a first name is needed. You will maintain this profile until the person claims it. Adding
+    someone does not connect them to your own account.
+  </p>
+
+  @if (error(); as error) {
+    <p class="error" role="alert">{{ error }}</p>
+  }
+
+  <app-person-name-form
+    submitLabel="Add person"
+    [busy]="saving()"
+    (saved)="create($event)"
+    (cancelled)="cancel()"
+  />
+</section>

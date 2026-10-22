@@ -98,7 +98,7 @@ public class AccountEndpointTests : IClassFixture<AccountTestFactory>
     {
         using var _ = await CallbackAsync(Guid.NewGuid().ToString(), "maya@example.org");
         using var account = await _browser.GetAsync("/api/account", Cancellation);
-        var token = XsrfToken(account);
+        var token = AccountTestFactory.XsrfToken(account);
 
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/account/sign-out");
         request.Headers.Add("X-XSRF-TOKEN", token);
@@ -114,11 +114,5 @@ public class AccountEndpointTests : IClassFixture<AccountTestFactory>
             HttpMethod.Get, "/api/account/sign-in/callback?returnUrl=" + Uri.EscapeDataString(returnUrl));
         request.Headers.Add(AccountTestFactory.LoginHeader, $"{key}|{email}|true");
         return await _browser.SendAsync(request, Cancellation);
-    }
-
-    private static string XsrfToken(HttpResponseMessage response)
-    {
-        var cookie = response.Headers.GetValues("Set-Cookie").Single(value => value.StartsWith("XSRF-TOKEN=", StringComparison.Ordinal));
-        return Uri.UnescapeDataString(cookie["XSRF-TOKEN=".Length..cookie.IndexOf(';')]);
     }
 }

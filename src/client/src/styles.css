@@ -47,3 +47,40 @@ dt {
 dd {
   margin: 0 0 0.75rem;
 }
+
+button.secondary {
+  background: transparent;
+  color: var(--accent);
+}
+
+.hint {
+  color: var(--muted);
+}
+
+.name-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.name-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+input {
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  font: inherit;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.people {
+  padding-left: 1.25rem;
+}
