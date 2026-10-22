@@ -1,3 +1,4 @@
+using FamilyGraph.Business.Audit;
 using FamilyGraph.Business.People;
 
 namespace FamilyGraph.Business.Relationships;
@@ -9,7 +10,7 @@ namespace FamilyGraph.Business.Relationships;
 /// <see cref="Disagree"/> (D-013); no one else can change it. An account that maintains both
 /// endpoints removes the link with <see cref="Delete"/> instead (D-014).
 /// </summary>
-public sealed class ParentChildLink
+public sealed class ParentChildLink : AuditedEntity
 {
     private ParentChildLink(
         LinkId id,
@@ -80,13 +81,16 @@ public sealed class ParentChildLink
 
         LinkCycleCheck.EnsureNoCycle(parent.Id, child.Id, parentAncestors);
 
-        return new ParentChildLink(
+        var link = new ParentChildLink(
             LinkId.New(),
             parent.Id,
             child.Id,
             type,
             maintainsParent ? EndpointApproval.Approved : EndpointApproval.Pending,
             maintainsChild ? EndpointApproval.Approved : EndpointApproval.Pending);
+        link.Record(new LinkCreated(
+            link.Id, link.ParentId, link.ChildId, link.Type, link.ParentApproval, link.ChildApproval, creatorId));
+        return link;
     }
 
     /// <summary>
@@ -111,7 +115,11 @@ public sealed class ParentChildLink
             LinkCycleCheck.EnsureNoCycle(ParentId, ChildId, parentAncestors);
         }
 
+        var wasDisagreed = ApprovalOf(isParentSide) == EndpointApproval.Disagreed;
         SetApproval(isParentSide, EndpointApproval.Approved);
+        Record(wasDisagreed
+            ? new LinkApprovalRestored(Id, endpoint.Id, actorId)
+            : new LinkEndpointApproved(Id, endpoint.Id, actorId));
     }
 
     /// <summary>
@@ -140,7 +148,11 @@ public sealed class ParentChildLink
             throw new ConsentUnchangedException();
         }
 
+        var wasPending = ApprovalOf(isParentSide) == EndpointApproval.Pending;
         SetApproval(isParentSide, EndpointApproval.Disagreed);
+        Record(wasPending
+            ? new LinkEndpointDeclined(Id, endpoint.Id, actorId)
+            : new LinkEndpointDisagreed(Id, endpoint.Id, actorId));
     }
 
     /// <summary>
@@ -166,6 +178,7 @@ public sealed class ParentChildLink
         EnsureNotDeleted();
 
         DeletedAt = deletedAt;
+        Record(new LinkDeleted(Id, deletedAt, actorId));
     }
 
     private void EnsureNotDeleted()
