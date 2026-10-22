@@ -1,4 +1,4 @@
-import { Component, input, signal } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
@@ -10,9 +10,7 @@ import { HomePage } from './home-page';
 
 /** The graph itself is covered by the HomeGraph tests. */
 @Component({ selector: 'app-home-graph', template: '' })
-class StubHomeGraph {
-  readonly from = input.required<string[]>();
-}
+class StubHomeGraph {}
 
 const profile = (id: string, firstName: string): PersonSummary => ({
   id,
@@ -50,12 +48,11 @@ describe('HomePage', () => {
     await fixture.whenStable();
   };
   const graph = () => fixture.debugElement.query((el) => el.name === 'app-home-graph');
-  const from = () => (graph()?.componentInstance as StubHomeGraph | undefined)?.from();
 
   it('shows the graph of everyone connected to your profiles, with no centre picker', async () => {
     await show();
 
-    expect(from()).toEqual(['maya', 'gita']);
+    expect(graph()).not.toBeNull();
     expect(fixture.nativeElement.querySelector('select')).toBeNull();
   });
 

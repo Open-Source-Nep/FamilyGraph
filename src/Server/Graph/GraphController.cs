@@ -8,8 +8,9 @@ using Server.Accounts;
 namespace Server.Graph;
 
 /// <summary>
-/// Graph exploration (PRD 08, #20): a local view around a person and how two people are connected.
-/// Both walk only active links and stay within the configured limits (D-009, D-023).
+/// Graph exploration (PRD 08, #20): a local view around a person, how two people are connected and
+/// the home page's overview of everyone connected to your profiles. All walk only active links and
+/// stay within the configured limits (D-009, D-023).
 /// </summary>
 [ApiController]
 [Authorize]
@@ -23,6 +24,14 @@ public sealed class GraphController(GraphService graph) : ControllerBase
     [HttpGet("graph")]
     public async Task<LocalViewResponse> LocalView(Guid id, CancellationToken cancellationToken) =>
         LocalViewResponse.From(await graph.LocalViewAsync(ToPersonId(id), User.AccountId(), cancellationToken));
+
+    /// <summary>
+    /// Everyone connected to the profiles you maintain, up to <c>Graph:OverviewPeople</c>, for the
+    /// home page (D-024). Empty without profiles. 503 <c>graph.timeout</c>.
+    /// </summary>
+    [HttpGet("/api/graph/overview")]
+    public async Task<GraphOverviewResponse> Overview(CancellationToken cancellationToken) =>
+        GraphOverviewResponse.From(await graph.OverviewAsync(User.AccountId(), cancellationToken));
 
     /// <summary>
     /// How the person is connected to another: the shortest path and up to <c>Graph:MorePaths</c>

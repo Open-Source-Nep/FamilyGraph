@@ -40,6 +40,19 @@ public sealed record LocalViewResponse(
 }
 
 /// <summary>
+/// Everyone connected through active links to your profiles, nearest first, and the active links
+/// between them. Nobody is the centre. <see cref="IsTruncated"/> says more people were in reach (D-024).
+/// </summary>
+public sealed record GraphOverviewResponse(
+    IReadOnlyList<GraphPersonResponse> People, IReadOnlyList<GraphLinkResponse> Links, bool IsTruncated)
+{
+    internal static GraphOverviewResponse From(Overview overview) => new(
+        [.. overview.People.Select(GraphPersonResponse.From)],
+        [.. overview.Links.Select(GraphLinkResponse.From)],
+        overview.IsTruncated);
+}
+
+/// <summary>
 /// One step of a path: <see cref="Relation"/> is <c>Parent</c> or <c>Child</c>, how
 /// <see cref="Person"/> relates to the previous person, and <see cref="Type"/> the link's type (PRD 08).
 /// </summary>

@@ -31,6 +31,27 @@ public sealed class GraphService(IPersonQueries people, IGraphQueries queries, G
     }
 
     /// <summary>
+    /// Everyone connected through active links to the profiles the viewer maintains, in one bounded
+    /// walk of at most <see cref="GraphLimits.OverviewPeople"/> people (D-023, D-024). Without
+    /// profiles it is empty.
+    /// </summary>
+    public async Task<Overview> OverviewAsync(AccountId viewerId, CancellationToken cancellationToken)
+    {
+        var profiles = await people.ListMaintainedByAsync(viewerId, limits.OverviewPeople, cancellationToken);
+        if (profiles.People.Count == 0)
+        {
+            return new Overview([], [], false);
+        }
+
+        var overview = await queries.OverviewAsync(
+            [.. profiles.People.Select(profile => profile.Id)], viewerId, limits.OverviewPeople, cancellationToken);
+        return new Overview(
+            [.. overview.People.Select(PrivacyProjection.Project)],
+            overview.Links,
+            overview.IsTruncated || profiles.IsTruncated);
+    }
+
+    /// <summary>
     /// The shortest path from one person to another and up to <see cref="GraphLimits.MorePaths"/>
     /// further paths, within the people examined from the first person (D-009, D-023).
     /// </summary>

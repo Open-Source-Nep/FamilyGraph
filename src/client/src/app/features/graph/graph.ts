@@ -33,6 +33,16 @@ export interface LocalView {
   isTruncated: boolean;
 }
 
+/**
+ * Everyone connected to your profiles, nearest first, from `GET /api/graph/overview` (D-024).
+ * Nobody is the centre; `isTruncated` says more people were in reach.
+ */
+export interface GraphOverview {
+  people: GraphPerson[];
+  links: GraphLink[];
+  isTruncated: boolean;
+}
+
 /** How `person` relates to the previous person on the path, through `linkId` (PRD 08). */
 export interface ConnectionStep {
   linkId: string;

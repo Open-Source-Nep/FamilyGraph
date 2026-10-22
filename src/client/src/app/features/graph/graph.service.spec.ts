@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 
-import { Connections, LocalView, stepLabel } from './graph';
+import { Connections, GraphOverview, LocalView, stepLabel } from './graph';
 import { GraphService } from './graph.service';
 
 describe('GraphService', () => {
@@ -25,6 +25,14 @@ describe('GraphService', () => {
     http.expectOne({ method: 'GET', url: '/api/people/p1/graph' }).flush(view);
 
     expect(await loaded).toEqual(view);
+  });
+
+  it('loads the overview of everyone connected to your profiles', async () => {
+    const overview: GraphOverview = { people: [], links: [], isTruncated: false };
+    const loaded = service.overview();
+    http.expectOne({ method: 'GET', url: '/api/graph/overview' }).flush(overview);
+
+    expect(await loaded).toEqual(overview);
   });
 
   it('finds the connections between two people', async () => {

@@ -11,7 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FamilyGraph.Infrastructure.Tests.Graph;
 
-/// <summary>The bounded local view and connection search against PostgreSQL (#20, D-009, D-023).</summary>
+/// <summary>The bounded local view, overview and connection search against PostgreSQL (#20, D-009, D-023).</summary>
 public class GraphQueriesTests(PostgresFixture postgres)
 {
     private static readonly AccountId Maintainer = TestData.NewAccount();
@@ -119,6 +119,34 @@ public class GraphQueriesTests(PostgresFixture postgres)
 
     [Fact]
     [Trait("AC", "AC-08.4")]
+    public async Task Overview_walks_active_links_from_every_profile_you_maintain_nearest_first()
+    {
+        await using var services = await NewServicesAsync();
+        var other = TestData.NewAccount();
+        var you = TestData.NewPerson(Maintainer, "You");
+        var second = TestData.NewPerson(Maintainer, "Second");
+        var mother = TestData.NewPerson(other, "Mother");
+        var grandmother = TestData.NewPerson(other, "Grandmother");
+        var stranger = TestData.NewPerson(other, "Stranger");
+        var motherLink = TestData.NewLink(mother, you, Maintainer);
+        var pending = TestData.NewLink(stranger, second, Maintainer);
+        await SaveAsync(services, [you, second, mother, grandmother, stranger, motherLink, pending,
+            TestData.NewLink(grandmother, mother, other)]);
+        await ApproveAsync(services, motherLink.Id, other);
+
+        var overview = await OverviewAsync(services, overviewPeople: 500);
+        var cut = await OverviewAsync(services, overviewPeople: 3);
+
+        Assert.Equal(["Second", "You", "Mother", "Grandmother"], overview.People.Select(person => person.Name.FirstName));
+        Assert.Equal(2, overview.Links.Count);
+        Assert.False(overview.IsTruncated);
+        Assert.Equal(["Second", "You", "Mother"], cut.People.Select(person => person.Name.FirstName));
+        Assert.Equal(motherLink.Id, Assert.Single(cut.Links).Id);
+        Assert.True(cut.IsTruncated);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-08.4")]
     public async Task Graph_queries_on_more_than_ten_thousand_people_stay_within_their_limits()
     {
         await using var services = await NewServicesAsync();
@@ -187,6 +215,16 @@ public class GraphQueriesTests(PostgresFixture postgres)
             scope.ServiceProvider.GetRequiredService<IGraphQueries>(),
             new GraphLimits(generations, peopleLimit));
         return await service.LocalViewAsync(centre, Maintainer, Cancellation);
+    }
+
+    private static async Task<Overview> OverviewAsync(ServiceProvider services, int overviewPeople)
+    {
+        await using var scope = services.CreateAsyncScope();
+        var service = new GraphService(
+            scope.ServiceProvider.GetRequiredService<IPersonQueries>(),
+            scope.ServiceProvider.GetRequiredService<IGraphQueries>(),
+            new GraphLimits(overviewPeople: overviewPeople));
+        return await service.OverviewAsync(Maintainer, Cancellation);
     }
 
     private static async Task<Connections> ConnectionsAsync(
