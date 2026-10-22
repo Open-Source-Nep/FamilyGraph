@@ -87,7 +87,8 @@ dotnet build FamilyGraph.slnx
 dotnet run --project src/Server            # http://localhost:5039, https://localhost:7027; starts the SPA via the SPA Proxy
 dotnet test                                # all .NET test projects (Microsoft.Testing.Platform)
 dotnet test --project tests/FamilyGraph.ArchitectureTests
-dotnet ef migrations add <Name> --project src/FamilyGraph.Infrastructure --output-dir Persistence/Migrations   # after dotnet tool restore
+dotnet ef migrations add <Name> --project src/FamilyGraph.Infrastructure --startup-project src/Server --output-dir Persistence/Migrations   # after dotnet tool restore
+dotnet ef database update --project src/FamilyGraph.Infrastructure --startup-project src/Server   # uses the Server's Database settings
 
 # Frontend (from src/client)
 npm install

@@ -18,6 +18,11 @@
         <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="10.0.12"/>
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12"/>
         <PackageReference Include="Microsoft.AspNetCore.SpaProxy" Version="10.0.12"/>
+        <!-- Design time only: lets dotnet ef use Server as the startup project, so it reads the Database section. -->
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.4">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
     </ItemGroup>
 
     <ItemGroup>
