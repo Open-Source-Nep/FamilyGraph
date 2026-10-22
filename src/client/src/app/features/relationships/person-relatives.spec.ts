@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
 import { PeopleService } from '../people/people.service';
-import { Person } from '../people/person';
+import { Person, PersonName } from '../people/person';
 import { PersonRelatives } from './person-relatives';
 import { CreatedLink, DirectRelatives, LinkEndpoint, NewLink } from './relationship';
 import { RelationshipsService } from './relationships.service';
@@ -47,12 +47,16 @@ describe('PersonRelatives', () => {
   let disagreed: [string, LinkEndpoint][];
   let deleted: string[];
   let active: boolean;
+  let rejected: Set<string>;
+  let newPeople: PersonName[];
 
   beforeEach(async () => {
     created = [];
     disagreed = [];
     deleted = [];
     active = true;
+    rejected = new Set();
+    newPeople = [];
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
@@ -61,6 +65,9 @@ describe('PersonRelatives', () => {
           useValue: {
             listDirectRelatives: () => Promise.resolve(relatives),
             create: (link: NewLink): Promise<CreatedLink> => {
+              if (rejected.has(link.parentId) || rejected.has(link.childId)) {
+                return Promise.reject(new Error('cycle'));
+              }
               created.push(link);
               return Promise.resolve({ ...link, id: 'l1', isActive: active });
             },
@@ -79,9 +86,17 @@ describe('PersonRelatives', () => {
           useValue: {
             listMaintained: () =>
               Promise.resolve({
-                people: [maya, { id: 'p4', firstName: 'Asha', middleName: null, lastName: null }],
+                people: [
+                  maya,
+                  { id: 'p4', firstName: 'Asha', middleName: null, lastName: null },
+                  { id: 'p5', firstName: 'Bina', middleName: null, lastName: 'Rai' },
+                ],
                 isTruncated: false,
               }),
+            create: (name: PersonName) => {
+              newPeople.push(name);
+              return Promise.resolve({ ...name, id: 'p6', maintainedByYou: true });
+            },
           },
         },
       ],
@@ -99,21 +114,19 @@ describe('PersonRelatives', () => {
     ) as HTMLButtonElement;
 
   const openForm = async () => {
-    button('Add a parent or child').click();
+    button('Add parents or children').click();
     await fixture.whenStable();
   };
 
-  const choose = async (selector: string, value: string) => {
-    const element = fixture.nativeElement.querySelector(selector) as
-      HTMLInputElement | HTMLSelectElement;
-    if (element instanceof HTMLInputElement) {
-      element.click();
-    } else {
-      element.value = value;
-      element.dispatchEvent(new Event('change'));
-    }
+  const choose = async (selector: string) => {
+    (fixture.nativeElement.querySelector(selector) as HTMLInputElement).click();
     await fixture.whenStable();
   };
+
+  const checkboxLabels = () =>
+    [...fixture.nativeElement.querySelectorAll('input[type=checkbox]')].map(
+      (input: HTMLInputElement) => input.parentElement?.textContent?.trim(),
+    );
 
   it('lists parents and marks adoptive ones', () => {
     const items = [...fixture.nativeElement.querySelectorAll('li')].map((li: HTMLElement) =>
@@ -127,17 +140,14 @@ describe('PersonRelatives', () => {
   it('offers only your other profiles', async () => {
     await openForm();
 
-    const options = [...fixture.nativeElement.querySelectorAll('option')].map(
-      (option: HTMLOptionElement) => option.textContent?.trim(),
-    );
-    expect(options).toEqual(['Choose a profile you maintain', 'Asha']);
+    expect(checkboxLabels()).toEqual(['Asha', 'Bina Rai']);
   });
 
   it('creates an adoptive child link', async () => {
     await openForm();
-    await choose('input[value="child"]', '');
-    await choose('select', 'p4');
-    await choose('input[value="Adoptive"]', '');
+    await choose('input[value="child"]');
+    await choose('input[value="p4"]');
+    await choose('input[value="Adoptive"]');
 
     button('Add link').click();
     await fixture.whenStable();
@@ -145,16 +155,100 @@ describe('PersonRelatives', () => {
     expect(created).toEqual([{ parentId: 'p1', childId: 'p4', type: 'Adoptive' }]);
   });
 
+  it('asks for a profile instead of submitting none', async () => {
+    await openForm();
+
+    button('Add link').click();
+    await fixture.whenStable();
+
+    expect(created).toEqual([]);
+    expect(text()).toContain('Choose at least one profile.');
+  });
+
   it('says when the new link waits for approval', async () => {
     active = false;
     await openForm();
-    await choose('select', 'p4');
+    await choose('input[value="p4"]');
 
     button('Add link').click();
     await fixture.whenStable();
 
     expect(created).toEqual([{ parentId: 'p4', childId: 'p1', type: 'Biological' }]);
     expect(text()).toContain('not active yet');
+  });
+
+  it('links several parents in one submit', async () => {
+    await openForm();
+    await choose('input[value="p4"]');
+    await choose('input[value="p5"]');
+
+    button('Add 2 links').click();
+    await fixture.whenStable();
+
+    expect(created).toEqual([
+      { parentId: 'p4', childId: 'p1', type: 'Biological' },
+      { parentId: 'p5', childId: 'p1', type: 'Biological' },
+    ]);
+    expect(text()).toContain('Asha: linked.');
+    expect(text()).toContain('Bina Rai: linked.');
+    // Every link was added, so the form closes.
+    expect(button('Add parents or children')).toBeTruthy();
+  });
+
+  it('keeps the profiles whose link failed selected', async () => {
+    rejected.add('p4');
+    await openForm();
+    await choose('input[value="p4"]');
+    await choose('input[value="p5"]');
+
+    button('Add 2 links').click();
+    await fixture.whenStable();
+
+    expect(created).toEqual([{ parentId: 'p5', childId: 'p1', type: 'Biological' }]);
+    expect(text()).toContain('Asha: not linked.');
+    expect(text()).toContain('Bina Rai: linked.');
+    const checked = [...fixture.nativeElement.querySelectorAll('input[type=checkbox]:checked')].map(
+      (input: HTMLInputElement) => input.value,
+    );
+    expect(checked).toEqual(['p4']);
+  });
+
+  it('adds a new person from the dialog and selects them', async () => {
+    await openForm();
+    button('Add a new person').click();
+    await fixture.whenStable();
+    const dialog = fixture.nativeElement.querySelector('dialog') as HTMLDialogElement;
+    expect(dialog.open).toBe(true);
+
+    const firstName = dialog.querySelector('input[formControlName=firstName]') as HTMLInputElement;
+    firstName.value = 'Kiran';
+    firstName.dispatchEvent(new Event('input'));
+    (dialog.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    expect(newPeople).toEqual([{ firstName: 'Kiran', middleName: null, lastName: null }]);
+    expect(dialog.open).toBe(false);
+    expect(checkboxLabels()).toEqual(['Asha', 'Bina Rai', 'Kiran']);
+
+    button('Add link').click();
+    await fixture.whenStable();
+
+    expect(created).toEqual([{ parentId: 'p6', childId: 'p1', type: 'Biological' }]);
+  });
+
+  it('leaves the link form as it was when the dialog is cancelled', async () => {
+    await openForm();
+    await choose('input[value="p4"]');
+    button('Add a new person').click();
+    await fixture.whenStable();
+
+    const dialog = fixture.nativeElement.querySelector('dialog') as HTMLDialogElement;
+    (dialog.querySelector('button.secondary') as HTMLButtonElement).click();
+    await fixture.whenStable();
+
+    expect(dialog.open).toBe(false);
+    expect(newPeople).toEqual([]);
+    expect(button('Add link')).toBeTruthy();
   });
 
   it('withdraws your approval of a link to a profile someone else maintains after confirming', async () => {
