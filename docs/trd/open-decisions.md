@@ -32,6 +32,7 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 - Business contains no DTOs or API contracts (D-010 places API models in Server).
 - **Domain enumerations (agreed 2026-10-22, PR #44 review):** closed sets of domain values are sealed classes deriving from `FamilyGraph.Business.BaseEnum<T>`, with one `public static readonly` field per value and a stable integer `Value` for persistence. C# `enum` is not used in the domain.
 - Consent state transitions (D-013 below).
+- Link removal (D-014 below).
 - **Name length (agreed 2026-10-21):** Business puts no length cap on name parts. Any storage or input limit is set later by persistence (#9) and API validation (D-010).
 
 ## Decisions to discuss next
@@ -243,3 +244,17 @@ For each major decision, record:
   - A user who maintains both endpoints cannot disagree; they delete the link instead (#16) (`link.sole_maintainer_must_delete`).
   - Claims and merges have no operation on a link, so they cannot change consent.
 - **Consequences:** `EndpointApproval` gains `Disagreed` (value 3). `Approve` takes the parent's ancestor snapshot, which Application supplies. Audit events for each transition come with #10; Application, API and Client parts follow later.
+
+### D-014: Link removal
+
+- **Status:** agreed (2026-10-22). Issue #16.
+- **Context:** PRD 03 lets a user who maintains both endpoints delete a link, and makes withdrawing approval the only option when different users maintain them. D-013 already provides withdrawal as Disagree, and D-009 stores deletion as a nullable timestamp. PRD 03 says the sole maintainer may delete "the active relationship", but a link can be inactive by the time one account maintains both endpoints (administrator inheritance, succession, claims).
+- **Options considered:** deletion in any consent state; deletion of active links only (an inactive link must be approved first); deletion unless a side has disagreed.
+- **Trade-offs:** Deleting never activates a link, so it cannot override consent, and the audit history keeps every earlier state. Requiring approval first adds a brief, artificial activation. Blocking on disagreement leaves unwanted links stuck.
+- **Decision:**
+  - **Delete:** only an account that maintains both endpoints, in any consent state (`link.not_sole_maintainer` otherwise). It sets the deletion timestamp. The link and its consent state are kept for history, and a deleted link is never active.
+  - Deletion is final. To undo it, create the link again, which gives a new link.
+  - A deleted link rejects every further operation (`link.deleted`). The authority check runs first, so non-maintainers do not learn that the link was deleted.
+  - Maintainers on different accounts remove a link by withdrawing approval (Disagree, D-013), which they can later restore.
+  - Delete and Disagree are separate operations, so their audit events (#10) are distinct.
+- **Consequences:** `ParentChildLink` gains `Delete`, `DeletedAt` and `IsDeleted`; Application supplies the timestamp. Audit events come with #10; Application, API and Client parts follow later.

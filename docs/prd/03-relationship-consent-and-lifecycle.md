@@ -60,6 +60,13 @@ Define when a parent–child relationship is active, inactive, restored, or remo
 - A user who maintains both endpoints cannot disagree; they delete the link instead.
 - See D-013 in `docs/trd/open-decisions.md`.
 
+## Removal decisions (agreed 2026-10-22)
+
+- A user who maintains both endpoints may delete the link whatever its consent state. Deleting never makes a link active.
+- Deletion is final. Undoing it means creating the link again.
+- A deleted link accepts no further approval, disagreement or deletion.
+- See D-014 in `docs/trd/open-decisions.md`.
+
 ## Open details
 
 - Exact event names and state-machine representation are implementation details, provided observable behavior matches these requirements.
