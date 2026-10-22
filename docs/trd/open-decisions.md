@@ -38,7 +38,7 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 - Persistence mapping (D-017 below).
 - Accounts, sign-in flow and sessions (D-018 below).
 - Person profile use cases, unit of work and API (D-019 below).
-- Creating parent–child links: use case, ancestor query and API (D-020 below, proposed with #14).
+- Creating parent–child links: use case, ancestor query and API (D-020 below).
 - **Name length (agreed 2026-10-21):** Business puts no length cap on name parts. Any storage or input limit is set later by persistence (#9) and API validation (D-010).
 
 ## Decisions to discuss next
@@ -323,7 +323,7 @@ For each major decision, record:
   - **Endpoints** (`AccountController`, `/api/account`): `GET /api/account/sign-in?returnUrl=` starts Google sign-in (503 `account.sign_in_unavailable` when Google is not configured); `GET /api/account/sign-in/callback` creates or updates the account, starts the session and redirects to a local `returnUrl` only; `POST /api/account/sign-out` ends it; `GET /api/account` returns the own account or 401.
   - **Session:** the Identity application cookie `FamilyGraph.Session` (`HttpOnly`, `Secure`, `SameSite=Lax`, sliding expiry) holds the account ID and roles. The API answers 401 and 403 instead of redirecting.
   - **CSRF:** `GET /api/account` sets a readable `XSRF-TOKEN` cookie. Angular's `HttpClient` sends it back as `X-XSRF-TOKEN`, and a global filter rejects any non-GET request without a valid token (400 `request.antiforgery_invalid`).
-  - **Client:** a sign-in page, an account page with sign-out, and a guard that sends signed-out users to sign-in with a `returnUrl`. In development, `proxy.conf.json` forwards `/api` and `/signin-google` to the Server over HTTP, so HTTPS redirection runs outside Development only.
+  - **Client:** a sign-in page, an account page with sign-out, and a guard that sends signed-out users to sign-in with a `returnUrl`. Since #55 the Client loads `GET /api/configuration` once at startup (`provideAppInitializer`); it reports only whether Google sign-in is configured, never the client ID or secret. The sign-in page shows a Google-branded button (inline logo, no Google script or font) that navigates to `/api/account/sign-in`, says when Google is not configured or the server is unreachable, and sends already signed-in users to their local `returnUrl`. In development, `proxy.conf.json` forwards `/api` and `/signin-google` to the Server over HTTP, so HTTPS redirection runs outside Development only.
   - **Packages:** `Microsoft.AspNetCore.Identity.EntityFrameworkCore` 10.0.4 (matches EF Core) in Infrastructure, `Microsoft.AspNetCore.Authentication.Google` 10.0.12 in Server (both named in D-008).
 - **Consequences:**
   - The roles in a session are those of its sign-in. An administrator removed from `Admin:Emails` keeps the role until signing in again or the session expires. The first administrator-only endpoint decides whether to re-check per request.
@@ -347,7 +347,7 @@ For each major decision, record:
 
 ### D-020: Creating parent–child links
 
-- **Status:** proposed (2026-10-22). Issue #14. Agreed when the #14 PR merges.
+- **Status:** agreed (2026-10-22). Issue #14, PR #54.
 - **Context:** The domain already decides who may create a link, the starting approvals, duplicates and cycles (PRD 02, PRD 03, D-013). #14 brings the use case, the bounded ancestor query D-009 asks for, the API and the Client. Person search (#22) and the local graph view (#20, #23) come later, and privacy placeholders come with #18.
 - **Options considered:** a recursive CTE for ancestors, or one query per generation from Application; returning a new link's per-endpoint approvals, or only whether it is active; showing pending links on a person's page, or active ones only; picking the other person by search, by pasted ID, or from the profiles you maintain.
 - **Trade-offs:** A recursive CTE is one round trip, and taking the union over (person, generation) visits each person at most once per generation, so pedigree collapse cannot blow it up. Showing only active links follows PRD 03 ("excluded from ordinary relationship views"); approving pending links is #15. Picking only from your own profiles needs no search, and still covers every allowed link, because the creator must maintain one endpoint: open the other person's page and link one of your profiles to it.

@@ -1,11 +1,13 @@
 import { Routes } from '@angular/router';
 
 import { authGuard } from './core/auth/auth.guard';
+import { signedOutGuard } from './core/auth/signed-out.guard';
 
 export const routes: Routes = [
   {
     path: 'sign-in',
     title: 'Sign in',
+    canActivate: [signedOutGuard],
     loadComponent: () => import('./features/account/sign-in-page').then((m) => m.SignInPage),
   },
   {
