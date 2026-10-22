@@ -17,8 +17,9 @@ namespace Server.Accounts;
 [ApiController]
 [Route("api/account")]
 /// <remarks>
-/// <see cref="AccountService"/> is injected per action, so sign-in still answers 503 when Google is
-/// not configured on an instance that has no database either.
+/// <see cref="AccountService"/> is resolved only once an action needs it, so a signed-out
+/// <c>GET /api/account</c> and sign-in without Google configured still answer on an instance that
+/// has no database either.
 /// </remarks>
 public sealed class AccountController(IAntiforgery antiforgery) : ControllerBase
 {
@@ -33,7 +34,7 @@ public sealed class AccountController(IAntiforgery antiforgery) : ControllerBase
     /// Client can send the sign-in request (D-011).
     /// </summary>
     [HttpGet]
-    public async Task<ActionResult<AccountResponse>> Get([FromServices] AccountService accounts, CancellationToken cancellationToken)
+    public async Task<ActionResult<AccountResponse>> Get(CancellationToken cancellationToken)
     {
         if (User.Identity?.IsAuthenticated != true)
         {
@@ -41,7 +42,7 @@ public sealed class AccountController(IAntiforgery antiforgery) : ControllerBase
             return Unauthorized();
         }
 
-        var account = await accounts.GetAsync(User.AccountId(), cancellationToken);
+        var account = await Accounts.GetAsync(User.AccountId(), cancellationToken);
         if (account is null)
         {
             // The account behind the session no longer exists.
@@ -64,7 +65,6 @@ public sealed class AccountController(IAntiforgery antiforgery) : ControllerBase
         GoogleSignInRequest request,
         [FromServices] GoogleSignInSettings google,
         [FromServices] IGoogleIdTokenValidator idTokens,
-        [FromServices] AccountService accounts,
         CancellationToken cancellationToken)
     {
         if (!google.Enabled)
@@ -84,7 +84,7 @@ public sealed class AccountController(IAntiforgery antiforgery) : ControllerBase
                 extensions: new Dictionary<string, object?> { ["code"] = "account.sign_in_failed" });
         }
 
-        var account = await accounts.SignInAsync(
+        var account = await Accounts.SignInAsync(
             new ExternalLogin(GoogleProvider, token.Subject, token.Email, token.EmailVerified), cancellationToken);
 
         var identity = new ClaimsIdentity(IdentityConstants.ApplicationScheme, ClaimTypes.NameIdentifier, ClaimTypes.Role);
@@ -103,6 +103,8 @@ public sealed class AccountController(IAntiforgery antiforgery) : ControllerBase
         Response.Cookies.Delete(XsrfCookie);
         return NoContent();
     }
+
+    private AccountService Accounts => HttpContext.RequestServices.GetRequiredService<AccountService>();
 
     /// <summary>The nonce the Client sent to Google: base64url of the SHA-256 of its secret.</summary>
     internal static string NonceFor(string secret) =>
