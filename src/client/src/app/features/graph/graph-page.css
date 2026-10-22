@@ -1,0 +1,35 @@
+.graph-panel {
+  max-width: 64rem;
+  padding: 0 1rem;
+}
+
+.selected {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin: 0.75rem 0;
+}
+
+.selected .actions {
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.graph-people {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-left: 1.25rem;
+}
+
+.graph-people .actions {
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.selected-person {
+  outline: 2px solid var(--accent);
+  outline-offset: 0.25rem;
+  border-radius: 0.125rem;
+}

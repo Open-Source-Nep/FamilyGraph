@@ -1,0 +1,76 @@
+<h2>How is {{ fullName(from()) }} related to someone?</h2>
+<form [formGroup]="form" (ngSubmit)="find()" class="name-form">
+  <label>
+    Other person
+    <select formControlName="otherId" required>
+      <option value="" disabled>Choose a person</option>
+      @for (other of others(); track other.id) {
+        <option [value]="other.id">{{ fullName(other) }}</option>
+      }
+    </select>
+  </label>
+  <button type="submit" [disabled]="searching()">Find connection</button>
+</form>
+@if (form.controls.otherId.touched && form.controls.otherId.invalid) {
+  <p class="error" role="alert">Choose a person.</p>
+}
+<p class="hint">You can choose people shown above or profiles you maintain.</p>
+
+@if (error(); as error) {
+  <p class="error" role="alert">{{ error }}</p>
+}
+
+@if (result(); as result) {
+  <div role="status">
+    @if (result.paths.length === 0) {
+      @if (result.searchComplete) {
+        <p>{{ fullName(from()) }} and {{ otherName() }} are not connected through active links.</p>
+      } @else {
+        <p>
+          No connection between {{ fullName(from()) }} and {{ otherName() }} was found within the
+          search limit. They may still be related further away.
+        </p>
+      }
+    } @else {
+      <ng-container
+        [ngTemplateOutlet]="path"
+        [ngTemplateOutletContext]="{ $implicit: result.paths[0] }"
+      />
+      @if (result.paths.length > 1 || result.morePathsExist) {
+        <p>There are more connections between these people.</p>
+        @if (result.paths.length > 1) {
+          @if (showMore()) {
+            <h3>Other connections</h3>
+            @for (other of result.paths.slice(1); track $index) {
+              <ng-container
+                [ngTemplateOutlet]="path"
+                [ngTemplateOutletContext]="{ $implicit: other }"
+              />
+            }
+            @if (result.morePathsExist) {
+              <p class="hint">Only the first {{ result.paths.length }} connections are listed.</p>
+            }
+          } @else {
+            <button type="button" class="secondary" (click)="showMore.set(true)">
+              Show {{ result.paths.length - 1 }} more
+            </button>
+          }
+        }
+      }
+    }
+  </div>
+}
+
+<ng-template #path let-connection>
+  <ol class="path">
+    <li>
+      <a [routerLink]="['/people', connection.start.id]">{{ fullName(connection.start) }}</a>
+    </li>
+    @for (step of connection.steps; track step.linkId) {
+      <li>
+        {{ stepLabel(step) }}:
+        <a [routerLink]="['/people', step.person.id]">{{ fullName(step.person) }}</a>
+      </li>
+    }
+  </ol>
+</ng-template>

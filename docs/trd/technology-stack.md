@@ -42,5 +42,6 @@ Agreed later:
 - EF Core provider: Npgsql (D-009). Versions pinned in #9 (D-017): `Npgsql.EntityFrameworkCore.PostgreSQL` 10.0.3, `Microsoft.EntityFrameworkCore.Design` 10.0.4, `dotnet-ef` 10.0.4 (local tool in `.config/dotnet-tools.json`), `Testcontainers.PostgreSql` 4.16.0.
 - Identity packages pinned in #11 (D-018): `Microsoft.AspNetCore.Identity.EntityFrameworkCore` 10.0.4. Google ID tokens are validated with `Google.Apis.Auth` 1.77.0 (D-018, revised 2026-10-22); `Microsoft.AspNetCore.Authentication.Google` was removed.
 - CI restore/build/test commands (D-012).
+- Client graph rendering (D-024): `cytoscape` `^3.34.4` and `cytoscape-dagre` `^4.0.1`, loaded only with the graph page.
 
 Do not assume that template defaults are current or that all package major versions are mutually compatible when upgrading.

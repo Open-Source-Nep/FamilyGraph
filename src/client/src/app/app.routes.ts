@@ -43,6 +43,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/people/person-page').then((m) => m.PersonPage),
       },
       {
+        path: 'people/:id/graph',
+        title: 'Family graph',
+        loadComponent: () => import('./features/graph/graph-page').then((m) => m.GraphPage),
+      },
+      {
         path: 'approvals',
         title: 'Link approvals',
         loadComponent: () =>

@@ -24,6 +24,7 @@ const messages: Record<string, string> = {
   'link.not_sole_maintainer':
     'Only someone who maintains both people can delete this link. Withdraw your approval instead.',
   'link.deleted': 'This link has been deleted. Reload the page to see the current links.',
+  'graph.timeout': 'The family graph took too long to load. Please try again.',
 };
 
 export function problemMessage(error: unknown): string {
