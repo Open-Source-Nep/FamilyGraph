@@ -1,0 +1,47 @@
+namespace FamilyGraph.Business.People;
+
+/// <summary>
+/// A real-world individual in the graph (PRD 01). A person is not an account: it only records
+/// which account currently maintains the profile, and there is always exactly one maintainer.
+/// </summary>
+public sealed class Person
+{
+    private Person(PersonId id, PersonName name, AccountId maintainerId)
+    {
+        Id = id;
+        Name = name;
+        MaintainerId = maintainerId;
+    }
+
+    public PersonId Id { get; }
+
+    public PersonName Name { get; private set; }
+
+    public AccountId MaintainerId { get; private set; }
+
+    /// <summary>Creates a profile. The creating account becomes its maintainer.</summary>
+    public static Person Create(PersonName name, AccountId creatorId)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+
+        return new Person(PersonId.New(), name, creatorId);
+    }
+
+    public bool IsMaintainedBy(AccountId accountId) => MaintainerId == accountId;
+
+    /// <summary>Renames the person. Only the current maintainer may do this.</summary>
+    public void Rename(PersonName newName, AccountId actorId)
+    {
+        ArgumentNullException.ThrowIfNull(newName);
+
+        if (!IsMaintainedBy(actorId))
+        {
+            throw new NotProfileMaintainerException(Id);
+        }
+
+        Name = newName;
+    }
+}
+
+public sealed class NotProfileMaintainerException(PersonId personId)
+    : DomainException("person.not_maintainer", $"Only the maintainer of profile {personId.Value} can change it.");

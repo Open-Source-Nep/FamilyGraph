@@ -30,6 +30,7 @@ Use this file to track unresolved technical choices. Do not treat recommendation
 - Production hosting and deployment (D-011 below).
 - CI/CD, configuration and releases (D-012 below).
 - Business contains no DTOs or API contracts (D-010 places API models in Server).
+- **Name length (agreed 2026-10-21):** Business puts no length cap on name parts. Any storage or input limit is set later by persistence (#9) and API validation (D-010).
 
 ## Decisions to discuss next
 
