@@ -1,8 +1,11 @@
-import { PersonName } from '../people/person';
+import { PersonLabel } from '../people/person';
 import { ParentChildType } from '../relationships/relationship';
 
-/** A person as you may see them in the graph. `maintainedByYou` never names the maintaining account. */
-export interface GraphPerson extends PersonName {
+/**
+ * A person as you may see them in the graph. `maintainedByYou` never names the maintaining
+ * account. A person hidden from you is a `Private` placeholder that keeps its links (PRD 05).
+ */
+export interface GraphPerson extends PersonLabel {
   id: string;
   maintainedByYou: boolean;
 }

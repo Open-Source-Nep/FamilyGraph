@@ -81,6 +81,11 @@ public sealed class ParentChildLink : AuditedEntity
             throw new NotLinkEndpointMaintainerException();
         }
 
+        if (parent.IsDeleted || child.IsDeleted)
+        {
+            throw new LinkToDeletedProfileException();
+        }
+
         if (childParents.Contains(parent.Id))
         {
             throw new DuplicateLinkException();
@@ -112,6 +117,7 @@ public sealed class ParentChildLink : AuditedEntity
 
         var isParentSide = IsParentSide(endpoint, actorId);
         EnsureNotDeleted();
+        endpoint.EnsureNotDeleted();
         if (ApprovalOf(isParentSide) == EndpointApproval.Approved)
         {
             throw new ConsentUnchangedException();
@@ -140,6 +146,7 @@ public sealed class ParentChildLink : AuditedEntity
 
         var isParentSide = IsParentSide(endpoint, actorId);
         EnsureNotDeleted();
+        endpoint.EnsureNotDeleted();
         if (otherEndpoint.Id != (isParentSide ? ChildId : ParentId))
         {
             throw new ArgumentException("The other endpoint must be the other person on this link.", nameof(otherEndpoint));
@@ -297,3 +304,7 @@ public sealed class BirthOrderUnchangedException()
 
 public sealed class LinkDeletedException()
     : ConflictException("link.deleted", "This link has been deleted.");
+
+/// <summary>No new link may be created with a deleted profile (PRD 05, AC-05.12).</summary>
+public sealed class LinkToDeletedProfileException()
+    : ConflictException("link.person_deleted", "A link cannot be created with a deleted profile.");

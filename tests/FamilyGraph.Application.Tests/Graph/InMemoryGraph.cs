@@ -99,7 +99,7 @@ internal sealed class InMemoryGraph(InMemoryPeople store) : IGraphQueries
             [.. ids.Where(store.People.ContainsKey).Select(id => Record(id, viewerId))]);
 
     private PersonRecord Record(PersonId id, AccountId viewerId) =>
-        new(id, store.People[id].Name, store.People[id].IsMaintainedBy(viewerId));
+        PersonRecord.From(store.People[id], viewerId);
 
     private IEnumerable<(PersonId Person, int Offset)> Neighbours(PersonId person) =>
         ActiveLinks()

@@ -9,17 +9,31 @@ public sealed record CreatedLinkResponse(Guid Id, Guid ParentId, Guid ChildId, s
         new(link.Id.Value, link.ParentId.Value, link.ChildId.Value, link.Type.Name, link.IsActive);
 }
 
-/// <summary>A relative through an active link. <see cref="MaintainedByYou"/> never names the maintaining account (D-019).</summary>
+/// <summary>
+/// A relative through an active link. <see cref="MaintainedByYou"/> never names the maintaining
+/// account (D-019). A relative hidden from you has <see cref="Placeholder"/> <c>Private</c> or
+/// <c>Deleted</c> and no name; the link's type still shows (PRD 05, AC-05.9).
+/// </summary>
 public sealed record RelativeResponse(
-    Guid LinkId, Guid Id, string FirstName, string? MiddleName, string? LastName, string Type, bool MaintainedByYou);
+    Guid LinkId,
+    Guid Id,
+    string? FirstName,
+    string? MiddleName,
+    string? LastName,
+    string? Placeholder,
+    string Visibility,
+    string Type,
+    bool MaintainedByYou);
 
 /// <summary><see cref="BirthOrder"/> is null while the child is unordered (D-016).</summary>
 public sealed record ChildResponse(
     Guid LinkId,
     Guid Id,
-    string FirstName,
+    string? FirstName,
     string? MiddleName,
     string? LastName,
+    string? Placeholder,
+    string Visibility,
     string Type,
     bool MaintainedByYou,
     int? BirthOrder);
@@ -34,39 +48,53 @@ public sealed record DirectRelativesResponse(
     internal static DirectRelativesResponse From(DirectRelatives relatives) => new(
         [.. relatives.Parents.Select(parent => new RelativeResponse(
             parent.LinkId.Value,
-            parent.Id.Value,
-            parent.Name.FirstName,
-            parent.Name.MiddleName,
-            parent.Name.LastName,
+            parent.Person.Id.Value,
+            parent.Person.Name?.FirstName,
+            parent.Person.Name?.MiddleName,
+            parent.Person.Name?.LastName,
+            parent.Person.Placeholder?.Name,
+            parent.Person.Visibility.Name,
             parent.Type.Name,
-            parent.MaintainedByViewer))],
+            parent.Person.MaintainedByViewer))],
         relatives.ParentsTruncated,
         [.. relatives.Children.Select(child => new ChildResponse(
             child.LinkId.Value,
-            child.Id.Value,
-            child.Name.FirstName,
-            child.Name.MiddleName,
-            child.Name.LastName,
+            child.Person.Id.Value,
+            child.Person.Name?.FirstName,
+            child.Person.Name?.MiddleName,
+            child.Person.Name?.LastName,
+            child.Person.Placeholder?.Name,
+            child.Person.Visibility.Name,
             child.Type.Name,
-            child.MaintainedByViewer,
+            child.Person.MaintainedByViewer,
             child.BirthOrder))],
         relatives.ChildrenTruncated);
 }
 
 /// <summary>
 /// One side of a link: the person, its approval (<c>Pending</c>, <c>Approved</c> or
-/// <c>Disagreed</c>) and whether you maintain it (D-021).
+/// <c>Disagreed</c>) and whether you maintain it (D-021). A person hidden from you has
+/// <see cref="Placeholder"/> <c>Private</c> or <c>Deleted</c> and no name (PRD 05).
 /// </summary>
 public sealed record LinkEndpointResponse(
-    Guid Id, string FirstName, string? MiddleName, string? LastName, string Approval, bool MaintainedByYou)
+    Guid Id,
+    string? FirstName,
+    string? MiddleName,
+    string? LastName,
+    string? Placeholder,
+    string Visibility,
+    string Approval,
+    bool MaintainedByYou)
 {
     internal static LinkEndpointResponse From(LinkEndpointView endpoint) => new(
-        endpoint.Id.Value,
-        endpoint.Name.FirstName,
-        endpoint.Name.MiddleName,
-        endpoint.Name.LastName,
+        endpoint.Person.Id.Value,
+        endpoint.Person.Name?.FirstName,
+        endpoint.Person.Name?.MiddleName,
+        endpoint.Person.Name?.LastName,
+        endpoint.Person.Placeholder?.Name,
+        endpoint.Person.Visibility.Name,
         endpoint.Approval.Name,
-        endpoint.MaintainedByViewer);
+        endpoint.Person.MaintainedByViewer);
 }
 
 /// <summary>A link's per-endpoint consent, shown to the maintainers of its profiles (D-021).</summary>

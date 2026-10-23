@@ -1,4 +1,4 @@
-import { PersonName } from '../people/person';
+import { PersonLabel } from '../people/person';
 
 /** The only directly registered relationship types (PRD 02). */
 export type ParentChildType = 'Biological' | 'Adoptive';
@@ -15,8 +15,11 @@ export interface CreatedLink extends NewLink {
   isActive: boolean;
 }
 
-/** A relative through an active link. `maintainedByYou` never names the maintaining account. */
-export interface Relative extends PersonName {
+/**
+ * A relative through an active link. `maintainedByYou` never names the maintaining account. A
+ * relative hidden from you is a placeholder, with the link's type still shown (PRD 05).
+ */
+export interface Relative extends PersonLabel {
   linkId: string;
   id: string;
   type: ParentChildType;
@@ -42,7 +45,7 @@ export type LinkEndpoint = 'Parent' | 'Child';
 /** One endpoint's consent (PRD 03, D-013). Nothing returns to pending. */
 export type EndpointApproval = 'Pending' | 'Approved' | 'Disagreed';
 
-export interface LinkEndpointConsent extends PersonName {
+export interface LinkEndpointConsent extends PersonLabel {
   id: string;
   approval: EndpointApproval;
   maintainedByYou: boolean;

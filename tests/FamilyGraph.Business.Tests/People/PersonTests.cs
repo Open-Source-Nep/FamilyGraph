@@ -77,6 +77,45 @@ public class PersonTests
     }
 
     [Fact]
+    [Trait("AC", "AC-05.7")]
+    public void New_profile_is_public_and_its_maintainer_can_make_it_private()
+    {
+        var person = Person.Create(new PersonName("Maya"), Alice);
+        Assert.Equal(ProfileVisibility.Public, person.Visibility);
+
+        person.SetVisibility(ProfileVisibility.Private, Alice);
+
+        Assert.Equal(ProfileVisibility.Private, person.Visibility);
+        Assert.Contains(new PersonVisibilityChanged(person.Id, Alice, ProfileVisibility.Private), person.PendingEvents);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-05.7")]
+    public void Someone_other_than_the_maintainer_cannot_change_the_visibility()
+    {
+        var person = Person.Create(new PersonName("Maya"), Alice);
+
+        var ex = Assert.Throws<NotProfileMaintainerException>(
+            () => person.SetVisibility(ProfileVisibility.Private, Bob));
+
+        Assert.Equal("person.not_maintainer", ex.Code);
+        Assert.Equal(ProfileVisibility.Public, person.Visibility);
+    }
+
+    [Fact]
+    public void Setting_the_current_visibility_again_is_a_conflict()
+    {
+        var person = Person.Create(new PersonName("Maya"), Alice);
+        person.TakeEvents();
+
+        var ex = Assert.Throws<ProfileVisibilityUnchangedException>(
+            () => person.SetVisibility(ProfileVisibility.Public, Alice));
+
+        Assert.Equal("person.visibility_unchanged", ex.Code);
+        Assert.Empty(person.PendingEvents);
+    }
+
+    [Fact]
     public void Empty_account_id_is_rejected()
     {
         Assert.Throws<ArgumentException>(() => new AccountId(Guid.Empty));

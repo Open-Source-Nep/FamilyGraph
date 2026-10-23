@@ -42,7 +42,7 @@ public sealed class RelationshipsController(RelationshipService relationships) :
     /// </summary>
     [HttpGet("inactive")]
     public async Task<LinkConsentListResponse> ListInactive(CancellationToken cancellationToken) =>
-        LinkConsentListResponse.From(await relationships.ListInactiveLinksAsync(User.AccountId(), cancellationToken));
+        LinkConsentListResponse.From(await relationships.ListInactiveLinksAsync(User.Viewer(), cancellationToken));
 
     /// <summary>
     /// Approves the link for the endpoint you maintain, from pending or after a disagreement
@@ -52,7 +52,7 @@ public sealed class RelationshipsController(RelationshipService relationships) :
     [HttpPost("{id:guid}/approve")]
     public async Task<LinkConsentResponse> Approve(Guid id, LinkConsentRequest request, CancellationToken cancellationToken) =>
         LinkConsentResponse.From(await relationships.ApproveAsync(
-            ToLinkId(id), request.ToEndpoint(), User.AccountId(), cancellationToken));
+            ToLinkId(id), request.ToEndpoint(), User.Viewer(), cancellationToken));
 
     /// <summary>
     /// Declines a pending endpoint you maintain or withdraws your approval (D-013); the link is
@@ -62,7 +62,7 @@ public sealed class RelationshipsController(RelationshipService relationships) :
     [HttpPost("{id:guid}/disagree")]
     public async Task<LinkConsentResponse> Disagree(Guid id, LinkConsentRequest request, CancellationToken cancellationToken) =>
         LinkConsentResponse.From(await relationships.DisagreeAsync(
-            ToLinkId(id), request.ToEndpoint(), User.AccountId(), cancellationToken));
+            ToLinkId(id), request.ToEndpoint(), User.Viewer(), cancellationToken));
 
     /// <summary>
     /// Deletes the link, in any consent state, when you maintain both people (D-014); 204. Anyone
@@ -79,7 +79,7 @@ public sealed class RelationshipsController(RelationshipService relationships) :
     [HttpGet("/api/people/{id:guid}/relatives")]
     public async Task<DirectRelativesResponse> ListDirectRelatives(Guid id, CancellationToken cancellationToken) =>
         DirectRelativesResponse.From(
-            await relationships.ListDirectRelativesAsync(ToPersonId(id), User.AccountId(), cancellationToken));
+            await relationships.ListDirectRelativesAsync(ToPersonId(id), User.Viewer(), cancellationToken));
 
     /// <summary>The empty GUID is never a person, so it is reported like any other unknown ID.</summary>
     private static PersonId ToPersonId(Guid id) =>

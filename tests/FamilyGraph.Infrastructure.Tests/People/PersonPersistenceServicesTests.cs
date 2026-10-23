@@ -1,5 +1,7 @@
+using System.Text.Json;
 using FamilyGraph.Application.People;
 using FamilyGraph.Application.Persistence;
+using FamilyGraph.Application.Privacy;
 using FamilyGraph.Business.Audit;
 using FamilyGraph.Business.People;
 using FamilyGraph.Infrastructure.Persistence;
@@ -13,6 +15,8 @@ namespace FamilyGraph.Infrastructure.Tests.People;
 public class PersonPersistenceServicesTests(PostgresFixture postgres)
 {
     private static CancellationToken Cancellation => TestContext.Current.CancellationToken;
+
+    private static Viewer As(AccountId account) => new(account, IsAdministrator: false);
 
     [Fact]
     public async Task Added_person_and_audit_events_are_saved_together()
@@ -44,6 +48,86 @@ public class PersonPersistenceServicesTests(PostgresFixture postgres)
     }
 
     [Fact]
+    [Trait("AC", "AC-05.7")]
+    [Trait("AC", "AC-05.1")]
+    public async Task Visibility_change_is_saved_with_its_audit_event_and_hides_the_name_from_others()
+    {
+        await using var services = await NewServicesAsync();
+        var maintainer = TestData.NewAccount();
+
+        PersonId id;
+        await using (var scope = services.CreateAsyncScope())
+        {
+            var service = scope.ServiceProvider.GetRequiredService<PersonService>();
+            id = await service.CreateAsync(new PersonName("Maya"), maintainer, Cancellation);
+        }
+
+        await using (var scope = services.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<PersonService>()
+                .SetVisibilityAsync(id, ProfileVisibility.Private, maintainer, Cancellation);
+        }
+
+        await using (var scope = services.CreateAsyncScope())
+        {
+            var service = scope.ServiceProvider.GetRequiredService<PersonService>();
+            var asMaintainer = await service.GetAsync(id, As(maintainer), Cancellation);
+            var asOther = await service.GetAsync(id, As(TestData.NewAccount()), Cancellation);
+            var record = await scope.ServiceProvider.GetRequiredService<FamilyGraphDbContext>()
+                .Set<AuditEventRecord>().SingleAsync(r => r.Type == nameof(PersonVisibilityChanged), Cancellation);
+
+            Assert.Equal((ProfileVisibility.Private, new PersonName("Maya")), (asMaintainer.Visibility, asMaintainer.Name));
+            Assert.Equal((null, PersonPlaceholder.Private), (asOther.Name, asOther.Placeholder));
+            using var data = JsonDocument.Parse(record.Data);
+            Assert.Equal(
+                [("personId", id.Value.ToString()), ("visibility", "2")],
+                data.RootElement.EnumerateObject().Select(property => (property.Name, property.Value.ToString())));
+        }
+    }
+
+    [Fact]
+    [Trait("AC", "AC-05.10")]
+    [Trait("AC", "AC-05.11")]
+    public async Task Deletion_erases_the_stored_name_and_leaves_the_maintained_list()
+    {
+        await using var services = await NewServicesAsync();
+        var maintainer = TestData.NewAccount();
+
+        PersonId id;
+        await using (var scope = services.CreateAsyncScope())
+        {
+            id = await scope.ServiceProvider.GetRequiredService<PersonService>()
+                .CreateAsync(new PersonName("Maya", "Devi", "Rai"), maintainer, Cancellation);
+        }
+
+        await using (var scope = services.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<PersonService>()
+                .DeleteAsync(id, new Viewer(TestData.NewAccount(), IsAdministrator: true), Cancellation);
+        }
+
+        await using (var scope = services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<FamilyGraphDbContext>();
+            var row = await context.Database.SqlQuery<NameRow>($"""
+                SELECT first_name AS "FirstName", middle_name AS "MiddleName", last_name AS "LastName",
+                    deleted_at IS NOT NULL AS "IsDeleted"
+                FROM people WHERE id = {id.Value}
+                """).SingleAsync(Cancellation);
+            var service = scope.ServiceProvider.GetRequiredService<PersonService>();
+            var view = await service.GetAsync(id, As(maintainer), Cancellation);
+            var record = await context.Set<AuditEventRecord>().SingleAsync(r => r.Type == nameof(PersonDeleted), Cancellation);
+
+            Assert.Equal(new NameRow("[erased]", null, null, true), row);
+            Assert.Equal(PersonPlaceholder.Deleted, view.Placeholder);
+            Assert.Empty((await service.ListMaintainedAsync(maintainer, Cancellation)).People);
+            Assert.DoesNotContain("Maya", record.Data, StringComparison.Ordinal);
+            using var data = JsonDocument.Parse(record.Data);
+            Assert.Equal(ProfileDeleter.Administrator.Value, data.RootElement.GetProperty("deletedBy").GetInt32());
+        }
+    }
+
+    [Fact]
     [Trait("AC", "AC-01.8")]
     public async Task Rename_through_the_service_is_saved_with_its_audit_event()
     {
@@ -65,7 +149,7 @@ public class PersonPersistenceServicesTests(PostgresFixture postgres)
 
         await using (var scope = services.CreateAsyncScope())
         {
-            var view = await scope.ServiceProvider.GetRequiredService<PersonService>().GetAsync(id, maintainer, Cancellation);
+            var view = await scope.ServiceProvider.GetRequiredService<PersonService>().GetAsync(id, As(maintainer), Cancellation);
             var types = await scope.ServiceProvider.GetRequiredService<FamilyGraphDbContext>()
                 .Set<AuditEventRecord>().OrderBy(record => record.Id).Select(record => record.Type).ToListAsync(Cancellation);
 
@@ -129,4 +213,6 @@ public class PersonPersistenceServicesTests(PostgresFixture postgres)
         services.AddScoped<PersonService>();
         return services.BuildServiceProvider();
     }
+
+    private sealed record NameRow(string FirstName, string? MiddleName, string? LastName, bool IsDeleted);
 }

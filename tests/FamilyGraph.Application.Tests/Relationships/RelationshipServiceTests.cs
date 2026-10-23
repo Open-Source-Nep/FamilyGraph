@@ -1,4 +1,5 @@
 using FamilyGraph.Application.People;
+using FamilyGraph.Application.Privacy;
 using FamilyGraph.Application.Relationships;
 using FamilyGraph.Application.Tests.People;
 using FamilyGraph.Business.People;
@@ -16,6 +17,8 @@ public class RelationshipServiceTests
     private readonly InMemoryPeople _store = new();
 
     private static CancellationToken Cancellation => TestContext.Current.CancellationToken;
+
+    private static Viewer As(AccountId account) => new(account, IsAdministrator: false);
 
     private RelationshipService Service(
         int directRelativesLimit = RelationshipLimits.DefaultDirectRelativesLimit,
@@ -146,20 +149,99 @@ public class RelationshipServiceTests
         await service.CreateLinkAsync(hari, child, ParentChildType.Adoptive, Alice, Cancellation);
         await service.CreateLinkAsync(pending, child, ParentChildType.Biological, Alice, Cancellation);
 
-        var relatives = await service.ListDirectRelativesAsync(child, Bob, Cancellation);
+        var relatives = await service.ListDirectRelativesAsync(child, As(Bob), Cancellation);
 
         var parent = Assert.Single(relatives.Parents);
-        Assert.Equal((hari, ParentChildType.Adoptive), (parent.Id, parent.Type));
+        Assert.Equal((hari, ParentChildType.Adoptive), (parent.Person.Id, parent.Type));
         Assert.True(relatives.ParentsTruncated);
         Assert.Empty(relatives.Children);
         Assert.False(relatives.ChildrenTruncated);
     }
 
     [Fact]
+    [Trait("AC", "AC-05.1")]
+    [Trait("AC", "AC-05.9")]
+    public async Task Private_relatives_are_placeholders_with_their_link_type_listed_after_the_others()
+    {
+        var child = AddPerson("Maya", Alice);
+        var hidden = AddPerson("Anita", Bob);
+        var hari = AddPerson("Hari", Alice);
+        var service = Service();
+        var link = await service.CreateLinkAsync(hidden, child, ParentChildType.Adoptive, Alice, Cancellation);
+        await service.ApproveAsync(link.Id, LinkEndpoint.Parent, As(Bob), Cancellation);
+        await service.CreateLinkAsync(hari, child, ParentChildType.Biological, Alice, Cancellation);
+        _store.People[hidden].SetVisibility(ProfileVisibility.Private, Bob);
+
+        var relatives = await service.ListDirectRelativesAsync(child, As(Alice), Cancellation);
+
+        // "Anita" would sort first by name; hidden people come last so the order hints at nothing.
+        Assert.Equal(
+            [(hari, "Hari", null, ParentChildType.Biological), (hidden, null, PersonPlaceholder.Private, ParentChildType.Adoptive)],
+            relatives.Parents.Select(parent =>
+                (parent.Person.Id, parent.Person.Name?.FirstName, parent.Person.Placeholder, parent.Type)));
+        var asOwner = await service.ListDirectRelativesAsync(child, As(Bob), Cancellation);
+        Assert.Equal(["Anita", "Hari"], asOwner.Parents.Select(parent => parent.Person.Name!.FirstName));
+    }
+
+    [Fact]
+    [Trait("AC", "AC-05.3")]
+    [Trait("AC", "AC-05.9")]
+    [Trait("AC", "AC-05.12")]
+    public async Task Deleted_relative_stays_as_a_placeholder_and_cannot_be_linked_again()
+    {
+        var child = AddPerson("Maya", Alice);
+        var parent = AddPerson("Hari", Alice);
+        var other = AddPerson("Gita", Alice);
+        var service = Service();
+        await service.CreateLinkAsync(parent, child, ParentChildType.Adoptive, Alice, Cancellation);
+        _store.People[parent].Delete(Alice, actorIsAdministrator: false, Now);
+
+        var relatives = await service.ListDirectRelativesAsync(child, As(Alice), Cancellation);
+
+        var relative = Assert.Single(relatives.Parents);
+        Assert.Equal((parent, null, PersonPlaceholder.Deleted, ParentChildType.Adoptive), (relative.Person.Id, relative.Person.Name, relative.Person.Placeholder, relative.Type));
+        await Assert.ThrowsAsync<LinkToDeletedProfileException>(
+            () => service.CreateLinkAsync(parent, other, ParentChildType.Biological, Alice, Cancellation));
+    }
+
+    [Fact]
+    public async Task Pending_link_of_a_deleted_profile_leaves_its_former_maintainers_approvals()
+    {
+        var parent = AddPerson("Hari", Bob);
+        var child = AddPerson("Maya", Alice);
+        var service = Service();
+        await service.CreateLinkAsync(parent, child, ParentChildType.Biological, Alice, Cancellation);
+        _store.People[parent].Delete(Bob, actorIsAdministrator: false, Now);
+
+        var asFormerMaintainer = await service.ListInactiveLinksAsync(As(Bob), Cancellation);
+        var asOtherMaintainer = await service.ListInactiveLinksAsync(As(Alice), Cancellation);
+
+        Assert.Empty(asFormerMaintainer.Links);
+        Assert.Equal(PersonPlaceholder.Deleted, Assert.Single(asOtherMaintainer.Links).Parent.Person.Placeholder);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-05.5")]
+    public async Task Making_an_endpoint_private_leaves_the_link_state_unchanged()
+    {
+        var parent = AddPerson("Hari", Bob);
+        var child = AddPerson("Maya", Alice);
+        var service = Service();
+        var created = await service.CreateLinkAsync(parent, child, ParentChildType.Biological, Alice, Cancellation);
+
+        _store.People[parent].SetVisibility(ProfileVisibility.Private, Bob);
+
+        Assert.False(_store.Links[created.Id].IsActive);
+        Assert.Empty((await service.ListDirectRelativesAsync(child, As(Alice), Cancellation)).Parents);
+        var pending = Assert.Single((await service.ListInactiveLinksAsync(As(Alice), Cancellation)).Links);
+        Assert.Equal((PersonPlaceholder.Private, EndpointApproval.Pending), (pending.Parent.Person.Placeholder, pending.Parent.Approval));
+    }
+
+    [Fact]
     public async Task Relatives_of_an_unknown_person_are_not_found()
     {
         await Assert.ThrowsAsync<PersonNotFoundException>(
-            () => Service().ListDirectRelativesAsync(PersonId.New(), Alice, Cancellation));
+            () => Service().ListDirectRelativesAsync(PersonId.New(), As(Alice), Cancellation));
     }
 
     [Fact]
@@ -171,17 +253,17 @@ public class RelationshipServiceTests
         var service = Service();
         var created = await service.CreateLinkAsync(parent, child, ParentChildType.Biological, Alice, Cancellation);
 
-        var view = await service.ApproveAsync(created.Id, LinkEndpoint.Parent, Bob, Cancellation);
+        var view = await service.ApproveAsync(created.Id, LinkEndpoint.Parent, As(Bob), Cancellation);
 
         Assert.True(view.IsActive);
         Assert.Equal(EndpointApproval.Approved, view.Parent.Approval);
-        Assert.True(view.Parent.MaintainedByViewer);
-        Assert.False(view.Child.MaintainedByViewer);
+        Assert.True(view.Parent.Person.MaintainedByViewer);
+        Assert.False(view.Child.Person.MaintainedByViewer);
         Assert.Equal(new LinkEndpointApproved(created.Id, parent, Bob), _store.AuditEvents[^1].Event);
         Assert.Equal(Now, _store.AuditEvents[^1].OccurredAt);
         Assert.Equal(2, _store.SaveCount);
-        var relatives = await service.ListDirectRelativesAsync(child, Alice, Cancellation);
-        Assert.Equal(parent, Assert.Single(relatives.Parents).Id);
+        var relatives = await service.ListDirectRelativesAsync(child, As(Alice), Cancellation);
+        Assert.Equal(parent, Assert.Single(relatives.Parents).Person.Id);
     }
 
     [Fact]
@@ -193,21 +275,21 @@ public class RelationshipServiceTests
         var child = AddPerson("Maya", Alice);
         var service = Service();
         var created = await service.CreateLinkAsync(parent, child, ParentChildType.Biological, Alice, Cancellation);
-        await service.ApproveAsync(created.Id, LinkEndpoint.Parent, Bob, Cancellation);
+        await service.ApproveAsync(created.Id, LinkEndpoint.Parent, As(Bob), Cancellation);
 
-        var withdrawn = await service.DisagreeAsync(created.Id, LinkEndpoint.Child, Alice, Cancellation);
+        var withdrawn = await service.DisagreeAsync(created.Id, LinkEndpoint.Child, As(Alice), Cancellation);
 
         Assert.False(withdrawn.IsActive);
         Assert.Equal(EndpointApproval.Disagreed, withdrawn.Child.Approval);
         Assert.Equal(new LinkEndpointDisagreed(created.Id, child, Alice), _store.AuditEvents[^1].Event);
-        Assert.Empty((await service.ListDirectRelativesAsync(child, Alice, Cancellation)).Parents);
+        Assert.Empty((await service.ListDirectRelativesAsync(child, As(Alice), Cancellation)).Parents);
 
         // Bob's approval is still valid, so restoring Alice's side is enough (PRD 03).
-        var restored = await service.ApproveAsync(created.Id, LinkEndpoint.Child, Alice, Cancellation);
+        var restored = await service.ApproveAsync(created.Id, LinkEndpoint.Child, As(Alice), Cancellation);
 
         Assert.True(restored.IsActive);
         Assert.Equal(new LinkApprovalRestored(created.Id, child, Alice), _store.AuditEvents[^1].Event);
-        Assert.Single((await service.ListDirectRelativesAsync(child, Alice, Cancellation)).Parents);
+        Assert.Single((await service.ListDirectRelativesAsync(child, As(Alice), Cancellation)).Parents);
     }
 
     [Fact]
@@ -218,7 +300,7 @@ public class RelationshipServiceTests
         var service = Service();
         var created = await service.CreateLinkAsync(parent, child, ParentChildType.Biological, Alice, Cancellation);
 
-        var view = await service.DisagreeAsync(created.Id, LinkEndpoint.Parent, Bob, Cancellation);
+        var view = await service.DisagreeAsync(created.Id, LinkEndpoint.Parent, As(Bob), Cancellation);
 
         Assert.Equal(EndpointApproval.Disagreed, view.Parent.Approval);
         Assert.Equal(new LinkEndpointDeclined(created.Id, parent, Bob), _store.AuditEvents[^1].Event);
@@ -234,9 +316,9 @@ public class RelationshipServiceTests
         var created = await service.CreateLinkAsync(parent, child, ParentChildType.Biological, Alice, Cancellation);
 
         await Assert.ThrowsAsync<NotConsentMaintainerException>(
-            () => service.ApproveAsync(created.Id, LinkEndpoint.Parent, Admin, Cancellation));
+            () => service.ApproveAsync(created.Id, LinkEndpoint.Parent, As(Admin), Cancellation));
         await Assert.ThrowsAsync<NotConsentMaintainerException>(
-            () => service.ApproveAsync(created.Id, LinkEndpoint.Parent, Alice, Cancellation));
+            () => service.ApproveAsync(created.Id, LinkEndpoint.Parent, As(Alice), Cancellation));
 
         Assert.False(_store.Links[created.Id].IsActive);
         Assert.Single(_store.AuditEvents);
@@ -265,7 +347,7 @@ public class RelationshipServiceTests
         _store.Links[looping.Id] = looping;
 
         await Assert.ThrowsAsync<LinkCycleDetectedException>(
-            () => service.ApproveAsync(looping.Id, LinkEndpoint.Child, Bob, Cancellation));
+            () => service.ApproveAsync(looping.Id, LinkEndpoint.Child, As(Bob), Cancellation));
 
         Assert.Equal(EndpointApproval.Pending, looping.ChildApproval);
     }
@@ -279,16 +361,16 @@ public class RelationshipServiceTests
         var created = await service.CreateLinkAsync(parent, child, ParentChildType.Biological, Alice, Cancellation);
 
         await Assert.ThrowsAsync<SoleMaintainerMustDeleteException>(
-            () => service.DisagreeAsync(created.Id, LinkEndpoint.Child, Alice, Cancellation));
+            () => service.DisagreeAsync(created.Id, LinkEndpoint.Child, As(Alice), Cancellation));
     }
 
     [Fact]
     public async Task Unknown_link_is_not_found()
     {
         await Assert.ThrowsAsync<LinkNotFoundException>(
-            () => Service().ApproveAsync(LinkId.New(), LinkEndpoint.Parent, Alice, Cancellation));
+            () => Service().ApproveAsync(LinkId.New(), LinkEndpoint.Parent, As(Alice), Cancellation));
         await Assert.ThrowsAsync<LinkNotFoundException>(
-            () => Service().DisagreeAsync(LinkId.New(), LinkEndpoint.Parent, Alice, Cancellation));
+            () => Service().DisagreeAsync(LinkId.New(), LinkEndpoint.Parent, As(Alice), Cancellation));
         await Assert.ThrowsAsync<LinkNotFoundException>(
             () => Service().DeleteAsync(LinkId.New(), Alice, Cancellation));
     }
@@ -307,8 +389,8 @@ public class RelationshipServiceTests
         Assert.Equal(Now, _store.Links[created.Id].DeletedAt);
         Assert.Equal(new LinkDeleted(created.Id, Now, Alice), _store.AuditEvents[^1].Event);
         Assert.Equal(2, _store.SaveCount);
-        Assert.Empty((await service.ListDirectRelativesAsync(child, Alice, Cancellation)).Parents);
-        Assert.Empty((await service.ListInactiveLinksAsync(Alice, Cancellation)).Links);
+        Assert.Empty((await service.ListDirectRelativesAsync(child, As(Alice), Cancellation)).Parents);
+        Assert.Empty((await service.ListInactiveLinksAsync(As(Alice), Cancellation)).Links);
     }
 
     [Fact]
@@ -319,7 +401,7 @@ public class RelationshipServiceTests
         var child = AddPerson("Maya", Alice);
         var service = Service();
         var created = await service.CreateLinkAsync(parent, child, ParentChildType.Biological, Alice, Cancellation);
-        await service.ApproveAsync(created.Id, LinkEndpoint.Parent, Bob, Cancellation);
+        await service.ApproveAsync(created.Id, LinkEndpoint.Parent, As(Bob), Cancellation);
 
         await Assert.ThrowsAsync<NotSoleMaintainerException>(
             () => service.DeleteAsync(created.Id, Alice, Cancellation));
@@ -328,7 +410,7 @@ public class RelationshipServiceTests
         Assert.False(_store.Links[created.Id].IsDeleted);
         Assert.Equal(2, _store.SaveCount);
 
-        await service.DisagreeAsync(created.Id, LinkEndpoint.Child, Alice, Cancellation);
+        await service.DisagreeAsync(created.Id, LinkEndpoint.Child, As(Alice), Cancellation);
 
         Assert.IsType<LinkEndpointDisagreed>(_store.AuditEvents[^1].Event);
         Assert.DoesNotContain(_store.AuditEvents, saved => saved.Event is LinkDeleted);
@@ -345,7 +427,7 @@ public class RelationshipServiceTests
 
         await Assert.ThrowsAsync<LinkDeletedException>(() => service.DeleteAsync(created.Id, Alice, Cancellation));
         await Assert.ThrowsAsync<LinkDeletedException>(
-            () => service.ApproveAsync(created.Id, LinkEndpoint.Parent, Alice, Cancellation));
+            () => service.ApproveAsync(created.Id, LinkEndpoint.Parent, As(Alice), Cancellation));
         Assert.Equal(2, _store.SaveCount);
     }
 
@@ -361,7 +443,7 @@ public class RelationshipServiceTests
         var second = await service.CreateLinkAsync(parent, child, ParentChildType.Adoptive, Alice, Cancellation);
 
         Assert.NotEqual(first.Id, second.Id);
-        Assert.Equal(parent, Assert.Single((await service.ListDirectRelativesAsync(child, Alice, Cancellation)).Parents).Id);
+        Assert.Equal(parent, Assert.Single((await service.ListDirectRelativesAsync(child, As(Alice), Cancellation)).Parents).Person.Id);
     }
 
     [Fact]
@@ -382,18 +464,18 @@ public class RelationshipServiceTests
         await service.CreateLinkAsync(hari, maya, ParentChildType.Biological, Alice, Cancellation);
         await service.CreateLinkAsync(ram, gita, ParentChildType.Biological, Bob, Cancellation);
 
-        var all = await service.ListInactiveLinksAsync(Alice, Cancellation);
-        var cut = await Service(inactiveLinksLimit: 1).ListInactiveLinksAsync(Alice, Cancellation);
+        var all = await service.ListInactiveLinksAsync(As(Alice), Cancellation);
+        var cut = await Service(inactiveLinksLimit: 1).ListInactiveLinksAsync(As(Alice), Cancellation);
 
         Assert.Equal(
             ["Ram → Hari", "Bina → Maya", "Gita → Maya"],
-            all.Links.Select(link => $"{link.Parent.Name.FirstName} → {link.Child.Name.FirstName}"));
+            all.Links.Select(link => $"{link.Parent.Person.Name!.FirstName} → {link.Child.Person.Name!.FirstName}"));
         Assert.False(all.IsTruncated);
         Assert.Equal(waitingForAlice.Id, Assert.Single(cut.Links).Id);
         Assert.True(cut.IsTruncated);
         var first = all.Links[0];
-        Assert.Equal((EndpointApproval.Approved, false), (first.Parent.Approval, first.Parent.MaintainedByViewer));
-        Assert.Equal((EndpointApproval.Pending, true), (first.Child.Approval, first.Child.MaintainedByViewer));
+        Assert.Equal((EndpointApproval.Approved, false), (first.Parent.Approval, first.Parent.Person.MaintainedByViewer));
+        Assert.Equal((EndpointApproval.Pending, true), (first.Child.Approval, first.Child.Person.MaintainedByViewer));
     }
 
     private PersonId AddPerson(string firstName, AccountId maintainer)

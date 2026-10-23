@@ -8,7 +8,8 @@ namespace FamilyGraph.Application.Graph;
 /// <summary>
 /// Explores the active graph around a person and finds how two people are connected (PRD 08, #20).
 /// Any signed-in account may, like viewing a profile (D-019). Every person returned goes through
-/// <see cref="PrivacyProjection"/> (D-010).
+/// <see cref="PrivacyProjection"/> (D-010): placeholders keep their place in the graph, so walks
+/// and paths pass through them (PRD 05).
 /// </summary>
 public sealed class GraphService(IPersonQueries people, IGraphQueries queries, GraphLimits limits)
 {
@@ -16,8 +17,10 @@ public sealed class GraphService(IPersonQueries people, IGraphQueries queries, G
     /// The centre and the people nearest to it, within the configured generations and people limit
     /// (D-009, D-023). A "load more" around an edge person is the local view centred on them.
     /// </summary>
-    public async Task<LocalView> LocalViewAsync(PersonId centreId, AccountId viewerId, CancellationToken cancellationToken)
+    public async Task<LocalView> LocalViewAsync(PersonId centreId, Viewer viewer, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(viewer);
+        var viewerId = viewer.AccountId;
         _ = await people.FindAsync(centreId, viewerId, cancellationToken) ?? throw new PersonNotFoundException();
         var view = await queries.LocalViewAsync(
             centreId, viewerId, limits.ViewGenerations, limits.ViewPeople, cancellationToken);
@@ -25,7 +28,7 @@ public sealed class GraphService(IPersonQueries people, IGraphQueries queries, G
         return new LocalView(
             centreId,
             [.. view.People.Select(row =>
-                new LocalViewPerson(PrivacyProjection.Project(row.Person), row.Generation, row.HasMore))],
+                new LocalViewPerson(PrivacyProjection.Project(row.Person, viewer), row.Generation, row.HasMore))],
             view.Links,
             view.IsTruncated);
     }
@@ -35,8 +38,10 @@ public sealed class GraphService(IPersonQueries people, IGraphQueries queries, G
     /// walk of at most <see cref="GraphLimits.OverviewPeople"/> people (D-023, D-024). Without
     /// profiles it is empty.
     /// </summary>
-    public async Task<Overview> OverviewAsync(AccountId viewerId, CancellationToken cancellationToken)
+    public async Task<Overview> OverviewAsync(Viewer viewer, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(viewer);
+        var viewerId = viewer.AccountId;
         var profiles = await people.ListMaintainedByAsync(viewerId, limits.OverviewPeople, cancellationToken);
         if (profiles.People.Count == 0)
         {
@@ -46,7 +51,7 @@ public sealed class GraphService(IPersonQueries people, IGraphQueries queries, G
         var overview = await queries.OverviewAsync(
             [.. profiles.People.Select(profile => profile.Id)], viewerId, limits.OverviewPeople, cancellationToken);
         return new Overview(
-            [.. overview.People.Select(PrivacyProjection.Project)],
+            [.. overview.People.Select(person => PrivacyProjection.Project(person, viewer))],
             overview.Links,
             overview.IsTruncated || profiles.IsTruncated);
     }
@@ -56,8 +61,10 @@ public sealed class GraphService(IPersonQueries people, IGraphQueries queries, G
     /// further paths, within the people examined from the first person (D-009, D-023).
     /// </summary>
     public async Task<Connections> FindConnectionsAsync(
-        PersonId fromId, PersonId toId, AccountId viewerId, CancellationToken cancellationToken)
+        PersonId fromId, PersonId toId, Viewer viewer, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(viewer);
+        var viewerId = viewer.AccountId;
         _ = await people.FindAsync(fromId, viewerId, cancellationToken) ?? throw new PersonNotFoundException();
         _ = await people.FindAsync(toId, viewerId, cancellationToken) ?? throw new PersonNotFoundException();
 
@@ -68,7 +75,7 @@ public sealed class GraphService(IPersonQueries people, IGraphQueries queries, G
 
         var ids = listed.SelectMany(path => path.People).ToHashSet();
         var records = await queries.PeopleAsync(ids, viewerId, cancellationToken);
-        var visible = records.ToDictionary(record => record.Id, PrivacyProjection.Project);
+        var visible = records.ToDictionary(record => record.Id, record => PrivacyProjection.Project(record, viewer));
 
         return new Connections(
             [.. listed.Select(path => new Connection(

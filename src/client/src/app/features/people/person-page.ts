@@ -1,15 +1,19 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
+import { AuthService } from '../../core/auth/auth.service';
+
 import { PersonRelatives } from '../relationships/person-relatives';
 import { PeopleService } from './people.service';
-import { Person, PersonName, fullName } from './person';
+import { Person, PersonName, Visibility, fullName } from './person';
 import { PersonNameForm } from './person-name-form';
 import { problemMessage } from './problem';
 
 /**
- * One profile with its parents and children. Its maintainer can rename it; the server enforces
- * that (PRD 01).
+ * One profile with its parents and children. Its maintainer can rename it and make it Public or
+ * Private, and its maintainer or an administrator can delete it; the server enforces all three
+ * (PRD 01, PRD 05). A Private profile hidden from you or a deleted one shows only its
+ * placeholder, with its parents and children.
  */
 @Component({
   selector: 'app-person-page',
@@ -18,6 +22,7 @@ import { problemMessage } from './problem';
 })
 export class PersonPage {
   private readonly people = inject(PeopleService);
+  private readonly auth = inject(AuthService);
 
   /** The `:id` route parameter. */
   readonly id = input.required<string>();
@@ -27,6 +32,22 @@ export class PersonPage {
     const person = this.person();
     return person ? fullName(person) : '';
   });
+  /** Only the maintainer edits, and they always see the name. */
+  protected readonly editableName = computed<PersonName | null>(() => {
+    const person = this.person();
+    return person?.firstName != null
+      ? { firstName: person.firstName, middleName: person.middleName, lastName: person.lastName }
+      : null;
+  });
+  protected readonly canDelete = computed(() => {
+    const person = this.person();
+    return (
+      !!person &&
+      person.placeholder !== 'Deleted' &&
+      (person.maintainedByYou || this.auth.isAdministrator())
+    );
+  });
+  protected readonly confirmingDelete = signal(false);
   protected readonly editing = signal(false);
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -36,12 +57,49 @@ export class PersonPage {
       const id = this.id();
       this.person.set(null);
       this.editing.set(false);
+      this.confirmingDelete.set(false);
       this.error.set(null);
       this.people.get(id).then(
         (person) => this.person.set(person),
         (error: unknown) => this.error.set(problemMessage(error)),
       );
     });
+  }
+
+  protected async setVisibility(visibility: Visibility): Promise<void> {
+    const person = this.person();
+    if (!person) {
+      return;
+    }
+    this.saving.set(true);
+    this.error.set(null);
+    try {
+      await this.people.setVisibility(person.id, visibility);
+      this.person.set({ ...person, visibility });
+    } catch (error) {
+      this.error.set(problemMessage(error));
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  /** Deletion cannot be undone; the profile stays as a `Deleted` placeholder with its links. */
+  protected async deleteProfile(): Promise<void> {
+    const person = this.person();
+    if (!person) {
+      return;
+    }
+    this.saving.set(true);
+    this.error.set(null);
+    try {
+      await this.people.delete(person.id);
+      this.confirmingDelete.set(false);
+      this.person.set(await this.people.get(person.id));
+    } catch (error) {
+      this.error.set(problemMessage(error));
+    } finally {
+      this.saving.set(false);
+    }
   }
 
   protected async rename(name: PersonName): Promise<void> {

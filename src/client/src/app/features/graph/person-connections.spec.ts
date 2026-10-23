@@ -10,6 +10,8 @@ const person = (id: string, firstName: string): GraphPerson => ({
   firstName,
   middleName: null,
   lastName: null,
+  placeholder: null,
+  visibility: 'Public',
   maintainedByYou: false,
 });
 const sita = person('sita', 'Sita');

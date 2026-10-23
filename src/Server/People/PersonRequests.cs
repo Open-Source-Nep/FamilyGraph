@@ -22,3 +22,13 @@ public sealed class PersonNameRequest
 
     internal PersonName ToName() => new(FirstName ?? "", MiddleName, LastName);
 }
+
+/// <summary>A profile's new visibility: <c>Public</c> or <c>Private</c> (400 otherwise).</summary>
+public sealed class VisibilityRequest
+{
+    [Required]
+    [AllowedValues(nameof(ProfileVisibility.Public), nameof(ProfileVisibility.Private))]
+    public string? Visibility { get; init; }
+
+    internal ProfileVisibility ToVisibility() => ProfileVisibility.FromName(Visibility!);
+}

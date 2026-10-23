@@ -1,5 +1,6 @@
 using FamilyGraph.Application.People;
 using FamilyGraph.Application.Persistence;
+using FamilyGraph.Application.Privacy;
 using FamilyGraph.Business.People;
 using FamilyGraph.Business.Relationships;
 
@@ -7,7 +8,8 @@ namespace FamilyGraph.Application.Relationships;
 
 /// <summary>
 /// Creates parent–child links, changes an endpoint's approval, deletes links and lists a person's
-/// parents and children (PRD 02, PRD 03, #14, #59, #61). <see cref="ParentChildLink"/> enforces who may create or
+/// parents and children (PRD 02, PRD 03, #14, #59, #61). Every person a read returns goes through
+/// <see cref="PrivacyProjection"/> (PRD 05, D-025). <see cref="ParentChildLink"/> enforces who may create or
 /// approve a link, the per-endpoint approvals, duplicates and cycles; this service loads what it
 /// needs to check them and saves each change with its audit events.
 /// </summary>
@@ -47,16 +49,18 @@ public sealed class RelationshipService(
     public async Task<LinkConsentView> ApproveAsync(
         LinkId linkId,
         LinkEndpoint endpoint,
-        AccountId actorId,
+        Viewer actor,
         CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(actor);
+        var actorId = actor.AccountId;
         var (link, parent, child) = await LoadAsync(linkId, cancellationToken);
         var parentAncestors = await links.AncestorsOfAsync(link.ParentId, cancellationToken);
 
         link.Approve(endpoint == LinkEndpoint.Parent ? parent : child, actorId, parentAncestors);
         await SaveAsync(link, cancellationToken);
 
-        return LinkConsentView.From(link, parent, child, actorId);
+        return LinkConsentView.From(link, parent, child, actor);
     }
 
     /// <summary>
@@ -65,9 +69,11 @@ public sealed class RelationshipService(
     public async Task<LinkConsentView> DisagreeAsync(
         LinkId linkId,
         LinkEndpoint endpoint,
-        AccountId actorId,
+        Viewer actor,
         CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(actor);
+        var actorId = actor.AccountId;
         var (link, parent, child) = await LoadAsync(linkId, cancellationToken);
 
         if (endpoint == LinkEndpoint.Parent)
@@ -81,7 +87,7 @@ public sealed class RelationshipService(
 
         await SaveAsync(link, cancellationToken);
 
-        return LinkConsentView.From(link, parent, child, actorId);
+        return LinkConsentView.From(link, parent, child, actor);
     }
 
     /// <summary>
@@ -97,17 +103,32 @@ public sealed class RelationshipService(
     }
 
     /// <summary>The inactive links of the profiles the account maintains (D-021).</summary>
-    public Task<LinkConsentList> ListInactiveLinksAsync(AccountId viewerId, CancellationToken cancellationToken) =>
-        queries.ListInactiveLinksAsync(viewerId, limits.InactiveLinksLimit, cancellationToken);
+    public async Task<LinkConsentList> ListInactiveLinksAsync(Viewer viewer, CancellationToken cancellationToken)
+    {
+        var list = await queries.ListInactiveLinksAsync(viewer, limits.InactiveLinksLimit, cancellationToken);
+        return new LinkConsentList([.. list.Links.Select(link => LinkConsentView.From(link, viewer))], list.IsTruncated);
+    }
 
-    /// <summary>Any signed-in account may list them, like viewing a profile (D-019).</summary>
+    /// <summary>
+    /// Any signed-in account may list them, like viewing a profile (D-019). The person and their
+    /// relatives may be placeholders; the links through them are listed all the same (PRD 05).
+    /// </summary>
     public async Task<DirectRelatives> ListDirectRelativesAsync(
         PersonId personId,
-        AccountId viewerId,
+        Viewer viewer,
         CancellationToken cancellationToken)
     {
-        _ = await personQueries.FindAsync(personId, viewerId, cancellationToken) ?? throw new PersonNotFoundException();
-        return await queries.ListDirectRelativesAsync(personId, viewerId, limits.DirectRelativesLimit, cancellationToken);
+        ArgumentNullException.ThrowIfNull(viewer);
+
+        _ = await personQueries.FindAsync(personId, viewer.AccountId, cancellationToken) ?? throw new PersonNotFoundException();
+        var relatives = await queries.ListDirectRelativesAsync(personId, viewer, limits.DirectRelativesLimit, cancellationToken);
+        return new DirectRelatives(
+            [.. relatives.Parents.Select(parent =>
+                new Relative(parent.LinkId, PrivacyProjection.Project(parent.Person, viewer), parent.Type))],
+            relatives.ParentsTruncated,
+            [.. relatives.Children.Select(child => new ChildRelative(
+                child.LinkId, PrivacyProjection.Project(child.Person, viewer), child.Type, child.BirthOrder))],
+            relatives.ChildrenTruncated);
     }
 
     private async Task<(ParentChildLink Link, Person Parent, Person Child)> LoadAsync(

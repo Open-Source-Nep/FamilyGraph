@@ -1,17 +1,31 @@
+using FamilyGraph.Business.People;
+
 namespace FamilyGraph.Application.Privacy;
 
 /// <summary>
-/// The one component that decides what a viewer sees of a person in a graph read (D-010, D-023).
-/// Every profile is Public until #18 adds privacy settings and profile deletion; it then turns
-/// hidden profiles into <c>Private</c> or <c>Deleted</c> placeholders here, which stay
-/// traversable (PRD 05).
+/// The one component that decides what a viewer sees of a person, on every read path (D-010,
+/// D-025). A deleted profile is a <c>Deleted</c> placeholder for everyone, and a Private profile
+/// a <c>Private</c> placeholder for everyone but its maintainer and administrators (PRD 05). The placeholder keeps the person's ID, so active links through it
+/// stay traversable, and privacy never changes which links are returned.
 /// </summary>
 public static class PrivacyProjection
 {
-    public static PersonReference Project(PersonRecord person)
+    public static PersonReference Project(PersonRecord person, Viewer viewer)
     {
         ArgumentNullException.ThrowIfNull(person);
+        ArgumentNullException.ThrowIfNull(viewer);
 
-        return new PersonReference(person.Id, person.Name, person.MaintainedByViewer);
+        var placeholder = PlaceholderFor(person, viewer);
+        return placeholder is null
+            ? new PersonReference(person.Id, person.Name, null, person.Visibility, person.MaintainedByViewer)
+            : new PersonReference(person.Id, null, placeholder, person.Visibility, maintainedByViewer: false);
     }
+
+    private static PersonPlaceholder? PlaceholderFor(PersonRecord person, Viewer viewer) =>
+        person.IsDeleted ? PersonPlaceholder.Deleted
+        : IsHidden(person, viewer) ? PersonPlaceholder.Private
+        : null;
+
+    private static bool IsHidden(PersonRecord person, Viewer viewer) =>
+        person.Visibility == ProfileVisibility.Private && !person.MaintainedByViewer && !viewer.IsAdministrator;
 }

@@ -40,7 +40,7 @@ Infrastructure references Application only to implement Application-owned interf
 
 - Use dedicated, Application-owned query services that return flat read models, not domain entities (e.g. `IPersonQueries`, `IRelationshipQueries`).
 - Depth and node limits are **required parameters**, so an unbounded query cannot be expressed. The limit values follow D-009.
-- Privacy projection (`Private`/`Deleted` placeholders) is applied in Application before results leave the use case.
+- Privacy projection (`Private`/`Deleted` placeholders) is applied in Application before results leave the use case (`PrivacyProjection`, D-025).
 
 ### Derived relationships
 

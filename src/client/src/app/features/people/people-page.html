@@ -17,6 +17,9 @@
         @for (person of list.people; track person.id) {
           <li>
             <a [routerLink]="['/people', person.id]">{{ fullName(person) }}</a>
+            @if (person.visibility === 'Private') {
+              <span class="hint">(private)</span>
+            }
           </li>
         }
       </ul>

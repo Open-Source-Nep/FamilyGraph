@@ -3,15 +3,13 @@ import { Component, computed, effect, inject, input, signal } from '@angular/cor
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
-import { PersonName, fullName } from '../people/person';
+import { PersonLabel, PersonName, fullName } from '../people/person';
 import { problemMessage } from '../people/problem';
 import { Connections, GraphPerson, stepLabel } from './graph';
 import { GraphService } from './graph.service';
 
 /** Someone to find a connection to. */
-export interface ConnectionCandidate extends PersonName {
-  id: string;
-}
+export type ConnectionCandidate = (PersonName | PersonLabel) & { id: string };
 
 /**
  * How a person is related to someone else, as text (PRD 08): the shortest path step by step, with
