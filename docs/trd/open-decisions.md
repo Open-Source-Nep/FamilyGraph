@@ -45,7 +45,9 @@ The technical decision log, plus any unresolved choices. Do not treat recommenda
 - Client graph view: rendering library and first slice (D-024 below).
 - Profile privacy: visibility, the viewer, placeholders on every read path (D-025 below).
 - Profile deletion: erasure, the `Deleted` placeholder and frozen consent (D-026 below).
-- Voluntary profile handover: hashed one-time links, accept and cancel (D-027 below, proposed).
+- Voluntary profile handover: hashed one-time links, accept and cancel (D-027 below).
+- Profile images: a blob in PostgreSQL, resized in the browser (D-028 below).
+- Data export: an administrator's streamed JSON file of the whole instance (D-029 below, proposed).
 - **Name length (agreed 2026-10-21):** Business puts no length cap on name parts. Any storage or input limit is set later by persistence (#9) and API validation (D-010).
 
 ## Discussion topics (all agreed)
@@ -480,7 +482,7 @@ For each major decision, record:
 
 ### D-028: Profile images
 
-- **Status:** proposed (2026-10-23). Issue #74. Agreed with the user on 2026-10-23: images are stored as a blob in PostgreSQL; the browser resizes and re-encodes, the server validates; images show on the person page and the graph page avatars, not the home dots. The rest is proposed with the PR.
+- **Status:** agreed (2026-10-23). Issue #74, merged in #78. Agreed with the user on 2026-10-23: images are stored as a blob in PostgreSQL; the browser resizes and re-encodes, the server validates; images show on the person page and the graph page avatars, not the home dots. The rest is proposed with the PR.
 - **Context:** PRD 01 and PRD 05 now give a profile an optional image that only its maintainer changes and that placeholders never show. D-002 keeps Business free of I/O, D-015 keeps personal data out of audit events, and no image library is a dependency.
 - **Options considered:** re-encoding on the server with an image library, in the browser with canvas, or not at all; image bytes in a column of `people`, or a separate table; one row per profile, or one per uploaded image; a public cacheable image URL, or one that checks privacy on every request.
 - **Trade-offs:** Canvas needs no dependency and strips metadata for every normal upload; a hand-crafted request can still store its own metadata, which only exposes the uploader's own data. A separate table keeps the blob out of every person load and query. A new row (and ID) per upload makes the ID a version for cache-busting URLs. Revalidating each image request costs a round trip, but a profile made Private stops showing its image at once.
@@ -490,4 +492,18 @@ For each major decision, record:
   - **Persistence:** `profile_images` (`bytea` content, format and size check constraints, foreign key to `people`) and a nullable `people.image_id` without a foreign key, so the two tables do not depend on each other (`ProfileImages` migration).
   - **API:** `PUT /api/people/{id}/image` with the raw image as the body (`image/jpeg`, `image/png` or `image/webp`, else 415; the body is read only up to the limit) answers `{ "imageId" }`; `DELETE` answers 204; `GET` answers the bytes with `Cache-Control: private, no-cache`, an ETag of the image ID and `nosniff`. People in person and graph responses gain `imageId`.
   - **Client:** the person page shows the image and offers "Add photo", "Change photo" and "Remove photo" to the maintainer. Before upload the browser crops the centre square, scales it to 512 px and re-encodes it as JPEG. The graph page diagram uses the image in place of the initials; the home dots do not change. Image URLs carry `?v=<imageId>`.
-- **Consequences:** Data export (planned) must decide whether to include images. Merging (#31) must decide which image the merged profile keeps.
+- **Consequences:** Data export leaves images out (D-029). Merging (#31) must decide which image the merged profile keeps.
+
+### D-029: Data export
+
+- **Status:** proposed (2026-10-23). Issue #75. Agreed with the user on 2026-10-23: only administrators export, and the export is the whole instance; it holds the full current state without images (every profile, Private ones with their names, deleted ones without; every non-deleted link with both approvals and birth order; the maintainers' emails), in one JSON file; each export is recorded in the audit history. Import is a later issue. The rest is proposed with the PR.
+- **Context:** PRD 09 now asks for an export a later import can read back. D-018 keeps accounts to a Google ID and email, D-015 keeps personal data out of audit events, D-009 bounds every graph query, and D-010 puts API models in Server.
+- **Options considered:** which accounts to include (all, or those that maintain a profile); a deleted profile's name as the stored `[erased]` marker or as null; building the file in memory or streaming it; reading each section in its own statement or from one database snapshot; a `POST` that answers a file, or a `GET` link the browser downloads.
+- **Trade-offs:** Streaming keeps memory flat for any instance size but means an error after the first byte cuts the download short instead of answering a ProblemDetails. One repeatable-read, read-only transaction holds a PostgreSQL snapshot for the whole download, so every link's people and every person's maintainer are in the file, at the cost of one long read. A `GET` link needs no client code to save the file; a cross-site request could only make an administrator's own browser download it, but it would write an audit row.
+- **Decision:**
+  - **Business:** `DataExported` (actor only, `Administrative` family) and `NotAdministratorException` (403 `export.not_administrator`) in `Business/Export`.
+  - **Application:** `ExportService.StartAsync(viewer)` refuses a non-administrator, records `DataExported` and saves it before opening the data, then returns a `DataExport` that streams accounts, people and links. `IExportQueries.OpenSnapshotAsync` returns an `IExportSnapshot` (disposable) whose sections stream in ID order. Accounts are those that maintain at least one profile, deleted or not. A deleted profile has no name. This is the only read without a node limit (D-009), because its purpose is the whole instance.
+  - **Persistence:** `EfExportQueries` opens a repeatable-read, read-only transaction; accounts come from one SQL query over `user_accounts` and `people`; people and links are no-tracking queries. A `DataExported` audit row has the exporting account as its subject. No migration.
+  - **API:** `GET /api/export` answers `application/json` as an attachment `familygraph-export-<yyyy-MM-dd>.json`, `Cache-Control: no-store`. The file is `{ "format": "familygraph-export", "version": 1, "exportedAt", "accounts": [{ "id", "email", "emailVerified" }], "people": [{ "id", "firstName", "middleName", "lastName", "visibility", "deletedAt", "maintainerId" }], "links": [{ "id", "parentId", "childId", "type", "parentApproval", "childApproval", "birthOrder" }] }`, with enumerations by name. It is written to the response pipe and flushed every 64 KiB. A layout change an import must know about raises `version`.
+  - **Client:** the account page shows administrators a "Data export" section with a "Download data export" link to `/api/export`, a note that Private names are included and that the download is audited.
+- **Consequences:** Marital relationships and anything else stored later must be added to the file, raising `version` if an import would misread the old layout. The import (later issue) must accept version 1, keep IDs, and decide how accounts are matched by email or Google ID; the export holds no Google ID. Audit history, deleted links and images are not exported, so an imported instance starts without them.
