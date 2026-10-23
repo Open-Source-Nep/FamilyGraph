@@ -1,4 +1,5 @@
 using FamilyGraph.Application.Persistence;
+using FamilyGraph.Business.Handovers;
 using FamilyGraph.Business.Relationships;
 using FamilyGraph.Infrastructure.Persistence.Configurations;
 using Microsoft.EntityFrameworkCore;
@@ -23,6 +24,19 @@ internal sealed class EfUnitOfWork(FamilyGraphDbContext context) : IUnitOfWork
         {
             // Two requests linked the same pair at once; the domain check could not see the other one.
             throw new DuplicateLinkException();
+        }
+        catch (DbUpdateException e) when (e.InnerException is PostgresException
+        {
+            SqlState: PostgresErrorCodes.UniqueViolation,
+            ConstraintName: ProfileHandoverConfiguration.UniqueOpenPerPersonIndex,
+        })
+        {
+            throw new HandoverAlreadyOpenException();
+        }
+        catch (DbUpdateConcurrencyException e) when (e.Entries.Any(entry => entry.Entity is ProfileHandover))
+        {
+            // Someone else accepted or cancelled the handover link first.
+            throw new HandoverClosedException();
         }
     }
 }

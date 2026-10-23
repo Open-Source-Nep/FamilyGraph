@@ -54,6 +54,13 @@ export const routes: Routes = [
           import('./features/relationships/approvals-page').then((m) => m.ApprovalsPage),
       },
       {
+        // A handover link; its secret is the fragment (PRD 01).
+        path: 'handover',
+        title: 'Profile handover',
+        loadComponent: () =>
+          import('./features/handovers/accept-handover-page').then((m) => m.AcceptHandoverPage),
+      },
+      {
         path: 'account',
         title: 'Your account',
         loadComponent: () => import('./features/account/account-page').then((m) => m.AccountPage),

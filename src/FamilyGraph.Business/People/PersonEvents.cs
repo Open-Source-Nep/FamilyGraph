@@ -1,4 +1,5 @@
 using FamilyGraph.Business.Audit;
+using FamilyGraph.Business.Handovers;
 
 namespace FamilyGraph.Business.People;
 
@@ -18,4 +19,11 @@ public sealed record PersonVisibilityChanged(PersonId PersonId, AccountId ActorI
 
 /// <summary>Records who deleted the profile and in which role, never the erased name (AC-05.11, D-015).</summary>
 public sealed record PersonDeleted(PersonId PersonId, AccountId ActorId, ProfileDeleter DeletedBy)
+    : PersonEvent(PersonId, ActorId);
+
+/// <summary>
+/// The account that accepted a handover link became the maintainer (PRD 01). Account IDs only, no
+/// personal data (D-015).
+/// </summary>
+public sealed record PersonHandedOver(PersonId PersonId, AccountId ActorId, AccountId PreviousMaintainerId, HandoverId HandoverId)
     : PersonEvent(PersonId, ActorId);

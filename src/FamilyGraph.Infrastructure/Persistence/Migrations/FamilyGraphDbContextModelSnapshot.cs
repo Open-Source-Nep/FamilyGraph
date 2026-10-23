@@ -23,6 +23,63 @@ namespace FamilyGraph.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("FamilyGraph.Business.Handovers.ProfileHandover", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("AcceptedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("accepted_by_id");
+
+                    b.Property<DateTimeOffset?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("closed_at");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<Guid>("OfferedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("offered_by_id");
+
+                    b.Property<Guid>("PersonId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("person_id");
+
+                    b.Property<int>("State")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("state");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
+
+                    b.HasKey("Id")
+                        .HasName("pk_profile_handovers");
+
+                    b.HasIndex(new[] { "PersonId" }, "ux_profile_handovers_person_open")
+                        .IsUnique()
+                        .HasFilter("state = 1");
+
+                    b.HasIndex(new[] { "TokenHash" }, "ux_profile_handovers_token_hash")
+                        .IsUnique();
+
+                    b.ToTable("profile_handovers", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_profile_handovers_state", "state IN (1, 2, 3)");
+                        });
+                });
+
             modelBuilder.Entity("FamilyGraph.Business.People.Person", b =>
                 {
                     b.Property<Guid>("Id")
@@ -434,6 +491,16 @@ namespace FamilyGraph.Infrastructure.Persistence.Migrations
                         .HasName("pk_user_account_tokens");
 
                     b.ToTable("user_account_tokens", (string)null);
+                });
+
+            modelBuilder.Entity("FamilyGraph.Business.Handovers.ProfileHandover", b =>
+                {
+                    b.HasOne("FamilyGraph.Business.People.Person", null)
+                        .WithMany()
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_profile_handovers_people_person_id");
                 });
 
             modelBuilder.Entity("FamilyGraph.Business.Relationships.ParentChildLink", b =>

@@ -41,10 +41,11 @@ The technical decision log, plus any unresolved choices. Do not treat recommenda
 - Creating parent–child links: use case, ancestor query and API (D-020 below).
 - Link approvals: use cases, inactive-links view and API (D-021 below).
 - Link deletion: use case, API and Client (D-022 below).
-- Graph exploration: local view, connection search and privacy projection (D-023 below, proposed).
+- Graph exploration: local view, connection search and privacy projection (D-023 below).
 - Client graph view: rendering library and first slice (D-024 below).
 - Profile privacy: visibility, the viewer, placeholders on every read path (D-025 below).
 - Profile deletion: erasure, the `Deleted` placeholder and frozen consent (D-026 below).
+- Voluntary profile handover: hashed one-time links, accept and cancel (D-027 below, proposed).
 - **Name length (agreed 2026-10-21):** Business puts no length cap on name parts. Any storage or input limit is set later by persistence (#9) and API validation (D-010).
 
 ## Discussion topics (all agreed)
@@ -401,7 +402,7 @@ For each major decision, record:
 
 ### D-023: Graph exploration API
 
-- **Status:** proposed (2026-10-22). Issue #20. The choice of people in a local view was agreed with the user on 2026-10-22.
+- **Status:** agreed (2026-10-23). Issue #20, PR #63. The choice of people in a local view was agreed with the user on 2026-10-22.
 - **Context:** D-009 fixes the limits (2 generations each way, at most 4; 10 people, at most 500; 10,000 people examined for "how are two people related"; a query timeout) and recursive CTEs. D-010 fixes "has more" and "load more" instead of pagination, and one privacy component for every read path. PRD 08 asks for the shortest path plus up to 5 more. Privacy settings and deleted profiles come with #18, so every profile is Public for now (PRD 05). Path explanations, labels and adoption wording are #21; the visual view is #23.
 - **Options considered:** which people fill a local view (nearest first in any direction, ancestors and descendants only, or a direction chosen by the client); walking in recursive CTEs or per generation in Application; finding paths in SQL or in a pure Business service over a bounded set of links; how "more paths" are counted; a command timeout or a cancelled query.
 - **Trade-offs:** Nearest-first shows siblings and the other parent of your children in the first view, at the cost of a fan or tree layout needing to place them. Paths in SQL would need path arrays per walk, which grow fast in a family graph; loading the links between the nearest 10,000 people and searching them in memory keeps the CTE simple, and every shortest path to a reached person lies inside that set. A Npgsql command timeout applies per read, so a walk that streams rows slowly would never hit it.
@@ -463,3 +464,16 @@ For each major decision, record:
   - **Client:** "Delete profile" with an inline confirmation that says it cannot be undone, for the maintainer or an administrator; a deleted profile reads "Deleted" and offers no link form.
 - **Consequences:** A pending link whose pending side is deleted stays inactive for good and remains on the other maintainer's Approvals page until they delete or keep it. Account deletion and succession (#41) must skip deleted profiles. Merging (#31) must decide how a deleted profile takes part.
 
+### D-027: Voluntary profile handover
+
+- **Status:** proposed (2026-10-23). Issue #76. The product rules (a shared link any signed-in user may accept, 14-day expiry, no handover of claimed profiles, consent unchanged) were agreed with the user on 2026-10-23 and are in PRD 01; the rest is proposed with the PR.
+- **Context:** PRD 01 now lets a maintainer hand a profile over with a one-time link. D-018 keeps accounts to a Google ID and email, with no account search. D-015 keeps secrets and personal data out of audit events. Claims (#25) do not exist yet, so every profile is unclaimed for now.
+- **Options considered:** storing the link's secret or only its hash; putting the secret in the URL path, a query string or the fragment; one open link per profile, or several; a separate `handover.accepted` event on the link or one profile event; how to stop two accounts accepting the same link at once.
+- **Trade-offs:** A stored hash means a database leak gives no usable links, at the cost of showing the link only once. A fragment never reaches the server or its logs; the API takes the secret in the request body. One open link keeps "cancel" unambiguous, and a lost link is simply replaced. The maintainer change is the profile's event, so it sits with the profile's other events.
+- **Decision:**
+  - **Business:** `ProfileHandover` (`Business/Handovers`) with `HandoverState` (`Open` 1, `Accepted` 2, `Cancelled` 3; expiry is read from the time). `ProfileHandover.Offer` is maintainer only (403 `person.not_maintainer`, 409 `person.deleted`) and records `HandoverOffered` with the expiry; `Cancel` is maintainer only and records `HandoverCancelled`. `Person.AcceptHandover(handover, actor, now)` checks the link is open, unexpired and its creator still maintains the profile (409 `handover.closed` or `handover.expired`), refuses its own maintainer (409 `handover.own_profile`), changes `MaintainerId` and records `PersonHandedOver` with the previous maintainer and the handover ID. Links are not touched. The claimed-profile check (AC-01.17) is added with #25.
+  - **Application:** `HandoverService` and `IHandoverStore`. The secret is 32 random bytes in URL-safe Base64 (`HandoverToken`); only its SHA-256 hash is stored and looked up. A new link cancels the open one in the same transaction. Expiry is `Handovers:LinkLifetimeDays` (default 14, 1 to 90) days, in whole seconds. The preview runs the profile through `PrivacyProjection`, so a Private profile stays a placeholder until accepted, and never names the maintaining account.
+  - **Persistence:** `profile_handovers` (`ProfileHandovers` migration) with a unique token hash, at most one open row per person (filtered unique index; a race is 409 `handover.already_open`) and `state` as a concurrency token, so a second simultaneous accept is 409 `handover.closed`. Audit events of a handover have its person as subject.
+  - **API:** `POST /api/people/{id}/handover` (201 with `token` and `expiresAt`), `GET` (200 with `createdAt` and `expiresAt`, or 204), `DELETE` (204), all maintainer only; `POST /api/handovers/preview` and `POST /api/handovers/accept` with `{ "token": … }` (400 without it; unknown is 404 `handover.not_found`).
+  - **Client:** `features/handovers`. The person page shows "Hand over this profile" to its maintainer: create a link (shown once, with "Copy link"), see when the open one expires, create a new one or cancel it. The link opens `/handover#<secret>`, which shows the profile and "Accept the profile", then opens the person page.
+- **Consequences:** Expired and used links stay stored for their history; nothing deletes them yet. #25 must refuse handover offers and acceptances for claimed profiles. #41 (succession) changes maintainers too, which voids open links automatically because their creator no longer maintains the profile.

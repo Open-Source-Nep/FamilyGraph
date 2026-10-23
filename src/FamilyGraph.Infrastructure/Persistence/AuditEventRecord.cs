@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 using FamilyGraph.Business;
 using FamilyGraph.Business.Audit;
+using FamilyGraph.Business.Handovers;
 using FamilyGraph.Business.People;
 using FamilyGraph.Business.Relationships;
 
@@ -40,7 +41,7 @@ internal sealed class AuditEventRecord
 
     public Guid ActorId { get; }
 
-    /// <summary>The link or person the event is about.</summary>
+    /// <summary>The link or person the event is about; a handover's events are about its person.</summary>
     public Guid SubjectId { get; }
 
     /// <summary>The event's fields except actor and family, as a JSON object.</summary>
@@ -65,6 +66,7 @@ internal sealed class AuditEventRecord
         PersonEvent e => e.PersonId.Value,
         LinkEvent e => e.LinkId.Value,
         LinkBirthOrderChanged e => e.LinkId.Value,
+        HandoverEvent e => e.PersonId.Value,
         _ => throw new ArgumentException($"No audit subject is defined for {auditEvent.GetType().Name}.", nameof(auditEvent)),
     };
 
@@ -80,6 +82,7 @@ internal sealed class AuditEventRecord
         options.Converters.Add(new GuidValueConverter<PersonId>(id => id.Value));
         options.Converters.Add(new GuidValueConverter<LinkId>(id => id.Value));
         options.Converters.Add(new GuidValueConverter<AccountId>(id => id.Value));
+        options.Converters.Add(new GuidValueConverter<HandoverId>(id => id.Value));
         options.Converters.Add(new BaseEnumConverterFactory());
         return options;
     }

@@ -1,0 +1,23 @@
+<section class="panel">
+  <h1>Profile handover</h1>
+  @if (error(); as error) {
+    <p class="error" role="alert">{{ error }}</p>
+  }
+  @if (preview(); as preview) {
+    <p>
+      You have been offered the profile <strong>{{ fullName(preview.person) }}</strong> to maintain.
+    </p>
+    @if (preview.person.placeholder) {
+      <p class="hint">This profile is private. You will see its name once you accept.</p>
+    }
+    <p class="hint">
+      If you accept, you become its only maintainer: you can change its name and privacy and approve
+      its relationships. Its relationships and their approvals stay as they are. The link expires
+      {{ preview.expiresAt | date: 'medium' }}.
+    </p>
+    <p class="actions">
+      <button type="button" [disabled]="busy()" (click)="accept()">Accept the profile</button>
+    </p>
+  }
+  <p><a routerLink="/people">Back to your profiles</a></p>
+</section>
