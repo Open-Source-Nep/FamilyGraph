@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 using FamilyGraph.Business;
 using FamilyGraph.Business.Audit;
+using FamilyGraph.Business.Export;
 using FamilyGraph.Business.Handovers;
 using FamilyGraph.Business.People;
 using FamilyGraph.Business.Relationships;
@@ -41,7 +42,10 @@ internal sealed class AuditEventRecord
 
     public Guid ActorId { get; }
 
-    /// <summary>The link or person the event is about; a handover's events are about its person.</summary>
+    /// <summary>
+    /// The link or person the event is about; a handover's events are about its person, and an
+    /// export is about the exporting account.
+    /// </summary>
     public Guid SubjectId { get; }
 
     /// <summary>The event's fields except actor and family, as a JSON object.</summary>
@@ -67,6 +71,7 @@ internal sealed class AuditEventRecord
         LinkEvent e => e.LinkId.Value,
         LinkBirthOrderChanged e => e.LinkId.Value,
         HandoverEvent e => e.PersonId.Value,
+        DataExported e => e.ActorId.Value,
         _ => throw new ArgumentException($"No audit subject is defined for {auditEvent.GetType().Name}.", nameof(auditEvent)),
     };
 

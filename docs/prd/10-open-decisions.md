@@ -47,6 +47,9 @@ This file is intentionally unresolved. Claude Code must not silently invent deci
 - **Decided (2026-10-22):** a local view shows the people nearest to the centre in any direction, closest first, rather than only ancestors and descendants. See PRD 08.
 - **Decided (2026-10-21):** adoptive steps read "adoptive parent"/"adopted child"; adoptive links are drawn differently with a legend.
 
+## Data export
+- **Decided (2026-10-23):** only administrators export, and the export covers the whole instance: every profile (Private ones with names, deleted ones without), every non-deleted relationship with its consent state and birth order, and the maintainers' emails, as one file. Images, audit history and deleted relationships are left out. Each export is audited. Rejected alternatives: per-user export of one's own profiles; both; exporting images; only the active graph. See PRD 09.
+
 ## General rule
 When work depends on an unresolved item:
 1. Explain why the decision matters.

@@ -15,5 +15,15 @@
     </dl>
   }
 
+  @if (isAdministrator()) {
+    <h2>Data export</h2>
+    <p>
+      Download every profile, relationship and the email of each profile's maintainer as one JSON
+      file, to import later. Private profiles are included with their names, so keep the file safe.
+      Each download is recorded in the audit history.
+    </p>
+    <p><a href="/api/export" download>Download data export</a></p>
+  }
+
   <button type="button" (click)="signOut()" [disabled]="signingOut()">Sign out</button>
 </section>
