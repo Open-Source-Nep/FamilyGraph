@@ -23,7 +23,7 @@ public sealed class GraphController(GraphService graph) : ControllerBase
     /// </summary>
     [HttpGet("graph")]
     public async Task<LocalViewResponse> LocalView(Guid id, CancellationToken cancellationToken) =>
-        LocalViewResponse.From(await graph.LocalViewAsync(ToPersonId(id), User.AccountId(), cancellationToken));
+        LocalViewResponse.From(await graph.LocalViewAsync(ToPersonId(id), User.Viewer(), cancellationToken));
 
     /// <summary>
     /// Everyone connected to the profiles you maintain, up to <c>Graph:OverviewPeople</c>, for the
@@ -31,7 +31,7 @@ public sealed class GraphController(GraphService graph) : ControllerBase
     /// </summary>
     [HttpGet("/api/graph/overview")]
     public async Task<GraphOverviewResponse> Overview(CancellationToken cancellationToken) =>
-        GraphOverviewResponse.From(await graph.OverviewAsync(User.AccountId(), cancellationToken));
+        GraphOverviewResponse.From(await graph.OverviewAsync(User.Viewer(), cancellationToken));
 
     /// <summary>
     /// How the person is connected to another: the shortest path and up to <c>Graph:MorePaths</c>
@@ -40,7 +40,7 @@ public sealed class GraphController(GraphService graph) : ControllerBase
     [HttpGet("connections/{otherId:guid}")]
     public async Task<ConnectionsResponse> Connections(Guid id, Guid otherId, CancellationToken cancellationToken) =>
         ConnectionsResponse.From(await graph.FindConnectionsAsync(
-            ToPersonId(id), ToPersonId(otherId), User.AccountId(), cancellationToken));
+            ToPersonId(id), ToPersonId(otherId), User.Viewer(), cancellationToken));
 
     /// <summary>The empty GUID is never a person, so it is reported like any other unknown ID.</summary>
     private static PersonId ToPersonId(Guid id) =>

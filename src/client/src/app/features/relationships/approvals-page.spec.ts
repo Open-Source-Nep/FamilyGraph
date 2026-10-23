@@ -17,7 +17,16 @@ function endpoint(
   approval: EndpointApproval,
   maintainedByYou: boolean,
 ): LinkEndpointConsent {
-  return { id, firstName, middleName: null, lastName: null, approval, maintainedByYou };
+  return {
+    id,
+    firstName,
+    middleName: null,
+    lastName: null,
+    placeholder: null,
+    visibility: 'Public',
+    approval,
+    maintainedByYou,
+  };
 }
 
 function link(id: string, parent: LinkEndpointConsent, child: LinkEndpointConsent): LinkConsent {

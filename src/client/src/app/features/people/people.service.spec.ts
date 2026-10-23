@@ -10,6 +10,8 @@ const maya: Person = {
   firstName: 'Maya',
   middleName: null,
   lastName: null,
+  placeholder: null,
+  visibility: 'Public',
   maintainedByYou: true,
 };
 
@@ -48,6 +50,16 @@ describe('PeopleService', () => {
     request.flush(null, { status: 204, statusText: 'No Content' });
 
     await renamed;
+  });
+
+  it('sets the visibility with a PUT', async () => {
+    const changed = service.setVisibility('p1', 'Private');
+    const request = http.expectOne('/api/people/p1/visibility');
+    expect(request.request.method).toBe('PUT');
+    expect(request.request.body).toEqual({ visibility: 'Private' });
+    request.flush(null, { status: 204, statusText: 'No Content' });
+
+    await changed;
   });
 
   it('lists the profiles the user maintains', async () => {

@@ -1,5 +1,6 @@
 using FamilyGraph.Application.Graph;
 using FamilyGraph.Application.People;
+using FamilyGraph.Application.Privacy;
 using FamilyGraph.Application.Tests.People;
 using FamilyGraph.Business.Graph;
 using FamilyGraph.Business.People;
@@ -19,6 +20,8 @@ public class GraphServiceTests
 
     private static CancellationToken Cancellation => TestContext.Current.CancellationToken;
 
+    private static Viewer As(AccountId account) => new(account, IsAdministrator: false);
+
     private GraphService Service(GraphLimits? limits = null) => new(_store, _graph, limits ?? new GraphLimits());
 
     [Fact]
@@ -30,21 +33,47 @@ public class GraphServiceTests
         AddLink(mother, you, ParentChildType.Adoptive);
 
         var view = await Service(new GraphLimits(viewGenerations: 3, viewPeople: 7))
-            .LocalViewAsync(you, Alice, Cancellation);
+            .LocalViewAsync(you, As(Alice), Cancellation);
 
         Assert.Equal((3, 7), _graph.LastViewLimits);
         Assert.Equal(you, view.CentreId);
         Assert.Equal(
             [("Maya", 0, true), ("Sita", 1, false)],
-            view.People.Select(row => (row.Person.Name.FirstName, row.Generation, row.Person.MaintainedByViewer)));
+            view.People.Select(row => (row.Person.Name!.FirstName, row.Generation, row.Person.MaintainedByViewer)));
         Assert.Equal(ParentChildType.Adoptive, Assert.Single(view.Links).Type);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-05.2")]
+    [Trait("AC", "AC-05.4")]
+    public async Task Views_and_paths_pass_through_a_private_placeholder()
+    {
+        var grandmother = AddPerson("Gita", Bob);
+        var mother = AddPerson("Sita", Bob);
+        var you = AddPerson("Maya", Alice);
+        AddLink(grandmother, mother);
+        AddLink(mother, you);
+        _store.People[mother].SetVisibility(ProfileVisibility.Private, Bob);
+
+        var view = await Service().LocalViewAsync(you, As(Alice), Cancellation);
+        var connections = await Service().FindConnectionsAsync(you, grandmother, As(Alice), Cancellation);
+
+        Assert.Equal(
+            [(you, "Maya"), (mother, null), (grandmother, "Gita")],
+            view.People.Select(row => (row.Person.Id, row.Person.Name?.FirstName)));
+        Assert.Equal(PersonPlaceholder.Private, view.People[1].Person.Placeholder);
+        Assert.Equal(2, view.Links.Count);
+        var path = Assert.Single(connections.Paths);
+        Assert.Equal(
+            [(PersonPlaceholder.Private, null), (null, "Gita")],
+            path.Steps.Select(step => (step.Person.Placeholder, step.Person.Name?.FirstName)));
     }
 
     [Fact]
     public async Task Local_view_of_an_unknown_person_is_not_found()
     {
         await Assert.ThrowsAsync<PersonNotFoundException>(
-            () => Service().LocalViewAsync(PersonId.New(), Alice, Cancellation));
+            () => Service().LocalViewAsync(PersonId.New(), As(Alice), Cancellation));
     }
 
     [Fact]
@@ -61,7 +90,7 @@ public class GraphServiceTests
             AddLink(parent, sister);
         }
 
-        var connections = await Service(new GraphLimits(morePaths: 1)).FindConnectionsAsync(you, sister, Alice, Cancellation);
+        var connections = await Service(new GraphLimits(morePaths: 1)).FindConnectionsAsync(you, sister, As(Alice), Cancellation);
 
         Assert.Equal(GraphLimits.DefaultPathSearchPeople, _graph.LastSearchLimit);
         Assert.Equal(2, connections.Paths.Count);
@@ -69,9 +98,9 @@ public class GraphServiceTests
         Assert.True(connections.SearchComplete);
         Assert.All(connections.Paths, path =>
         {
-            Assert.Equal("Maya", path.Start.Name.FirstName);
+            Assert.Equal("Maya", path.Start.Name!.FirstName);
             Assert.Equal([StepRelation.Parent, StepRelation.Child], path.Steps.Select(step => step.Relation));
-            Assert.Equal("Rina", path.Steps[^1].Person.Name.FirstName);
+            Assert.Equal("Rina", path.Steps[^1].Person.Name!.FirstName);
         });
     }
 
@@ -82,7 +111,7 @@ public class GraphServiceTests
         var stranger = AddPerson("Rina", Bob);
         _graph.SearchHitsLimit = true;
 
-        var connections = await Service().FindConnectionsAsync(you, stranger, Alice, Cancellation);
+        var connections = await Service().FindConnectionsAsync(you, stranger, As(Alice), Cancellation);
 
         Assert.Empty(connections.Paths);
         Assert.False(connections.MorePathsExist);
@@ -98,7 +127,7 @@ public class GraphServiceTests
         var link = AddLink(mother, you);
         link.Disagree(_store.People[mother], _store.People[you], Bob);
 
-        var connections = await Service().FindConnectionsAsync(you, mother, Alice, Cancellation);
+        var connections = await Service().FindConnectionsAsync(you, mother, As(Alice), Cancellation);
 
         Assert.Empty(connections.Paths);
         Assert.True(connections.SearchComplete);
@@ -110,7 +139,7 @@ public class GraphServiceTests
         var you = AddPerson("Maya", Alice);
 
         await Assert.ThrowsAsync<PersonNotFoundException>(
-            () => Service().FindConnectionsAsync(you, PersonId.New(), Alice, Cancellation));
+            () => Service().FindConnectionsAsync(you, PersonId.New(), As(Alice), Cancellation));
     }
 
     [Fact]
@@ -125,17 +154,17 @@ public class GraphServiceTests
         AddLink(mother, you);
         AddLink(you, daughter, ParentChildType.Adoptive);
 
-        var overview = await Service(new GraphLimits(overviewPeople: 4)).OverviewAsync(Alice, Cancellation);
+        var overview = await Service(new GraphLimits(overviewPeople: 4)).OverviewAsync(As(Alice), Cancellation);
 
         Assert.Equal(4, _graph.LastOverviewLimit);
         Assert.Equal(
             ["Anil", "Maya", "Sita", "Rina"],
-            overview.People.Select(person => person.Name.FirstName));
+            overview.People.Select(person => person.Name!.FirstName));
         Assert.Equal([true, true, false, false], overview.People.Select(person => person.MaintainedByViewer));
         Assert.Equal(2, overview.Links.Count);
         Assert.False(overview.IsTruncated);
 
-        var cut = await Service(new GraphLimits(overviewPeople: 2)).OverviewAsync(Alice, Cancellation);
+        var cut = await Service(new GraphLimits(overviewPeople: 2)).OverviewAsync(As(Alice), Cancellation);
 
         Assert.Equal(2, cut.People.Count);
         Assert.True(cut.IsTruncated);
@@ -146,7 +175,7 @@ public class GraphServiceTests
     {
         _ = AddPerson("Hari", Bob);
 
-        var overview = await Service().OverviewAsync(Alice, Cancellation);
+        var overview = await Service().OverviewAsync(As(Alice), Cancellation);
 
         Assert.Empty(overview.People);
         Assert.Empty(overview.Links);
@@ -162,9 +191,9 @@ public class GraphServiceTests
         var link = AddLink(mother, you);
         link.Disagree(_store.People[mother], _store.People[you], Bob);
 
-        var overview = await Service().OverviewAsync(Alice, Cancellation);
+        var overview = await Service().OverviewAsync(As(Alice), Cancellation);
 
-        Assert.Equal(["Maya"], overview.People.Select(person => person.Name.FirstName));
+        Assert.Equal(["Maya"], overview.People.Select(person => person.Name!.FirstName));
         Assert.Empty(overview.Links);
     }
 

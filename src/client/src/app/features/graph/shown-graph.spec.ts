@@ -6,6 +6,8 @@ const person = (id: string): GraphPerson => ({
   firstName: id,
   middleName: null,
   lastName: null,
+  placeholder: null,
+  visibility: 'Public',
   maintainedByYou: false,
 });
 const row = (id: string, generation: number, hasMore = false): LocalViewPerson => ({

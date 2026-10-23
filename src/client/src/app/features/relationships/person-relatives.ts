@@ -132,7 +132,11 @@ export class PersonRelatives {
     this.personError.set(null);
     try {
       const person = await this.people.create(name);
-      this.candidates.update((list) => [...(list ?? []), person]);
+      // You maintain the new profile, so you see it by the name you gave it.
+      this.candidates.update((list) => [
+        ...(list ?? []),
+        { ...name, id: person.id, visibility: person.visibility },
+      ]);
       this.toggle(person.id, true);
       this.closeNewPerson();
     } catch (error) {

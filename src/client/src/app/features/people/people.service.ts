@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Service, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-import { Person, PersonName, ProfileList } from './person';
+import { Person, PersonName, ProfileList, Visibility } from './person';
 
 /** Person profile requests. The server checks who may change a profile. */
 @Service()
@@ -19,6 +19,13 @@ export class PeopleService {
 
   rename(id: string, name: PersonName): Promise<void> {
     return firstValueFrom(this.http.put<void>(`/api/people/${encodeURIComponent(id)}/name`, name));
+  }
+
+  /** Only the profile's maintainer may change it (PRD 05). */
+  setVisibility(id: string, visibility: Visibility): Promise<void> {
+    return firstValueFrom(
+      this.http.put<void>(`/api/people/${encodeURIComponent(id)}/visibility`, { visibility }),
+    );
   }
 
   listMaintained(): Promise<ProfileList> {

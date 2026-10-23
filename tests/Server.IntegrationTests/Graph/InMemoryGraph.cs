@@ -1,8 +1,8 @@
 using FamilyGraph.Application.Graph;
 using FamilyGraph.Application.Privacy;
-using Server.IntegrationTests.People;
 using FamilyGraph.Business.Graph;
 using FamilyGraph.Business.People;
+using Server.IntegrationTests.People;
 
 namespace Server.IntegrationTests.Graph;
 
@@ -101,7 +101,7 @@ public sealed class InMemoryGraph(InMemoryPeople store) : IGraphQueries
     }
 
     private PersonRecord Record(PersonId id, AccountId viewerId) =>
-        new(id, store.People[id].Name, store.People[id].IsMaintainedBy(viewerId));
+        PersonRecord.From(store.People[id], viewerId);
 
     private IEnumerable<(PersonId Person, int Offset)> Neighbours(PersonId person) =>
         ActiveLinks()

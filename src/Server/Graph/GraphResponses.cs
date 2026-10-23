@@ -4,11 +4,28 @@ using FamilyGraph.Business.Graph;
 
 namespace Server.Graph;
 
-/// <summary>A person as you may see them in the graph. <see cref="MaintainedByYou"/> never names the maintaining account (D-019).</summary>
-public sealed record GraphPersonResponse(Guid Id, string FirstName, string? MiddleName, string? LastName, bool MaintainedByYou)
+/// <summary>
+/// A person as you may see them in the graph. <see cref="MaintainedByYou"/> never names the
+/// maintaining account (D-019). A person hidden from you has <see cref="Placeholder"/>
+/// <c>Private</c> and no name, and stays in the graph with their links (PRD 05).
+/// </summary>
+public sealed record GraphPersonResponse(
+    Guid Id,
+    string? FirstName,
+    string? MiddleName,
+    string? LastName,
+    string? Placeholder,
+    string Visibility,
+    bool MaintainedByYou)
 {
     internal static GraphPersonResponse From(PersonReference person) => new(
-        person.Id.Value, person.Name.FirstName, person.Name.MiddleName, person.Name.LastName, person.MaintainedByViewer);
+        person.Id.Value,
+        person.Name?.FirstName,
+        person.Name?.MiddleName,
+        person.Name?.LastName,
+        person.Placeholder?.Name,
+        person.Visibility.Name,
+        person.MaintainedByViewer);
 }
 
 /// <summary>

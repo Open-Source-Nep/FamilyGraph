@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using FamilyGraph.Application.Graph;
 using FamilyGraph.Application.People;
+using FamilyGraph.Application.Privacy;
 using FamilyGraph.Application.Relationships;
 using FamilyGraph.Business.People;
 using FamilyGraph.Business.Relationships;
@@ -17,6 +18,8 @@ public class GraphQueriesTests(PostgresFixture postgres)
     private static readonly AccountId Maintainer = TestData.NewAccount();
 
     private static CancellationToken Cancellation => TestContext.Current.CancellationToken;
+
+    private static Viewer As(AccountId account) => new(account, IsAdministrator: false);
 
     [Fact]
     [Trait("AC", "AC-08.4")]
@@ -36,9 +39,9 @@ public class GraphQueriesTests(PostgresFixture postgres)
                 ("Aunt", 1),
                 ("Cousin", 0),
             ],
-            view.People.Select(row => (row.Person.Name.FirstName, row.Generation)));
-        Assert.Contains(view.People, row => row.Person.Name.FirstName == "Grandmother" && row.HasMore);
-        Assert.DoesNotContain(view.People, row => row.Person.Name.FirstName == "Great-grandmother");
+            view.People.Select(row => (row.Person.Name!.FirstName, row.Generation)));
+        Assert.Contains(view.People, row => row.Person.Name!.FirstName == "Grandmother" && row.HasMore);
+        Assert.DoesNotContain(view.People, row => row.Person.Name!.FirstName == "Great-grandmother");
         Assert.Equal(7, view.Links.Count);
         Assert.False(view.IsTruncated);
     }
@@ -53,7 +56,7 @@ public class GraphQueriesTests(PostgresFixture postgres)
 
         var view = await LocalViewAsync(services, family.You.Id, generations: 2, peopleLimit: 2);
 
-        Assert.Equal(["You", "Mother", "Daughter"], view.People.Select(row => row.Person.Name.FirstName));
+        Assert.Equal(["You", "Mother", "Daughter"], view.People.Select(row => row.Person.Name!.FirstName));
         Assert.True(view.IsTruncated);
         Assert.Equal([false, true, true], view.People.Select(row => row.HasMore));
         Assert.Equal(2, view.Links.Count);
@@ -77,12 +80,12 @@ public class GraphQueriesTests(PostgresFixture postgres)
         await DisagreeAsync(services, link.Id, other);
         var withdrawn = await LocalViewAsync(services, you.Id, generations: 2, peopleLimit: 10);
 
-        Assert.Equal(["You"], pending.People.Select(row => row.Person.Name.FirstName));
+        Assert.Equal(["You"], pending.People.Select(row => row.Person.Name!.FirstName));
         Assert.Empty(pending.Links);
         Assert.False(Assert.Single(pending.People).HasMore);
-        Assert.Equal(["You", "Mother"], active.People.Select(row => row.Person.Name.FirstName));
+        Assert.Equal(["You", "Mother"], active.People.Select(row => row.Person.Name!.FirstName));
         Assert.Equal(link.Id, Assert.Single(active.Links).Id);
-        Assert.Equal(["You"], withdrawn.People.Select(row => row.Person.Name.FirstName));
+        Assert.Equal(["You"], withdrawn.People.Select(row => row.Person.Name!.FirstName));
     }
 
     [Fact]
@@ -98,10 +101,10 @@ public class GraphQueriesTests(PostgresFixture postgres)
         Assert.True(connections.SearchComplete);
         Assert.False(connections.MorePathsExist);
         var path = Assert.Single(connections.Paths);
-        Assert.Equal("You", path.Start.Name.FirstName);
+        Assert.Equal("You", path.Start.Name!.FirstName);
         Assert.Equal(
             [("Parent", "Mother"), ("Parent", "Grandmother"), ("Child", "Aunt"), ("Child", "Cousin")],
-            path.Steps.Select(step => (step.Relation.Name, step.Person.Name.FirstName)));
+            path.Steps.Select(step => (step.Relation.Name, step.Person.Name!.FirstName)));
     }
 
     [Fact]
@@ -137,10 +140,10 @@ public class GraphQueriesTests(PostgresFixture postgres)
         var overview = await OverviewAsync(services, overviewPeople: 500);
         var cut = await OverviewAsync(services, overviewPeople: 3);
 
-        Assert.Equal(["Second", "You", "Mother", "Grandmother"], overview.People.Select(person => person.Name.FirstName));
+        Assert.Equal(["Second", "You", "Mother", "Grandmother"], overview.People.Select(person => person.Name!.FirstName));
         Assert.Equal(2, overview.Links.Count);
         Assert.False(overview.IsTruncated);
-        Assert.Equal(["Second", "You", "Mother"], cut.People.Select(person => person.Name.FirstName));
+        Assert.Equal(["Second", "You", "Mother"], cut.People.Select(person => person.Name!.FirstName));
         Assert.Equal(motherLink.Id, Assert.Single(cut.Links).Id);
         Assert.True(cut.IsTruncated);
     }
@@ -206,6 +209,39 @@ public class GraphQueriesTests(PostgresFixture postgres)
         return (people[0].Id, people[people.Count / 2].Id, people[^1].Id);
     }
 
+    [Fact]
+    [Trait("AC", "AC-05.2")]
+    [Trait("AC", "AC-05.4")]
+    public async Task Graph_reads_load_visibility_so_a_private_person_is_a_placeholder_the_walk_passes_through()
+    {
+        await using var services = await NewServicesAsync();
+        var grandmother = TestData.NewPerson(Maintainer, "Gita");
+        var mother = TestData.NewPerson(Maintainer, "Sita");
+        var you = TestData.NewPerson(Maintainer, "Maya");
+        mother.SetVisibility(ProfileVisibility.Private, Maintainer);
+        await SaveAsync(services, [
+            grandmother, mother, you,
+            TestData.NewLink(grandmother, mother, Maintainer),
+            TestData.NewLink(mother, you, Maintainer),
+        ]);
+
+        await using var scope = services.CreateAsyncScope();
+        var service = new GraphService(
+            scope.ServiceProvider.GetRequiredService<IPersonQueries>(),
+            scope.ServiceProvider.GetRequiredService<IGraphQueries>(),
+            new GraphLimits());
+        var viewer = As(TestData.NewAccount());
+        var view = await service.LocalViewAsync(you.Id, viewer, Cancellation);
+        var connections = await service.FindConnectionsAsync(you.Id, grandmother.Id, viewer, Cancellation);
+
+        Assert.Equal(
+            [("Maya", null), (null, PersonPlaceholder.Private), ("Gita", null)],
+            view.People.Select(row => (row.Person.Name?.FirstName, row.Person.Placeholder)));
+        Assert.Equal(
+            [PersonPlaceholder.Private, null],
+            Assert.Single(connections.Paths).Steps.Select(step => step.Person.Placeholder));
+    }
+
     private static async Task<LocalView> LocalViewAsync(
         ServiceProvider services, PersonId centre, int generations, int peopleLimit)
     {
@@ -214,7 +250,7 @@ public class GraphQueriesTests(PostgresFixture postgres)
             scope.ServiceProvider.GetRequiredService<IPersonQueries>(),
             scope.ServiceProvider.GetRequiredService<IGraphQueries>(),
             new GraphLimits(generations, peopleLimit));
-        return await service.LocalViewAsync(centre, Maintainer, Cancellation);
+        return await service.LocalViewAsync(centre, As(Maintainer), Cancellation);
     }
 
     private static async Task<Overview> OverviewAsync(ServiceProvider services, int overviewPeople)
@@ -224,7 +260,7 @@ public class GraphQueriesTests(PostgresFixture postgres)
             scope.ServiceProvider.GetRequiredService<IPersonQueries>(),
             scope.ServiceProvider.GetRequiredService<IGraphQueries>(),
             new GraphLimits(overviewPeople: overviewPeople));
-        return await service.OverviewAsync(Maintainer, Cancellation);
+        return await service.OverviewAsync(As(Maintainer), Cancellation);
     }
 
     private static async Task<Connections> ConnectionsAsync(
@@ -235,21 +271,21 @@ public class GraphQueriesTests(PostgresFixture postgres)
             scope.ServiceProvider.GetRequiredService<IPersonQueries>(),
             scope.ServiceProvider.GetRequiredService<IGraphQueries>(),
             new GraphLimits(pathSearchPeople: pathSearchPeople));
-        return await service.FindConnectionsAsync(from, to, Maintainer, Cancellation);
+        return await service.FindConnectionsAsync(from, to, As(Maintainer), Cancellation);
     }
 
     private static async Task ApproveAsync(ServiceProvider services, LinkId link, AccountId actor)
     {
         await using var scope = services.CreateAsyncScope();
         await scope.ServiceProvider.GetRequiredService<RelationshipService>()
-            .ApproveAsync(link, LinkEndpoint.Parent, actor, Cancellation);
+            .ApproveAsync(link, LinkEndpoint.Parent, As(actor), Cancellation);
     }
 
     private static async Task DisagreeAsync(ServiceProvider services, LinkId link, AccountId actor)
     {
         await using var scope = services.CreateAsyncScope();
         await scope.ServiceProvider.GetRequiredService<RelationshipService>()
-            .DisagreeAsync(link, LinkEndpoint.Parent, actor, Cancellation);
+            .DisagreeAsync(link, LinkEndpoint.Parent, As(actor), Cancellation);
     }
 
     private static async Task SaveAsync(ServiceProvider services, IEnumerable<object> entities)

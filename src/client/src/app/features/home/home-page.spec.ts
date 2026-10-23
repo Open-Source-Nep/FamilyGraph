@@ -17,6 +17,7 @@ const profile = (id: string, firstName: string): PersonSummary => ({
   firstName,
   middleName: null,
   lastName: null,
+  visibility: 'Public',
 });
 
 describe('HomePage', () => {

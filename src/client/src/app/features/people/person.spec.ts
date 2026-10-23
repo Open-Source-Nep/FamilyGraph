@@ -1,4 +1,4 @@
-import { initials } from './person';
+import { PersonLabel, fullName, initials } from './person';
 
 describe('initials', () => {
   const name = (firstName: string, middleName: string | null, lastName: string | null) => ({
@@ -17,5 +17,23 @@ describe('initials', () => {
 
   it('keeps letters outside the basic plane whole', () => {
     expect(initials(name('𝒜da', null, 'Rai'))).toBe('𝒜R');
+  });
+});
+
+describe('a private placeholder', () => {
+  const hidden: PersonLabel = {
+    firstName: null,
+    middleName: null,
+    lastName: null,
+    placeholder: 'Private',
+    visibility: 'Private',
+  };
+
+  it('is named Private', () => {
+    expect(fullName(hidden)).toBe('Private');
+  });
+
+  it('has no initials', () => {
+    expect(initials(hidden)).toBe('');
   });
 });

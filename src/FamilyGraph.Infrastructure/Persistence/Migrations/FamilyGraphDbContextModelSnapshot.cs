@@ -33,6 +33,10 @@ namespace FamilyGraph.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("maintainer_id");
 
+                    b.Property<int>("Visibility")
+                        .HasColumnType("integer")
+                        .HasColumnName("visibility");
+
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Name", "FamilyGraph.Business.People.Person.Name#PersonName", b1 =>
                         {
                             b1.IsRequired();

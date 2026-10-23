@@ -1,5 +1,6 @@
 using FamilyGraph.Application.People;
 using FamilyGraph.Application.Persistence;
+using FamilyGraph.Application.Privacy;
 using FamilyGraph.Application.Relationships;
 using FamilyGraph.Business.Audit;
 using FamilyGraph.Business.People;
@@ -34,17 +35,15 @@ internal sealed class InMemoryPeople
 
     public void Add(Person person) => _added.Add(person);
 
-    public Task<PersonView?> FindAsync(PersonId id, AccountId viewerId, CancellationToken cancellationToken) =>
-        Task.FromResult(People.TryGetValue(id, out var person)
-            ? new PersonView(person.Id, person.Name, person.IsMaintainedBy(viewerId))
-            : null);
+    public Task<PersonRecord?> FindAsync(PersonId id, AccountId viewerId, CancellationToken cancellationToken) =>
+        Task.FromResult(People.TryGetValue(id, out var person) ? PersonRecord.From(person, viewerId) : null);
 
     public Task<ProfileList> ListMaintainedByAsync(AccountId maintainerId, int limit, CancellationToken cancellationToken)
     {
         var maintained = People.Values
             .Where(person => person.IsMaintainedBy(maintainerId))
             .OrderBy(person => person.Name.FirstName, StringComparer.Ordinal)
-            .Select(person => new PersonSummary(person.Id, person.Name))
+            .Select(person => new PersonSummary(person.Id, person.Name, person.Visibility))
             .ToList();
         return Task.FromResult(new ProfileList(maintained.Take(limit).ToList(), maintained.Count > limit));
     }
@@ -74,34 +73,33 @@ internal sealed class InMemoryPeople
 
     public void Add(ParentChildLink link) => _addedLinks.Add(link);
 
-    public Task<DirectRelatives> ListDirectRelativesAsync(
-        PersonId personId, AccountId viewerId, int limit, CancellationToken cancellationToken)
+    /// <summary>Sorts people hidden from the viewer last, by ID, like the database query.</summary>
+    public Task<DirectRelativesData> ListDirectRelativesAsync(
+        PersonId personId, Viewer viewer, int limit, CancellationToken cancellationToken)
     {
         var active = Links.Values.Where(link => link.IsActive).ToList();
         var parents = active
             .Where(link => link.ChildId == personId)
-            .Select(link => new Relative(
-                link.Id, link.ParentId, People[link.ParentId].Name, link.Type, People[link.ParentId].IsMaintainedBy(viewerId)))
-            .OrderBy(parent => parent.Name.FirstName, StringComparer.Ordinal)
+            .Select(link => new RelativeData(link.Id, Record(link.ParentId, viewer), link.Type, null))
+            .OrderBy(parent => IsHidden(parent.Person, viewer))
+            .ThenBy(parent => IsHidden(parent.Person, viewer) ? "" : parent.Person.Name.FirstName, StringComparer.Ordinal)
+            .ThenBy(parent => parent.Person.Id.Value)
             .ToList();
         var children = active
             .Where(link => link.ParentId == personId)
-            .Select(link => new ChildRelative(
-                link.Id,
-                link.ChildId,
-                People[link.ChildId].Name,
-                link.Type,
-                People[link.ChildId].IsMaintainedBy(viewerId),
-                link.BirthOrder))
+            .Select(link => new RelativeData(link.Id, Record(link.ChildId, viewer), link.Type, link.BirthOrder))
             .OrderBy(child => child.BirthOrder ?? int.MaxValue)
-            .ThenBy(child => child.Name.FirstName, StringComparer.Ordinal)
+            .ThenBy(child => IsHidden(child.Person, viewer))
+            .ThenBy(child => IsHidden(child.Person, viewer) ? "" : child.Person.Name.FirstName, StringComparer.Ordinal)
+            .ThenBy(child => child.Person.Id.Value)
             .ToList();
-        return Task.FromResult(new DirectRelatives(
+        return Task.FromResult(new DirectRelativesData(
             parents.Take(limit).ToList(), parents.Count > limit, children.Take(limit).ToList(), children.Count > limit));
     }
 
-    public Task<LinkConsentList> ListInactiveLinksAsync(AccountId viewerId, int limit, CancellationToken cancellationToken)
+    public Task<LinkConsentListData> ListInactiveLinksAsync(Viewer viewer, int limit, CancellationToken cancellationToken)
     {
+        var viewerId = viewer.AccountId;
         var inactive = NotDeletedLinks()
             .Where(link => !link.IsActive)
             .Select(link => (Link: link, Parent: People[link.ParentId], Child: People[link.ChildId]))
@@ -109,16 +107,19 @@ internal sealed class InMemoryPeople
             .OrderByDescending(row =>
                 (row.Parent.IsMaintainedBy(viewerId) && row.Link.ParentApproval == EndpointApproval.Pending)
                 || (row.Child.IsMaintainedBy(viewerId) && row.Link.ChildApproval == EndpointApproval.Pending))
-            .ThenBy(row => row.Parent.Name.FirstName, StringComparer.Ordinal)
-            .ThenBy(row => row.Child.Name.FirstName, StringComparer.Ordinal)
-            .Select(row => new LinkConsentView(
+            .ThenBy(row => IsHidden(Record(row.Parent.Id, viewer), viewer))
+            .ThenBy(row => IsHidden(Record(row.Parent.Id, viewer), viewer) ? "" : row.Parent.Name.FirstName, StringComparer.Ordinal)
+            .ThenBy(row => IsHidden(Record(row.Child.Id, viewer), viewer))
+            .ThenBy(row => IsHidden(Record(row.Child.Id, viewer), viewer) ? "" : row.Child.Name.FirstName, StringComparer.Ordinal)
+            .ThenBy(row => row.Link.Id.Value)
+            .Select(row => new LinkConsentData(
                 row.Link.Id,
                 row.Link.Type,
-                new LinkEndpointView(row.Parent.Id, row.Parent.Name, row.Link.ParentApproval, row.Parent.IsMaintainedBy(viewerId)),
-                new LinkEndpointView(row.Child.Id, row.Child.Name, row.Link.ChildApproval, row.Child.IsMaintainedBy(viewerId)),
+                new LinkEndpointData(Record(row.Parent.Id, viewer), row.Link.ParentApproval),
+                new LinkEndpointData(Record(row.Child.Id, viewer), row.Link.ChildApproval),
                 IsActive: false))
             .ToList();
-        return Task.FromResult(new LinkConsentList(inactive.Take(limit).ToList(), inactive.Count > limit));
+        return Task.FromResult(new LinkConsentListData(inactive.Take(limit).ToList(), inactive.Count > limit));
     }
 
     public void Add(IEnumerable<AuditEvent> auditEvents, DateTimeOffset occurredAt) =>
@@ -143,6 +144,11 @@ internal sealed class InMemoryPeople
         SaveCount++;
         return Task.CompletedTask;
     }
+
+    private static bool IsHidden(PersonRecord person, Viewer viewer) =>
+        person.Visibility == ProfileVisibility.Private && !person.MaintainedByViewer && !viewer.IsAdministrator;
+
+    private PersonRecord Record(PersonId id, Viewer viewer) => PersonRecord.From(People[id], viewer.AccountId);
 
     private IEnumerable<ParentChildLink> NotDeletedLinks() => Links.Values.Where(link => !link.IsDeleted);
 }

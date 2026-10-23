@@ -1,4 +1,5 @@
 using FamilyGraph.Application.People;
+using FamilyGraph.Application.Privacy;
 using FamilyGraph.Business.People;
 
 namespace FamilyGraph.Application.Tests.People;
@@ -12,6 +13,8 @@ public class PersonServiceTests
     private readonly InMemoryPeople _people = new();
 
     private static CancellationToken Cancellation => TestContext.Current.CancellationToken;
+
+    private static Viewer As(AccountId account) => new(account, IsAdministrator: false);
 
     private PersonService Service(int maintainedListLimit = PeopleLimits.DefaultMaintainedListLimit) =>
         new(_people, _people, _people, _people, new FixedTimeProvider(Now), new PeopleLimits(maintainedListLimit));
@@ -80,8 +83,8 @@ public class PersonServiceTests
         var service = Service();
         var id = await service.CreateAsync(new PersonName("Maya"), Alice, Cancellation);
 
-        var asMaintainer = await service.GetAsync(id, Alice, Cancellation);
-        var asOther = await service.GetAsync(id, Bob, Cancellation);
+        var asMaintainer = await service.GetAsync(id, As(Alice), Cancellation);
+        var asOther = await service.GetAsync(id, As(Bob), Cancellation);
 
         Assert.True(asMaintainer.MaintainedByViewer);
         Assert.False(asOther.MaintainedByViewer);
@@ -89,9 +92,48 @@ public class PersonServiceTests
     }
 
     [Fact]
+    [Trait("AC", "AC-05.7")]
+    public async Task Maintainer_makes_a_profile_private_and_the_change_is_audited()
+    {
+        var service = Service();
+        var id = await service.CreateAsync(new PersonName("Maya"), Alice, Cancellation);
+
+        await service.SetVisibilityAsync(id, ProfileVisibility.Private, Alice, Cancellation);
+
+        Assert.Equal(ProfileVisibility.Private, _people.People[id].Visibility);
+        Assert.Equal((new PersonVisibilityChanged(id, Alice, ProfileVisibility.Private), Now), _people.AuditEvents[^1]);
+        Assert.Equal(2, _people.SaveCount);
+    }
+
+    [Fact]
+    public async Task Changing_the_visibility_of_an_unknown_profile_is_not_found()
+    {
+        await Assert.ThrowsAsync<PersonNotFoundException>(
+            () => Service().SetVisibilityAsync(PersonId.New(), ProfileVisibility.Private, Alice, Cancellation));
+    }
+
+    [Fact]
+    [Trait("AC", "AC-05.1")]
+    [Trait("AC", "AC-05.8")]
+    public async Task Private_profile_is_a_placeholder_to_others_but_not_to_its_maintainer_or_administrators()
+    {
+        var service = Service();
+        var id = await service.CreateAsync(new PersonName("Maya"), Alice, Cancellation);
+        await service.SetVisibilityAsync(id, ProfileVisibility.Private, Alice, Cancellation);
+
+        var asOther = await service.GetAsync(id, As(Bob), Cancellation);
+        var asMaintainer = await service.GetAsync(id, As(Alice), Cancellation);
+        var asAdministrator = await service.GetAsync(id, new Viewer(Bob, IsAdministrator: true), Cancellation);
+
+        Assert.Equal((null, PersonPlaceholder.Private), (asOther.Name, asOther.Placeholder));
+        Assert.Equal(new PersonName("Maya"), asMaintainer.Name);
+        Assert.Equal(new PersonName("Maya"), asAdministrator.Name);
+    }
+
+    [Fact]
     public async Task Viewing_an_unknown_profile_is_not_found()
     {
-        await Assert.ThrowsAsync<PersonNotFoundException>(() => Service().GetAsync(PersonId.New(), Alice, Cancellation));
+        await Assert.ThrowsAsync<PersonNotFoundException>(() => Service().GetAsync(PersonId.New(), As(Alice), Cancellation));
     }
 
     [Fact]

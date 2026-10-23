@@ -170,13 +170,17 @@ internal sealed class EfGraphQueries(FamilyGraphDbContext context, GraphLimits l
         var values = ids.Select(id => id.Value).ToArray();
         var rows = await RunAsync(token => context.Database.SqlQuery<PersonRow>($"""
             SELECT person.id AS "Id", person.first_name AS "FirstName", person.middle_name AS "MiddleName",
-                person.last_name AS "LastName", person.maintainer_id = {viewerId.Value} AS "MaintainedByViewer"
+                person.last_name AS "LastName", person.visibility AS "Visibility",
+                person.maintainer_id = {viewerId.Value} AS "MaintainedByViewer"
             FROM people AS person
             JOIN unnest({values}) AS wanted (id) ON wanted.id = person.id
             """).ToListAsync(token), cancellationToken);
 
         return [.. rows.Select(row => new PersonRecord(
-            new PersonId(row.Id), new PersonName(row.FirstName, row.MiddleName, row.LastName), row.MaintainedByViewer))];
+            new PersonId(row.Id),
+            new PersonName(row.FirstName, row.MiddleName, row.LastName),
+            ProfileVisibility.FromValue(row.Visibility),
+            row.MaintainedByViewer))];
     }
 
     private Task<List<Guid>> ReachedAsync(Guid[] starts, int rowLimit, CancellationToken cancellationToken) =>
@@ -216,5 +220,6 @@ internal sealed class EfGraphQueries(FamilyGraphDbContext context, GraphLimits l
 
     private sealed record LinkRow(Guid Id, Guid ParentId, Guid ChildId, int Type);
 
-    private sealed record PersonRow(Guid Id, string FirstName, string? MiddleName, string? LastName, bool MaintainedByViewer);
+    private sealed record PersonRow(
+        Guid Id, string FirstName, string? MiddleName, string? LastName, int Visibility, bool MaintainedByViewer);
 }

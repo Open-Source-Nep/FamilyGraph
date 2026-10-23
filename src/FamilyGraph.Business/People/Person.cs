@@ -27,6 +27,9 @@ public sealed class Person : AuditedEntity
 
     public AccountId MaintainerId { get; private set; }
 
+    /// <summary>New profiles start Public (PRD 05).</summary>
+    public ProfileVisibility Visibility { get; private set; } = ProfileVisibility.Public;
+
     /// <summary>Creates a profile. The creating account becomes its maintainer.</summary>
     public static Person Create(PersonName name, AccountId creatorId)
     {
@@ -52,7 +55,32 @@ public sealed class Person : AuditedEntity
         Name = newName;
         Record(new PersonRenamed(Id, actorId));
     }
+
+    /// <summary>
+    /// Makes the profile Public or Private. Only the current maintainer may do this (PRD 05). It
+    /// changes what others see of the profile and nothing about its relationships or their consent.
+    /// </summary>
+    public void SetVisibility(ProfileVisibility visibility, AccountId actorId)
+    {
+        ArgumentNullException.ThrowIfNull(visibility);
+
+        if (!IsMaintainedBy(actorId))
+        {
+            throw new NotProfileMaintainerException(Id);
+        }
+
+        if (Visibility == visibility)
+        {
+            throw new ProfileVisibilityUnchangedException(Id, visibility);
+        }
+
+        Visibility = visibility;
+        Record(new PersonVisibilityChanged(Id, actorId, visibility));
+    }
 }
 
 public sealed class NotProfileMaintainerException(PersonId personId)
     : NotPermittedException("person.not_maintainer", $"Only the maintainer of profile {personId.Value} can change it.");
+
+public sealed class ProfileVisibilityUnchangedException(PersonId personId, ProfileVisibility visibility)
+    : ConflictException("person.visibility_unchanged", $"Profile {personId.Value} is already {visibility}.");

@@ -1,12 +1,13 @@
 using FamilyGraph.Application.Persistence;
+using FamilyGraph.Application.Privacy;
 using FamilyGraph.Business.People;
 
 namespace FamilyGraph.Application.People;
 
 /// <summary>
-/// Creates, renames and reads person profiles (PRD 01, #12). The creating account becomes the
-/// maintainer, and only the maintainer can rename; <see cref="Person"/> enforces both. A profile
-/// is never matched or merged by name.
+/// Creates, renames, sets the visibility of and reads person profiles (PRD 01, PRD 05, #12, #18).
+/// The creating account becomes the maintainer, and only the maintainer can rename or change the
+/// visibility; <see cref="Person"/> enforces both. A profile is never matched or merged by name.
 /// </summary>
 public sealed class PersonService(
     IPersonStore people,
@@ -32,11 +33,28 @@ public sealed class PersonService(
     }
 
     /// <summary>
-    /// Any signed-in account may view a profile. Profiles are Public until privacy settings
-    /// arrive (PRD 05, #17), which will hide a Private profile's name behind a placeholder.
+    /// Makes the profile Public or Private (PRD 05). Its relationships and their consent are
+    /// unchanged, so its active links stay traversable through the placeholder.
     /// </summary>
-    public async Task<PersonView> GetAsync(PersonId id, AccountId viewerId, CancellationToken cancellationToken) =>
-        await queries.FindAsync(id, viewerId, cancellationToken) ?? throw new PersonNotFoundException();
+    public async Task SetVisibilityAsync(
+        PersonId id, ProfileVisibility visibility, AccountId actorId, CancellationToken cancellationToken)
+    {
+        var person = await people.FindAsync(id, cancellationToken) ?? throw new PersonNotFoundException();
+        person.SetVisibility(visibility, actorId);
+        await SaveAsync(person, cancellationToken);
+    }
+
+    /// <summary>
+    /// Any signed-in account may view a profile. A Private one is a <c>Private</c> placeholder to
+    /// everyone but its maintainer and administrators (PRD 05).
+    /// </summary>
+    public async Task<PersonReference> GetAsync(PersonId id, Viewer viewer, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(viewer);
+
+        var person = await queries.FindAsync(id, viewer.AccountId, cancellationToken) ?? throw new PersonNotFoundException();
+        return PrivacyProjection.Project(person, viewer);
+    }
 
     public Task<ProfileList> ListMaintainedAsync(AccountId maintainerId, CancellationToken cancellationToken) =>
         queries.ListMaintainedByAsync(maintainerId, limits.MaintainedListLimit, cancellationToken);

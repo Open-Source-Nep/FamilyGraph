@@ -12,6 +12,7 @@ internal sealed class PersonConfiguration : IEntityTypeConfiguration<Person>
         builder.HasKey(person => person.Id);
         builder.Property(person => person.Id).HasConversion(ValueConverters.PersonId).ValueGeneratedNever();
         builder.Property(person => person.MaintainerId).HasConversion(ValueConverters.AccountId);
+        builder.Property(person => person.Visibility).HasConversion(ValueConverters.Enum<ProfileVisibility>());
         builder.ComplexProperty(person => person.Name, name =>
         {
             name.Property(part => part.FirstName).HasColumnName("first_name");

@@ -7,28 +7,61 @@
     @if (editing()) {
       <h1>Edit name</h1>
       <app-person-name-form
-        [name]="person"
+        [name]="editableName()"
         [busy]="saving()"
         (saved)="rename($event)"
         (cancelled)="editing.set(false)"
       />
     } @else {
       <h1>{{ name() }}</h1>
-      <dl>
-        <dt>First name</dt>
-        <dd>{{ person.firstName }}</dd>
-        @if (person.middleName) {
-          <dt>Middle name</dt>
-          <dd>{{ person.middleName }}</dd>
-        }
-        @if (person.lastName) {
-          <dt>Last name</dt>
-          <dd>{{ person.lastName }}</dd>
-        }
-      </dl>
+      @if (person.placeholder) {
+        <p class="hint">This profile is private. Its name and details are hidden.</p>
+      } @else {
+        <dl>
+          <dt>First name</dt>
+          <dd>{{ person.firstName }}</dd>
+          @if (person.middleName) {
+            <dt>Middle name</dt>
+            <dd>{{ person.middleName }}</dd>
+          }
+          @if (person.lastName) {
+            <dt>Last name</dt>
+            <dd>{{ person.lastName }}</dd>
+          }
+          @if (person.visibility === 'Private') {
+            <dt>Visibility</dt>
+            <dd>Private: others see only “Private”.</dd>
+          }
+        </dl>
+      }
       @if (person.maintainedByYou) {
         <p class="hint">You maintain this profile.</p>
-        <button type="button" (click)="editing.set(true)">Edit name</button>
+        <p class="actions">
+          <button type="button" (click)="editing.set(true)">Edit name</button>
+          @if (person.visibility === 'Public') {
+            <button
+              type="button"
+              class="secondary"
+              [disabled]="saving()"
+              (click)="setVisibility('Private')"
+            >
+              Make private
+            </button>
+          } @else {
+            <button
+              type="button"
+              class="secondary"
+              [disabled]="saving()"
+              (click)="setVisibility('Public')"
+            >
+              Make public
+            </button>
+          }
+        </p>
+        <p class="hint">
+          A private profile shows as “Private” to everyone but you and administrators. Its
+          relationships stay in the family graph.
+        </p>
       }
       <p><a [routerLink]="['/people', person.id, 'graph']">Show the family graph</a></p>
       <app-person-relatives [person]="person" />

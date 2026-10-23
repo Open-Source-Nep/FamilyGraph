@@ -1,4 +1,5 @@
 using FamilyGraph.Application.Persistence;
+using FamilyGraph.Application.Privacy;
 using FamilyGraph.Application.Relationships;
 using FamilyGraph.Business.Audit;
 using FamilyGraph.Business.People;
@@ -16,6 +17,8 @@ public class RelationshipPersistenceServicesTests(PostgresFixture postgres)
     private static readonly AccountId Maintainer = TestData.NewAccount();
 
     private static CancellationToken Cancellation => TestContext.Current.CancellationToken;
+
+    private static Viewer As(AccountId account) => new(account, IsAdministrator: false);
 
     [Fact]
     [Trait("AC", "AC-02.1")]
@@ -178,16 +181,16 @@ public class RelationshipPersistenceServicesTests(PostgresFixture postgres)
 
         await using var scope = services.CreateAsyncScope();
         var queries = scope.ServiceProvider.GetRequiredService<IRelationshipQueries>();
-        var all = await queries.ListDirectRelativesAsync(parent.Id, Maintainer, limit: 10, Cancellation);
-        var cut = await queries.ListDirectRelativesAsync(parent.Id, Maintainer, limit: 2, Cancellation);
+        var all = await queries.ListDirectRelativesAsync(parent.Id, As(Maintainer), limit: 10, Cancellation);
+        var cut = await queries.ListDirectRelativesAsync(parent.Id, As(Maintainer), limit: 2, Cancellation);
 
-        Assert.Equal(["Ram"], all.Parents.Select(relative => relative.Name.FirstName));
-        Assert.True(all.Parents[0].MaintainedByViewer);
+        Assert.Equal(["Ram"], all.Parents.Select(relative => relative.Person.Name.FirstName));
+        Assert.True(all.Parents[0].Person.MaintainedByViewer);
         Assert.Equal(ParentChildType.Biological, all.Parents[0].Type);
-        Assert.Equal(["Chandra", "Asha", "Bina"], all.Children.Select(relative => relative.Name.FirstName));
+        Assert.Equal(["Chandra", "Asha", "Bina"], all.Children.Select(relative => relative.Person.Name.FirstName));
         Assert.Equal([1, null, null], all.Children.Select(relative => relative.BirthOrder));
         Assert.False(all.ChildrenTruncated);
-        Assert.Equal(["Chandra", "Asha"], cut.Children.Select(relative => relative.Name.FirstName));
+        Assert.Equal(["Chandra", "Asha"], cut.Children.Select(relative => relative.Person.Name.FirstName));
         Assert.True(cut.ChildrenTruncated);
         Assert.False(cut.ParentsTruncated);
     }
@@ -207,7 +210,7 @@ public class RelationshipPersistenceServicesTests(PostgresFixture postgres)
         await using (var scope = services.CreateAsyncScope())
         {
             await scope.ServiceProvider.GetRequiredService<RelationshipService>()
-                .ApproveAsync(link.Id, LinkEndpoint.Parent, other, Cancellation);
+                .ApproveAsync(link.Id, LinkEndpoint.Parent, As(other), Cancellation);
         }
 
         await using (var scope = services.CreateAsyncScope())
@@ -215,7 +218,7 @@ public class RelationshipPersistenceServicesTests(PostgresFixture postgres)
             var context = scope.ServiceProvider.GetRequiredService<FamilyGraphDbContext>();
             Assert.True((await context.Set<ParentChildLink>().SingleAsync(Cancellation)).IsActive);
             await scope.ServiceProvider.GetRequiredService<RelationshipService>()
-                .DisagreeAsync(link.Id, LinkEndpoint.Child, Maintainer, Cancellation);
+                .DisagreeAsync(link.Id, LinkEndpoint.Child, As(Maintainer), Cancellation);
         }
 
         await using (var scope = services.CreateAsyncScope())
@@ -256,24 +259,24 @@ public class RelationshipPersistenceServicesTests(PostgresFixture postgres)
         await using (var scope = services.CreateAsyncScope())
         {
             await scope.ServiceProvider.GetRequiredService<RelationshipService>()
-                .ApproveAsync(waitingForOther.Id, LinkEndpoint.Parent, other, Cancellation);
+                .ApproveAsync(waitingForOther.Id, LinkEndpoint.Parent, As(other), Cancellation);
             await scope.ServiceProvider.GetRequiredService<RelationshipService>()
-                .DisagreeAsync(waitingForOther.Id, LinkEndpoint.Child, Maintainer, Cancellation);
+                .DisagreeAsync(waitingForOther.Id, LinkEndpoint.Child, As(Maintainer), Cancellation);
         }
 
         await using var queryScope = services.CreateAsyncScope();
         var queries = queryScope.ServiceProvider.GetRequiredService<IRelationshipQueries>();
-        var all = await queries.ListInactiveLinksAsync(Maintainer, limit: 10, Cancellation);
-        var cut = await queries.ListInactiveLinksAsync(Maintainer, limit: 1, Cancellation);
+        var all = await queries.ListInactiveLinksAsync(As(Maintainer), limit: 10, Cancellation);
+        var cut = await queries.ListInactiveLinksAsync(As(Maintainer), limit: 1, Cancellation);
 
         Assert.Equal(
             ["Ram → Hari", "Bina → Maya", "Ram → Maya"],
-            all.Links.Select(link => $"{link.Parent.Name.FirstName} → {link.Child.Name.FirstName}"));
+            all.Links.Select(link => $"{link.Parent.Person.Name.FirstName} → {link.Child.Person.Name.FirstName}"));
         Assert.False(all.IsTruncated);
         var first = all.Links[0];
         Assert.Equal(waitingForViewer.Id, first.Id);
-        Assert.Equal((EndpointApproval.Approved, false), (first.Parent.Approval, first.Parent.MaintainedByViewer));
-        Assert.Equal((EndpointApproval.Pending, true), (first.Child.Approval, first.Child.MaintainedByViewer));
+        Assert.Equal((EndpointApproval.Approved, false), (first.Parent.Approval, first.Parent.Person.MaintainedByViewer));
+        Assert.Equal((EndpointApproval.Pending, true), (first.Child.Approval, first.Child.Person.MaintainedByViewer));
         Assert.Equal(EndpointApproval.Disagreed, all.Links[1].Child.Approval);
         Assert.All(all.Links, link => Assert.False(link.IsActive));
         Assert.Equal(waitingForViewer.Id, Assert.Single(cut.Links).Id);
@@ -318,6 +321,63 @@ public class RelationshipPersistenceServicesTests(PostgresFixture postgres)
         var person = TestData.NewPerson(Maintainer, firstName);
         await SaveAsync(services, person);
         return person.Id;
+    }
+
+    [Fact]
+    [Trait("AC", "AC-05.1")]
+    public async Task Relatives_hidden_from_the_viewer_come_last_by_id_and_carry_their_visibility()
+    {
+        await using var services = await NewServicesAsync();
+        var parent = TestData.NewPerson(Maintainer, "Ram");
+        var hiddenParent = TestData.NewPerson(Maintainer, "Anil");
+        var shownParent = TestData.NewPerson(Maintainer, "Zed");
+        var hiddenChild = TestData.NewPerson(Maintainer, "Asha");
+        var shownChild = TestData.NewPerson(Maintainer, "Bina");
+        hiddenParent.SetVisibility(ProfileVisibility.Private, Maintainer);
+        hiddenChild.SetVisibility(ProfileVisibility.Private, Maintainer);
+        await SaveAsync(
+            services,
+            parent, hiddenParent, shownParent, hiddenChild, shownChild,
+            TestData.NewLink(hiddenParent, parent, Maintainer),
+            TestData.NewLink(shownParent, parent, Maintainer),
+            TestData.NewLink(parent, hiddenChild, Maintainer),
+            TestData.NewLink(parent, shownChild, Maintainer));
+
+        await using var scope = services.CreateAsyncScope();
+        var queries = scope.ServiceProvider.GetRequiredService<IRelationshipQueries>();
+        var asOther = await queries.ListDirectRelativesAsync(parent.Id, As(TestData.NewAccount()), limit: 10, Cancellation);
+        var asAdministrator = await queries.ListDirectRelativesAsync(
+            parent.Id, new Viewer(TestData.NewAccount(), IsAdministrator: true), limit: 10, Cancellation);
+
+        Assert.Equal([shownParent.Id, hiddenParent.Id], asOther.Parents.Select(relative => relative.Person.Id));
+        Assert.Equal([shownChild.Id, hiddenChild.Id], asOther.Children.Select(relative => relative.Person.Id));
+        Assert.Equal(
+            [ProfileVisibility.Public, ProfileVisibility.Private],
+            asOther.Parents.Select(relative => relative.Person.Visibility));
+        Assert.Equal(["Anil", "Zed"], asAdministrator.Parents.Select(relative => relative.Person.Name.FirstName));
+        Assert.Equal(["Asha", "Bina"], asAdministrator.Children.Select(relative => relative.Person.Name.FirstName));
+    }
+
+    [Fact]
+    [Trait("AC", "AC-05.1")]
+    public async Task Inactive_links_put_endpoints_hidden_from_the_viewer_last()
+    {
+        await using var services = await NewServicesAsync();
+        var viewer = TestData.NewAccount();
+        var child = TestData.NewPerson(viewer, "Maya");
+        var hiddenParent = TestData.NewPerson(Maintainer, "Anil");
+        var shownParent = TestData.NewPerson(Maintainer, "Zed");
+        hiddenParent.SetVisibility(ProfileVisibility.Private, Maintainer);
+        var hiddenLink = TestData.NewLink(hiddenParent, child, viewer);
+        var shownLink = TestData.NewLink(shownParent, child, viewer);
+        await SaveAsync(services, child, hiddenParent, shownParent, hiddenLink, shownLink);
+
+        await using var scope = services.CreateAsyncScope();
+        var list = await scope.ServiceProvider.GetRequiredService<IRelationshipQueries>()
+            .ListInactiveLinksAsync(As(viewer), limit: 10, Cancellation);
+
+        Assert.Equal([shownLink.Id, hiddenLink.Id], list.Links.Select(link => link.Id));
+        Assert.Equal(ProfileVisibility.Private, list.Links[1].Parent.Person.Visibility);
     }
 
     private static async Task SaveAsync(ServiceProvider services, params object[] entities)

@@ -1,4 +1,5 @@
 using FamilyGraph.Application.People;
+using FamilyGraph.Application.Privacy;
 using FamilyGraph.Business.People;
 using FamilyGraph.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -7,16 +8,12 @@ namespace FamilyGraph.Infrastructure.People;
 
 internal sealed class EfPersonQueries(FamilyGraphDbContext context) : IPersonQueries
 {
-    public async Task<PersonView?> FindAsync(PersonId id, AccountId viewerId, CancellationToken cancellationToken)
-    {
-        var person = await context.Set<Person>()
+    public Task<PersonRecord?> FindAsync(PersonId id, AccountId viewerId, CancellationToken cancellationToken) =>
+        context.Set<Person>()
             .AsNoTracking()
             .Where(person => person.Id == id)
-            .Select(person => new { person.Name, person.MaintainerId })
+            .Select(person => new PersonRecord(person.Id, person.Name, person.Visibility, person.MaintainerId == viewerId))
             .SingleOrDefaultAsync(cancellationToken);
-
-        return person is null ? null : new PersonView(id, person.Name, person.MaintainerId == viewerId);
-    }
 
     public async Task<ProfileList> ListMaintainedByAsync(AccountId maintainerId, int limit, CancellationToken cancellationToken)
     {
@@ -30,7 +27,7 @@ internal sealed class EfPersonQueries(FamilyGraphDbContext context) : IPersonQue
             .ThenBy(person => person.Name.MiddleName)
             .ThenBy(person => person.Name.LastName)
             .ThenBy(person => person.Id)
-            .Select(person => new PersonSummary(person.Id, person.Name))
+            .Select(person => new PersonSummary(person.Id, person.Name, person.Visibility))
             .Take(limit + 1)
             .ToListAsync(cancellationToken);
 
