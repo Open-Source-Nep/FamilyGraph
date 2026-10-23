@@ -12,6 +12,7 @@ const maya: Person = {
   lastName: null,
   placeholder: null,
   visibility: 'Public',
+  imageId: null,
   maintainedByYou: true,
 };
 
@@ -76,5 +77,26 @@ describe('PeopleService', () => {
     http.expectOne('/api/people/maintained').flush({ people: [maya], isTruncated: false });
 
     expect((await list).people).toHaveLength(1);
+  });
+
+  it('uploads a photo as the raw request body', async () => {
+    const photo = new Blob(['jpeg'], { type: 'image/jpeg' });
+    const stored = service.setImage('p1', photo);
+    const request = http.expectOne('/api/people/p1/image');
+    expect(request.request.method).toBe('PUT');
+    expect(request.request.body).toBe(photo);
+    expect(request.request.headers.get('Content-Type')).toBe('image/jpeg');
+    request.flush({ imageId: 'i1' });
+
+    expect(await stored).toBe('i1');
+  });
+
+  it('removes the photo with a DELETE', async () => {
+    const removed = service.removeImage('p1');
+    const request = http.expectOne('/api/people/p1/image');
+    expect(request.request.method).toBe('DELETE');
+    request.flush(null, { status: 204, statusText: 'No Content' });
+
+    await removed;
   });
 });

@@ -14,11 +14,13 @@ describe('PersonPage', () => {
   let person: Person;
   let visibilityCalls: [string, string][];
   let deleted: string[];
+  let removedImages: string[];
   const isAdministrator = signal(false);
 
   beforeEach(() => {
     visibilityCalls = [];
     deleted = [];
+    removedImages = [];
     isAdministrator.set(false);
     TestBed.configureTestingModule({
       providers: [
@@ -37,6 +39,10 @@ describe('PersonPage', () => {
                 placeholder: 'Deleted',
                 maintainedByYou: false,
               };
+              return Promise.resolve();
+            },
+            removeImage: (id: string) => {
+              removedImages.push(id);
               return Promise.resolve();
             },
             setVisibility: (id: string, visibility: string) => {
@@ -71,6 +77,7 @@ describe('PersonPage', () => {
       lastName: 'Rai',
       placeholder: null,
       visibility: 'Public',
+      imageId: null,
       maintainedByYou,
       ...changes,
     };
@@ -113,6 +120,7 @@ describe('PersonPage', () => {
       lastName: null,
       placeholder: 'Private',
       visibility: 'Private',
+      imageId: null,
     });
 
     expect(fixture.nativeElement.querySelector('h1').textContent).toBe('Private');
@@ -164,5 +172,43 @@ describe('PersonPage', () => {
     isAdministrator.set(true);
     await show(false);
     expect(button('Delete profile')).toBeDefined();
+  });
+
+  const photo = (): HTMLImageElement | null => fixture.nativeElement.querySelector('img.photo');
+  const label = (text: string): HTMLLabelElement | undefined =>
+    [...fixture.nativeElement.querySelectorAll('label')].find(
+      (label: HTMLLabelElement) => label.textContent?.trim() === text,
+    );
+
+  it('shows the photo to anyone who sees the profile', async () => {
+    await show(false, { imageId: 'i1' });
+
+    expect(photo()!.getAttribute('src')).toBe('/api/people/p1/image?v=i1');
+    expect(photo()!.alt).toBe('Photo of Maya Rai');
+    expect(label('Change photo')).toBeUndefined();
+  });
+
+  // AC-01.18: only the maintainer changes the photo.
+  it('offers adding a photo to the maintainer only', async () => {
+    await show(true);
+    expect(photo()).toBeNull();
+    expect(label('Add photo')!.querySelector('input')!.accept).toBe(
+      'image/jpeg,image/png,image/webp',
+    );
+    expect(button('Remove photo')).toBeUndefined();
+
+    await show(false);
+    expect(label('Add photo')).toBeUndefined();
+  });
+
+  it('lets the maintainer remove the photo', async () => {
+    await show(true, { imageId: 'i1' });
+
+    button('Remove photo')!.click();
+    await fixture.whenStable();
+
+    expect(removedImages).toEqual(['p1']);
+    expect(photo()).toBeNull();
+    expect(label('Add photo')).toBeDefined();
   });
 });

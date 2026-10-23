@@ -90,6 +90,10 @@ namespace FamilyGraph.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("deleted_at");
 
+                    b.Property<Guid?>("ImageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("image_id");
+
                     b.Property<Guid>("MaintainerId")
                         .HasColumnType("uuid")
                         .HasColumnName("maintainer_id");
@@ -123,6 +127,38 @@ namespace FamilyGraph.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_people_maintainer_id");
 
                     b.ToTable("people", (string)null);
+                });
+
+            modelBuilder.Entity("FamilyGraph.Business.People.ProfileImage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<byte[]>("Content")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("content");
+
+                    b.Property<int>("Format")
+                        .HasColumnType("integer")
+                        .HasColumnName("format");
+
+                    b.Property<Guid>("PersonId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("person_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_profile_images");
+
+                    b.HasIndex(new[] { "PersonId" }, "ix_profile_images_person_id");
+
+                    b.ToTable("profile_images", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_profile_images_format", "format IN (1, 2, 3)");
+
+                            t.HasCheckConstraint("ck_profile_images_size", "octet_length(content) <= 1048576");
+                        });
                 });
 
             modelBuilder.Entity("FamilyGraph.Business.Relationships.ParentChildLink", b =>
@@ -501,6 +537,16 @@ namespace FamilyGraph.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_profile_handovers_people_person_id");
+                });
+
+            modelBuilder.Entity("FamilyGraph.Business.People.ProfileImage", b =>
+                {
+                    b.HasOne("FamilyGraph.Business.People.Person", null)
+                        .WithMany()
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_profile_images_people_person_id");
                 });
 
             modelBuilder.Entity("FamilyGraph.Business.Relationships.ParentChildLink", b =>

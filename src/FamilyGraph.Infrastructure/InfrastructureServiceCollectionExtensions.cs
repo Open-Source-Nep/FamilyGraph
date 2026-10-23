@@ -49,6 +49,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IAuditLog, EfAuditLog>();
         services.AddScoped<IPersonStore, EfPersonStore>();
         services.AddScoped<IPersonQueries, EfPersonQueries>();
+        services.AddScoped<IProfileImageStore, EfProfileImageStore>();
         services.AddScoped<IParentChildLinkStore, EfParentChildLinkStore>();
         services.AddScoped<IRelationshipQueries, EfRelationshipQueries>();
         services.AddScoped<IGraphQueries, EfGraphQueries>();

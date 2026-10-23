@@ -13,15 +13,19 @@ namespace FamilyGraph.Application.Tests.People;
 /// database, nothing added is visible until <see cref="SaveChangesAsync"/> runs.
 /// </summary>
 internal sealed class InMemoryPeople
-    : IPersonStore, IPersonQueries, IParentChildLinkStore, IRelationshipQueries, IAuditLog, IUnitOfWork
+    : IPersonStore, IPersonQueries, IProfileImageStore, IParentChildLinkStore, IRelationshipQueries, IAuditLog, IUnitOfWork
 {
     private readonly List<Person> _added = [];
     private readonly List<ParentChildLink> _addedLinks = [];
+    private readonly List<ProfileImage> _addedImages = [];
+    private readonly List<ProfileImage> _removedImages = [];
     private readonly List<(AuditEvent Event, DateTimeOffset OccurredAt)> _addedEvents = [];
 
     public Dictionary<PersonId, Person> People { get; } = [];
 
     public Dictionary<LinkId, ParentChildLink> Links { get; } = [];
+
+    public Dictionary<ProfileImageId, ProfileImage> Images { get; } = [];
 
     public List<(AuditEvent Event, DateTimeOffset OccurredAt)> AuditEvents { get; } = [];
 
@@ -37,6 +41,16 @@ internal sealed class InMemoryPeople
 
     public Task<PersonRecord?> FindAsync(PersonId id, AccountId viewerId, CancellationToken cancellationToken) =>
         Task.FromResult(People.TryGetValue(id, out var person) ? PersonRecord.From(person, viewerId) : null);
+
+    public Task<ImageContent?> FindImageAsync(ProfileImageId id, CancellationToken cancellationToken) =>
+        Task.FromResult(Images.TryGetValue(id, out var image) ? new ImageContent(image.Id, image.Format, image.Content) : null);
+
+    public Task<ProfileImage?> FindAsync(ProfileImageId id, CancellationToken cancellationToken) =>
+        Task.FromResult(Images.GetValueOrDefault(id));
+
+    public void Add(ProfileImage image) => _addedImages.Add(image);
+
+    public void Remove(ProfileImage image) => _removedImages.Add(image);
 
     public Task<ProfileList> ListMaintainedByAsync(AccountId maintainerId, int limit, CancellationToken cancellationToken)
     {
@@ -137,7 +151,19 @@ internal sealed class InMemoryPeople
             Links[link.Id] = link;
         }
 
+        foreach (var image in _addedImages)
+        {
+            Images[image.Id] = image;
+        }
+
+        foreach (var image in _removedImages)
+        {
+            Images.Remove(image.Id);
+        }
+
         AuditEvents.AddRange(_addedEvents);
+        _addedImages.Clear();
+        _removedImages.Clear();
         _added.Clear();
         _addedLinks.Clear();
         _addedEvents.Clear();

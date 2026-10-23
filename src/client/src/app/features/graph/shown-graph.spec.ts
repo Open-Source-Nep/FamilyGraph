@@ -8,6 +8,7 @@ const person = (id: string): GraphPerson => ({
   lastName: null,
   placeholder: null,
   visibility: 'Public',
+  imageId: null,
   maintainedByYou: false,
 });
 const row = (id: string, generation: number, hasMore = false): LocalViewPerson => ({

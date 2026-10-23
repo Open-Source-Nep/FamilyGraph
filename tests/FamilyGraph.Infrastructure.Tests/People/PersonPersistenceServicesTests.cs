@@ -195,6 +195,57 @@ public class PersonPersistenceServicesTests(PostgresFixture postgres)
         Assert.True(cut.IsTruncated);
     }
 
+    [Fact]
+    [Trait("AC", "AC-01.18")]
+    [Trait("AC", "AC-05.13")]
+    public async Task Images_are_stored_replaced_and_erased_with_the_profile()
+    {
+        await using var services = await NewServicesAsync();
+        var maintainer = TestData.NewAccount();
+        byte[] jpeg = [0xFF, 0xD8, 0xFF, 0xE0, 0x01];
+        byte[] png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x02];
+        var person = await SaveAsync(services, TestData.NewPerson(maintainer, "Maya"));
+
+        await using (var scope = services.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<PersonService>().SetImageAsync(person.Id, jpeg, maintainer, Cancellation);
+        }
+
+        ProfileImageId second;
+        await using (var scope = services.CreateAsyncScope())
+        {
+            second = await scope.ServiceProvider.GetRequiredService<PersonService>().SetImageAsync(person.Id, png, maintainer, Cancellation);
+        }
+
+        await using (var scope = services.CreateAsyncScope())
+        {
+            var service = scope.ServiceProvider.GetRequiredService<PersonService>();
+            var image = await service.GetImageAsync(person.Id, As(TestData.NewAccount()), Cancellation);
+            var rows = await scope.ServiceProvider.GetRequiredService<FamilyGraphDbContext>()
+                .Set<ProfileImage>().CountAsync(Cancellation);
+
+            Assert.Equal((second, ImageFormat.Png), (image.Id, image.Format));
+            Assert.Equal(png, image.Content);
+            Assert.Equal(second, (await service.GetAsync(person.Id, As(maintainer), Cancellation)).ImageId);
+            Assert.Equal(1, rows);
+        }
+
+        await using (var scope = services.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<PersonService>().DeleteAsync(person.Id, As(maintainer), Cancellation);
+        }
+
+        await using (var scope = services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<FamilyGraphDbContext>();
+            var types = await context.Set<AuditEventRecord>().OrderBy(record => record.Id).Select(record => record.Type).ToListAsync(Cancellation);
+
+            Assert.Equal(0, await context.Set<ProfileImage>().CountAsync(Cancellation));
+            Assert.Null((await context.Set<Person>().SingleAsync(Cancellation)).ImageId);
+            Assert.Equal([nameof(PersonImageChanged), nameof(PersonImageChanged), nameof(PersonDeleted)], types);
+        }
+    }
+
     private static async Task<Person> SaveAsync(ServiceProvider services, Person person)
     {
         await using var scope = services.CreateAsyncScope();

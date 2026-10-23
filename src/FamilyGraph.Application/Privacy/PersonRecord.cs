@@ -8,12 +8,18 @@ namespace FamilyGraph.Application.Privacy;
 /// may return (D-010).
 /// </summary>
 public sealed record PersonRecord(
-    PersonId Id, PersonName Name, ProfileVisibility Visibility, bool IsDeleted, bool MaintainedByViewer)
+    PersonId Id,
+    PersonName Name,
+    ProfileVisibility Visibility,
+    bool IsDeleted,
+    bool MaintainedByViewer,
+    ProfileImageId? ImageId)
 {
     public static PersonRecord From(Person person, AccountId viewerId)
     {
         ArgumentNullException.ThrowIfNull(person);
 
-        return new PersonRecord(person.Id, person.Name, person.Visibility, person.IsDeleted, person.IsMaintainedBy(viewerId));
+        return new PersonRecord(
+            person.Id, person.Name, person.Visibility, person.IsDeleted, person.IsMaintainedBy(viewerId), person.ImageId);
     }
 }

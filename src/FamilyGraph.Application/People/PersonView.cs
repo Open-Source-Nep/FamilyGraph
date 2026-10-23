@@ -11,3 +11,6 @@ public sealed record PersonSummary(PersonId Id, PersonName Name, ProfileVisibili
 
 /// <summary>A list cut at its limit. <see cref="IsTruncated"/> says that more exist (D-010).</summary>
 public sealed record ProfileList(IReadOnlyList<PersonSummary> People, bool IsTruncated);
+
+/// <summary>An image's bytes and format, to serve as they are (D-028).</summary>
+public sealed record ImageContent(ProfileImageId Id, ImageFormat Format, byte[] Content);

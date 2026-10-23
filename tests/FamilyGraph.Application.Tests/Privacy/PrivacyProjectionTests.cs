@@ -60,6 +60,20 @@ public class PrivacyProjectionTests
             Assert.Equal((record.Id, null, PersonPlaceholder.Deleted, false), (person.Id, person.Name, person.Placeholder, person.MaintainedByViewer)));
     }
 
-    private static PersonRecord Record(ProfileVisibility visibility, bool maintainedByViewer, bool isDeleted = false) =>
-        new(PersonId.New(), Name, visibility, isDeleted, maintainedByViewer);
+    [Fact]
+    [Trait("AC", "AC-05.13")]
+    public void Placeholder_never_carries_the_image_but_a_visible_profile_does()
+    {
+        var image = ProfileImageId.New();
+
+        var visible = PrivacyProjection.Project(Record(ProfileVisibility.Public, false, imageId: image), new Viewer(Alice, false));
+        var hidden = PrivacyProjection.Project(Record(ProfileVisibility.Private, false, imageId: image), new Viewer(Alice, false));
+        var deleted = PrivacyProjection.Project(Record(ProfileVisibility.Public, true, isDeleted: true, imageId: image), new Viewer(Alice, true));
+
+        Assert.Equal((image, (ProfileImageId?)null, (ProfileImageId?)null), (visible.ImageId, hidden.ImageId, deleted.ImageId));
+    }
+
+    private static PersonRecord Record(
+        ProfileVisibility visibility, bool maintainedByViewer, bool isDeleted = false, ProfileImageId? imageId = null) =>
+        new(PersonId.New(), Name, visibility, isDeleted, maintainedByViewer, imageId);
 }

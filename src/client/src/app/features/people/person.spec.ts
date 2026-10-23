@@ -27,6 +27,7 @@ describe('a private placeholder', () => {
     lastName: null,
     placeholder: 'Private',
     visibility: 'Private',
+    imageId: null,
   };
 
   it('is named Private', () => {
@@ -47,6 +48,7 @@ describe('a deleted placeholder', () => {
         lastName: null,
         placeholder: 'Deleted',
         visibility: 'Public',
+        imageId: null,
       }),
     ).toBe('Deleted');
   });

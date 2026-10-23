@@ -13,7 +13,14 @@ internal sealed class EfPersonQueries(FamilyGraphDbContext context) : IPersonQue
             .AsNoTracking()
             .Where(person => person.Id == id)
             .Select(person => new PersonRecord(
-                person.Id, person.Name, person.Visibility, person.DeletedAt != null, person.MaintainerId == viewerId))
+                person.Id, person.Name, person.Visibility, person.DeletedAt != null, person.MaintainerId == viewerId, person.ImageId))
+            .SingleOrDefaultAsync(cancellationToken);
+
+    public Task<ImageContent?> FindImageAsync(ProfileImageId id, CancellationToken cancellationToken) =>
+        context.Set<ProfileImage>()
+            .AsNoTracking()
+            .Where(image => image.Id == id)
+            .Select(image => new ImageContent(image.Id, image.Format, image.Content))
             .SingleOrDefaultAsync(cancellationToken);
 
     public async Task<ProfileList> ListMaintainedByAsync(AccountId maintainerId, int limit, CancellationToken cancellationToken)
