@@ -1,4 +1,5 @@
 using FamilyGraph.Business.Audit;
+using FamilyGraph.Business.Handovers;
 
 namespace FamilyGraph.Business.People;
 
@@ -101,6 +102,28 @@ public sealed class Person : AuditedEntity
         Name = PersonName.Erased;
         DeletedAt = deletedAt;
         Record(new PersonDeleted(Id, actorId, deleter));
+    }
+
+    /// <summary>
+    /// Makes <paramref name="actorId"/> the maintainer through a handover link its current
+    /// maintainer created (PRD 01). The previous maintainer keeps no authority over the profile.
+    /// Links and their consent are unchanged: approvals already given stay as they are.
+    /// </summary>
+    public void AcceptHandover(ProfileHandover handover, AccountId actorId, DateTimeOffset now)
+    {
+        ArgumentNullException.ThrowIfNull(handover);
+
+        EnsureNotDeleted();
+        handover.EnsureCanBeAccepted(this, now);
+        if (IsMaintainedBy(actorId))
+        {
+            throw new HandoverOwnProfileException();
+        }
+
+        var previousMaintainerId = MaintainerId;
+        MaintainerId = actorId;
+        handover.MarkAccepted(actorId, now);
+        Record(new PersonHandedOver(Id, actorId, previousMaintainerId, handover.Id));
     }
 
     /// <summary>A deleted profile accepts no further change, nor consent on its side of a link.</summary>

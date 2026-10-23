@@ -21,6 +21,15 @@ Define person profiles, account separation, and profile-maintainer authority.
 - Separate profiles that represent the same real person are handled through the reviewed merge workflow. Do not silently combine them based on name similarity.
 - Claiming a profile does not automatically deactivate its existing relationships.
 
+## Voluntary handover
+
+- A maintainer may hand a profile over to another account. They create a one-time handover link and send it however they like; any signed-in user who opens it may accept it.
+- A link expires after 14 days (configurable per instance). A profile has at most one open link: a new link replaces the previous one, and the maintainer may cancel it. A link stops working once it is accepted, cancelled or expired, or when its creator no longer maintains the profile.
+- Accepting makes the receiver the profile's only maintainer. The previous maintainer keeps no authority over it.
+- A handover never changes a relationship or its consent state. Approvals and disagreements already recorded stay as they are.
+- A claimed profile cannot be handed over. Only an identity claim (PRD 04) changes its maintainer.
+- Creating, cancelling and accepting a link are audited, without the link's secret.
+
 ## Account deletion and maintainer succession
 
 - When an account is deleted, every profile it maintains is assigned to **one administrator account** as maintainer: the first address on the configured administrator list that belongs to an existing account. This keeps exactly one maintainer per profile.
@@ -45,6 +54,11 @@ Define person profiles, account separation, and profile-maintainer authority.
 - `AC-01.10` A claimed person deleting their account can choose to delete their own profile or leave it assigned to an administrator.
 - `AC-01.11` An administrator can approve a succession request for a profile inherited by an administrator or whose maintainer is unavailable.
 - `AC-01.12` Registering or signing in to an account does not create a person profile.
+- `AC-01.13` A maintainer can create a handover link for a profile they maintain; it expires after the configured period.
+- `AC-01.14` A signed-in user who opens a valid handover link can accept it and becomes the profile's only maintainer.
+- `AC-01.15` A handover leaves every relationship and its consent state unchanged.
+- `AC-01.16` A handover link cannot be accepted once it has been used, cancelled, replaced or has expired, or when its creator no longer maintains the profile.
+- `AC-01.17` A claimed profile cannot be handed over.
 
 ## Open details
 

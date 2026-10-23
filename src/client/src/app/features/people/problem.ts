@@ -24,6 +24,13 @@ const messages: Record<string, string> = {
   'link.not_sole_maintainer':
     'Only someone who maintains both people can delete this link. Withdraw your approval instead.',
   'link.deleted': 'This link has been deleted. Reload the page to see the current links.',
+  'handover.not_found': 'This handover link does not exist. Check that you have the whole link.',
+  'handover.closed':
+    'This handover link was already used or cancelled. Ask the maintainer for a new one.',
+  'handover.expired': 'This handover link has expired. Ask the maintainer for a new one.',
+  'handover.own_profile': 'You already maintain this profile.',
+  'handover.already_open': 'Another handover link was just created. Reload the page.',
+  'person.deleted': 'This profile was deleted.',
   'graph.timeout': 'The family graph took too long to load. Please try again.',
 };
 

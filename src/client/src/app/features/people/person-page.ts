@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 
 import { AuthService } from '../../core/auth/auth.service';
 
+import { PersonHandover } from '../handovers/person-handover';
 import { PersonRelatives } from '../relationships/person-relatives';
 import { PeopleService } from './people.service';
 import { Person, PersonName, Visibility, fullName } from './person';
@@ -10,14 +11,14 @@ import { PersonNameForm } from './person-name-form';
 import { problemMessage } from './problem';
 
 /**
- * One profile with its parents and children. Its maintainer can rename it and make it Public or
- * Private, and its maintainer or an administrator can delete it; the server enforces all three
+ * One profile with its parents and children. Its maintainer can rename it, make it Public or
+ * Private and hand it over to another account, and its maintainer or an administrator can delete it; the server enforces all three
  * (PRD 01, PRD 05). A Private profile hidden from you or a deleted one shows only its
  * placeholder, with its parents and children.
  */
 @Component({
   selector: 'app-person-page',
-  imports: [PersonNameForm, PersonRelatives, RouterLink],
+  imports: [PersonHandover, PersonNameForm, PersonRelatives, RouterLink],
   templateUrl: './person-page.html',
 })
 export class PersonPage {

@@ -4,6 +4,7 @@ This file is intentionally unresolved. Claude Code must not silently invent deci
 
 ## People and accounts
 - **Decided (2026-10-21):** profiles of a deleted account are assigned to one administrator account (the first on the configured list with an existing account; they move on if that administrator is removed). A claimed person may instead delete their own profile. Recorded consent is unchanged. See PRD 01.
+- **Decided (2026-10-23):** a maintainer may hand a profile over voluntarily with a one-time link (14 days, configurable) that any signed-in user may accept; the receiver becomes the only maintainer and consent is unchanged. Claimed profiles cannot be handed over. Rejected alternatives: choosing the receiver by the email of an existing account (reveals who has an account); letting a claimed person give their profile away and unclaim it. See PRD 01.
 - **Decided (2026-10-21):** an administrator may grant a succession request for a profile inherited by an administrator or whose maintainer is unavailable. A claimed person's own profile changes maintainer only through a claim.
 
 ## Relationships
@@ -18,6 +19,7 @@ This file is intentionally unresolved. Claude Code must not silently invent deci
 - **Decided (2026-10-21):** a maintainer is unavailable after 30 days without response (configurable) or when their account no longer exists. See PRD 04.
 - **Decided (2026-10-21):** parallel claims are allowed; with more than one open claim, an administrator decides them together.
 - **Decided (2026-10-21):** one appeal per claim; after an administrator rejection, a new claim is allowed after 90 days (configurable) with new evidence. Claims on already-claimed profiles go to an administrator, and the current maintainer is notified.
+- **Decided (2026-10-23):** a maintainer may mark a profile they maintain as themselves without approval, recorded as a self-approved identity claim. An account can have at most one claimed profile, and no second claim while it has one or an open claim. The form of claim evidence is still open. To be written into PRD 04 with #25.
 - **Decided (2026-10-21):** evidence is visible to the claimant, reviewing administrators and the deciding maintainer, and is deleted 90 days after the final decision (configurable). Audit keeps the decision and rationale.
 
 ## Privacy and deletion

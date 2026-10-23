@@ -3,6 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
 import { AuthService } from '../../core/auth/auth.service';
+import { HandoversService } from '../handovers/handovers.service';
 import { RelationshipsService } from '../relationships/relationships.service';
 import { PeopleService } from './people.service';
 import { Person } from './person';
@@ -45,6 +46,7 @@ describe('PersonPage', () => {
           },
         },
         { provide: AuthService, useValue: { isAdministrator } },
+        { provide: HandoversService, useValue: { getOpen: () => Promise.resolve(null) } },
         {
           provide: RelationshipsService,
           useValue: {
@@ -95,6 +97,14 @@ describe('PersonPage', () => {
 
     await show(false);
     expect(editButton()).toBeUndefined();
+  });
+
+  it('offers a handover to the maintainer only', async () => {
+    await show(true);
+    expect(button('Create a handover link')).toBeDefined();
+
+    await show(false);
+    expect(button('Create a handover link')).toBeUndefined();
   });
 
   it('shows a private placeholder without name details', async () => {

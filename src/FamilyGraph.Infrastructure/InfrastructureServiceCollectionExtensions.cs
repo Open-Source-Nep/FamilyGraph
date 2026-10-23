@@ -1,8 +1,10 @@
 using FamilyGraph.Application.Accounts;
 using FamilyGraph.Application.Graph;
+using FamilyGraph.Application.Handovers;
 using FamilyGraph.Application.People;
 using FamilyGraph.Application.Persistence;
 using FamilyGraph.Application.Relationships;
+using FamilyGraph.Infrastructure.Handovers;
 using FamilyGraph.Infrastructure.Identity;
 using FamilyGraph.Infrastructure.People;
 using FamilyGraph.Infrastructure.Persistence;
@@ -50,6 +52,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IParentChildLinkStore, EfParentChildLinkStore>();
         services.AddScoped<IRelationshipQueries, EfRelationshipQueries>();
         services.AddScoped<IGraphQueries, EfGraphQueries>();
+        services.AddScoped<IHandoverStore, EfHandoverStore>();
         return services;
     }
 

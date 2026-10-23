@@ -1,4 +1,5 @@
 using FamilyGraph.Business;
+using FamilyGraph.Business.Handovers;
 using FamilyGraph.Business.People;
 using FamilyGraph.Business.Relationships;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
@@ -11,6 +12,8 @@ internal static class ValueConverters
     public static readonly ValueConverter<PersonId, Guid> PersonId = new(id => id.Value, value => new PersonId(value));
 
     public static readonly ValueConverter<LinkId, Guid> LinkId = new(id => id.Value, value => new LinkId(value));
+
+    public static readonly ValueConverter<HandoverId, Guid> HandoverId = new(id => id.Value, value => new HandoverId(value));
 
     public static readonly ValueConverter<AccountId, Guid> AccountId = new(id => id.Value, value => new AccountId(value));
 

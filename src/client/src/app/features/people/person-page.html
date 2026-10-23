@@ -64,6 +64,9 @@
           A private profile shows as “Private” to everyone but you and administrators. Its
           relationships stay in the family graph.
         </p>
+        @if (person.placeholder !== 'Deleted') {
+          <app-person-handover [personId]="person.id" />
+        }
       }
       @if (canDelete()) {
         @if (confirmingDelete()) {

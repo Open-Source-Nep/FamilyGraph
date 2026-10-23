@@ -1,0 +1,40 @@
+<section aria-labelledby="handover-heading">
+  <h2 id="handover-heading">Hand over this profile</h2>
+  @if (error(); as error) {
+    <p class="error" role="alert">{{ error }}</p>
+  }
+  @if (link(); as link) {
+    <p>
+      Send this link to the person who should maintain this profile. Whoever opens it signed in can
+      accept it until {{ open()?.expiresAt | date: 'medium' }}. It is shown only now.
+    </p>
+    <p class="actions">
+      <input type="text" readonly aria-label="Handover link" [value]="link" />
+      <button type="button" (click)="copy(link)">{{ copied() ? 'Copied' : 'Copy link' }}</button>
+    </p>
+  } @else if (open(); as open) {
+    @if (isExpired(open)) {
+      <p class="hint">Your handover link expired on {{ open.expiresAt | date: 'medium' }}.</p>
+    } @else {
+      <p class="hint">
+        A handover link you created is open until {{ open.expiresAt | date: 'medium' }}. A new link
+        replaces it.
+      </p>
+    }
+  } @else {
+    <p class="hint">
+      Create a link to give this profile to another account. Once they accept, they are its only
+      maintainer and you can no longer change it. Its relationships and approvals stay as they are.
+    </p>
+  }
+  <p class="actions">
+    <button type="button" class="secondary" [disabled]="busy()" (click)="offer()">
+      {{ open() ? 'Create a new link' : 'Create a handover link' }}
+    </button>
+    @if (open()) {
+      <button type="button" class="secondary" [disabled]="busy()" (click)="cancel()">
+        Cancel the link
+      </button>
+    }
+  </p>
+</section>

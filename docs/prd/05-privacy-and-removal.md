@@ -34,7 +34,7 @@ Minimize personal data while allowing public exploration of family relationships
 
 ## Abandoned accounts and profiles
 
-- Inactivity alone never changes a profile's visibility, maintainer or deletion state. Handover is covered by maintainer succession (PRD 01, PRD 10) and claims (PRD 04).
+- Inactivity alone never changes a profile's visibility, maintainer or deletion state. Handover is covered by voluntary handover and maintainer succession (PRD 01, PRD 10) and claims (PRD 04).
 
 ## Acceptance criteria
 
