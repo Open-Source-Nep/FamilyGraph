@@ -44,7 +44,7 @@ The technical decision log, plus any unresolved choices. Do not treat recommenda
 - Graph exploration: local view, connection search and privacy projection (D-023 below, proposed).
 - Client graph view: rendering library and first slice (D-024 below).
 - Profile privacy: visibility, the viewer, placeholders on every read path (D-025 below).
-- Profile deletion: erasure, the `Deleted` placeholder and frozen consent (D-026 below, proposed).
+- Profile deletion: erasure, the `Deleted` placeholder and frozen consent (D-026 below).
 - **Name length (agreed 2026-10-21):** Business puts no length cap on name parts. Any storage or input limit is set later by persistence (#9) and API validation (D-010).
 
 ## Discussion topics (all agreed)
@@ -451,7 +451,7 @@ For each major decision, record:
 
 ### D-026: Profile deletion
 
-- **Status:** proposed (2026-10-23). Issue #18, second part. Agreed with the user on 2026-10-23: a deleted profile leaves its former maintainer's list; consent on a deleted profile's side of a link is frozen; a sole maintainer may still delete a link to a deleted profile; the erased name is stored as `[erased]`.
+- **Status:** agreed (2026-10-23). Issue #18, second part. Agreed with the user on 2026-10-23, including leaving deleted profiles out of their former maintainer's Approvals page: a deleted profile leaves its former maintainer's list; consent on a deleted profile's side of a link is frozen; a sole maintainer may still delete a link to a deleted profile; the erased name is stored as `[erased]`.
 - **Context:** PRD 05 and PRD 10 settle the product rules: the maintainer, or an administrator for moderation, deletes; deletion erases personal data for good and leaves a `Deleted` placeholder; active links stay active and traversable; no new links to a deleted profile; the audit history tells maintainer from administrator and keeps only IDs, types and times. D-025 provides the projection and placeholder, and D-015 already keeps names out of audit events.
 - **Options considered:** who answers consent for a deleted profile's pending links (nobody, or its former maintainer); whether a sole maintainer may delete a link once one of its profiles is deleted; erasing by overwriting the name with `[erased]` or by making the name columns nullable.
 - **Trade-offs:** Freezing the deleted side means a pending link to a deleted profile never becomes active, but nobody keeps managing a profile that no longer exists; the other side's maintainer keeps their own approval to give or withdraw (PRD 03). Deleting a link changes the link, not the profile, and is the only way out for a sole maintainer (D-014). Overwriting keeps `PersonName` and the columns non-null at the cost of a marker value that reads never show.
