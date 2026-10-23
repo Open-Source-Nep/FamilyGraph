@@ -29,15 +29,15 @@ export interface Point {
 const passes = 5;
 
 /**
- * Places people in rows by generation with each family grouped together: brothers and sisters
- * side by side directly below their parents, partners (the other parents of someone's children)
- * next to each other, and more space between families than within one. Rows are not spread out
- * evenly, so a large family takes the room it needs and a small one stays compact (D-024).
+ * Places a family so each one stays grouped, with children below their parents and nothing in
+ * a fixed grid (D-024). It starts from rows by generation (brothers and sisters side by side under
+ * their parents, partners next to each other, more space between families than within one), then
+ * lets people settle off their rows to where the lines are shortest and cross least.
  *
- * A person's row is below all their parents and one above their highest child, so partners share a
- * row even when only one of them has ancestors shown. The order within a row follows the parents' order,
- * and positions alternate between centring children under their parents and parents over their
- * children.
+ * A person's starting row is below all their parents and one above their highest child, so
+ * partners share a row even when only one of them has ancestors shown. The order within a row
+ * follows the parents' order, and positions alternate between centring children under their
+ * parents and parents over their children.
  */
 export function familyLayout(
   nodes: LayoutNode[],
@@ -172,12 +172,14 @@ export function familyLayout(
     }
   }
 
-  return new Map(
+  const start = new Map(
     nodes.map((node) => [
       node.id,
       { x: x.get(node.id)!, y: rank.get(node.id)! * (options.height + options.rankSep) },
     ]),
   );
+  const byRank = [...nodes].sort((a, b) => rank.get(a.id)! - rank.get(b.id)!).map((n) => n.id);
+  return settle(start, byRank, parents, partners, width, options);
 
   /**
    * Sets the row's positions as close to the desired ones as the order and spacing allow (least
@@ -263,4 +265,152 @@ function ranks(
     }
   }
   return rank;
+}
+
+/** Steps of the settling; each moves people less than the one before. */
+const settleSteps = 300;
+const gravity = 0.02;
+
+/**
+ * Lets people move off their rows into the positions that suit the lines best: every link pulls
+ * its two people towards one row apart, partners pull together, and people push apart from those
+ * near them. Children always stay at least half a row below each of their parents, and people
+ * never overlap. Nothing is random, so the same family always looks the same.
+ */
+function settle(
+  start: Map<string, Point>,
+  byRank: string[],
+  parents: Map<string, string[]>,
+  partners: Map<string, Set<string>>,
+  width: Map<string, number>,
+  options: LayoutOptions,
+): Map<string, Point> {
+  const ids = [...start.keys()];
+  const n = ids.length;
+  const at = new Map(ids.map((id, i) => [id, i]));
+  const xs = Float64Array.from(ids, (id) => start.get(id)!.x);
+  const ys = Float64Array.from(ids, (id) => start.get(id)!.y);
+  const widths = Float64Array.from(ids, (id) => width.get(id)!);
+  const row = options.height + options.rankSep;
+  const below = options.height + options.rankSep / 2;
+  // People further apart than this do not push each other.
+  const reach = row * 2;
+
+  const springs: [number, number, number][] = [];
+  for (const [child, own] of parents) {
+    for (const parent of own) {
+      springs.push([at.get(parent)!, at.get(child)!, row]);
+    }
+  }
+  for (const [a, others] of partners) {
+    for (const b of others) {
+      if (a < b) {
+        springs.push([
+          at.get(a)!,
+          at.get(b)!,
+          (width.get(a)! + width.get(b)!) / 2 + options.nodeSep,
+        ]);
+      }
+    }
+  }
+  const parentIndexes = byRank.map((id) => [at.get(id)!, parents.get(id)!.map((p) => at.get(p)!)]);
+
+  const mx = new Float64Array(n);
+  const my = new Float64Array(n);
+  let step = row / 2;
+  for (let i = 0; i < settleSteps; i++) {
+    mx.fill(0);
+    my.fill(0);
+    forNearby(reach, (j, k, dx, dy) => {
+      const squared = Math.max(dx * dx + dy * dy, 0.01);
+      const force = (0.1 * row * row) / squared;
+      mx[j] += dx * force;
+      my[j] += dy * force;
+      mx[k] -= dx * force;
+      my[k] -= dy * force;
+    });
+    for (const [a, b, length] of springs) {
+      const dx = xs[b] - xs[a];
+      const dy = ys[b] - ys[a];
+      const distance = Math.hypot(dx, dy) || 0.01;
+      const force = (distance - length) / distance / 2;
+      mx[a] += dx * force;
+      my[a] += dy * force;
+      mx[b] -= dx * force;
+      my[b] -= dy * force;
+    }
+    // A light pull to the middle keeps separate families from drifting apart.
+    let middleX = 0;
+    let middleY = 0;
+    for (let j = 0; j < n; j++) {
+      middleX += xs[j] / n;
+      middleY += ys[j] / n;
+    }
+    for (let j = 0; j < n; j++) {
+      const x = mx[j] + (middleX - xs[j]) * gravity;
+      const y = my[j] + (middleY - ys[j]) * gravity;
+      const length = Math.hypot(x, y);
+      const scale = length > step ? step / length : 1;
+      xs[j] += x * scale;
+      ys[j] += y * scale;
+    }
+    for (const [child, own] of parentIndexes as [number, number[]][]) {
+      for (const parent of own) {
+        ys[child] = Math.max(ys[child], ys[parent] + below);
+      }
+    }
+    step = Math.max(step * 0.98, 0.5);
+  }
+
+  // People closer than their size allows move apart sideways, so rows below stay below.
+  for (let round = 0; round < 50; round++) {
+    let moved = false;
+    forNearby(row, (j, k, dx, dy) => {
+      const overlap = (widths[j] + widths[k]) / 2 + options.nodeSep / 2 - Math.abs(dx);
+      if (overlap > 0 && Math.abs(dy) < options.height + options.nodeSep / 2) {
+        const sign = dx > 0 || (dx === 0 && j > k) ? 1 : -1;
+        xs[j] += (sign * overlap) / 2;
+        xs[k] -= (sign * overlap) / 2;
+        moved = true;
+      }
+    });
+    if (!moved) {
+      break;
+    }
+  }
+  return new Map(ids.map((id, j) => [id, { x: xs[j], y: ys[j] }]));
+
+  /** Calls `visit` once for each pair of people within `distance` across and down. */
+  function forNearby(
+    distance: number,
+    visit: (j: number, k: number, dx: number, dy: number) => void,
+  ): void {
+    const cells = new Map<string, number[]>();
+    for (let j = 0; j < n; j++) {
+      const key = `${Math.floor(xs[j] / distance)},${Math.floor(ys[j] / distance)}`;
+      const cell = cells.get(key);
+      if (cell) {
+        cell.push(j);
+      } else {
+        cells.set(key, [j]);
+      }
+    }
+    for (let j = 0; j < n; j++) {
+      const cx = Math.floor(xs[j] / distance);
+      const cy = Math.floor(ys[j] / distance);
+      for (let ox = -1; ox <= 1; ox++) {
+        for (let oy = -1; oy <= 1; oy++) {
+          for (const k of cells.get(`${cx + ox},${cy + oy}`) ?? []) {
+            if (k > j) {
+              const dx = xs[j] - xs[k];
+              const dy = ys[j] - ys[k];
+              if (Math.abs(dx) <= distance && Math.abs(dy) <= distance) {
+                visit(j, k, dx, dy);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 }
