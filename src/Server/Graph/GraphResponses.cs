@@ -7,7 +7,8 @@ namespace Server.Graph;
 /// <summary>
 /// A person as you may see them in the graph. <see cref="MaintainedByYou"/> never names the
 /// maintaining account (D-019). A person hidden from you has <see cref="Placeholder"/>
-/// <c>Private</c> or <c>Deleted</c> and no name, and stays in the graph with their links (PRD 05).
+/// <c>Private</c> or <c>Deleted</c> and no name or image, and stays in the graph with their links
+/// (PRD 05). <see cref="ImageId"/> names the current image, if any (D-028).
 /// </summary>
 public sealed record GraphPersonResponse(
     Guid Id,
@@ -16,7 +17,8 @@ public sealed record GraphPersonResponse(
     string? LastName,
     string? Placeholder,
     string Visibility,
-    bool MaintainedByYou)
+    bool MaintainedByYou,
+    Guid? ImageId)
 {
     internal static GraphPersonResponse From(PersonReference person) => new(
         person.Id.Value,
@@ -25,7 +27,8 @@ public sealed record GraphPersonResponse(
         person.Name?.LastName,
         person.Placeholder?.Name,
         person.Visibility.Name,
-        person.MaintainedByViewer);
+        person.MaintainedByViewer,
+        person.ImageId?.Value);
 }
 
 /// <summary>

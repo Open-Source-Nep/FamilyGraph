@@ -14,6 +14,7 @@
       />
     } @else {
       <h1>{{ name() }}</h1>
+      <app-person-photo [person]="person" (changed)="photoChanged($event)" />
       @if (person.placeholder === 'Deleted') {
         <p class="hint">This profile was deleted. Its name and details were erased.</p>
       } @else if (person.placeholder) {

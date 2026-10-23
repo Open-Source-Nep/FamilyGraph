@@ -23,6 +23,7 @@ const person = (id: string): GraphPerson => ({
   lastName: 'Rai',
   placeholder: null,
   visibility: 'Public',
+  imageId: null,
   maintainedByYou: false,
 });
 

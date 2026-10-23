@@ -18,6 +18,8 @@ export interface PersonLabel {
   lastName: string | null;
   placeholder: Placeholder | null;
   visibility: Visibility;
+  /** The current image, or null without one. A placeholder never has one (D-028). */
+  imageId: string | null;
 }
 
 /** A profile as the signed-in user sees it, from `GET /api/people/{id}`. */
@@ -36,6 +38,13 @@ export interface PersonSummary extends PersonName {
 export interface ProfileList {
   people: PersonSummary[];
   isTruncated: boolean;
+}
+
+/** The person's image; the image ID in the URL changes with each new image. */
+export function imageUrl(person: { id: string; imageId: string | null }): string | null {
+  return person.imageId
+    ? `/api/people/${encodeURIComponent(person.id)}/image?v=${encodeURIComponent(person.imageId)}`
+    : null;
 }
 
 /** The longest name part the server accepts. */

@@ -5,13 +5,15 @@ using FamilyGraph.Business.People;
 namespace FamilyGraph.Application.People;
 
 /// <summary>
-/// Creates, renames, sets the visibility of, deletes and reads person profiles (PRD 01, PRD 05, #12, #18).
+/// Creates, renames, sets the visibility and image of, deletes and reads person profiles (PRD 01,
+/// PRD 05, #12, #18, #74).
 /// The creating account becomes the maintainer, and only the maintainer can rename or change the
 /// visibility; <see cref="Person"/> enforces both. A profile is never matched or merged by name.
 /// </summary>
 public sealed class PersonService(
     IPersonStore people,
     IPersonQueries queries,
+    IProfileImageStore images,
     IAuditLog audit,
     IUnitOfWork unitOfWork,
     TimeProvider time,
@@ -54,8 +56,47 @@ public sealed class PersonService(
         ArgumentNullException.ThrowIfNull(actor);
 
         var person = await people.FindAsync(id, cancellationToken) ?? throw new PersonNotFoundException();
+        var imageId = person.ImageId;
         person.Delete(actor.AccountId, actor.IsAdministrator, time.GetUtcNow());
+        await RemoveImageRowAsync(imageId, cancellationToken);
         await SaveAsync(person, cancellationToken);
+    }
+
+    /// <summary>
+    /// Sets or replaces the profile's image (D-028). Only its maintainer may. The replaced image is
+    /// removed in the same transaction, so old images are not kept.
+    /// </summary>
+    public async Task<ProfileImageId> SetImageAsync(
+        PersonId id, byte[] content, AccountId actorId, CancellationToken cancellationToken)
+    {
+        var person = await people.FindAsync(id, cancellationToken) ?? throw new PersonNotFoundException();
+        var previousId = person.ImageId;
+        var image = person.SetImage(content, actorId);
+        images.Add(image);
+        await RemoveImageRowAsync(previousId, cancellationToken);
+        await SaveAsync(person, cancellationToken);
+        return image.Id;
+    }
+
+    /// <summary>Removes the profile's image. Only its maintainer may.</summary>
+    public async Task RemoveImageAsync(PersonId id, AccountId actorId, CancellationToken cancellationToken)
+    {
+        var person = await people.FindAsync(id, cancellationToken) ?? throw new PersonNotFoundException();
+        var imageId = person.ImageId;
+        person.RemoveImage(actorId);
+        await RemoveImageRowAsync(imageId, cancellationToken);
+        await SaveAsync(person, cancellationToken);
+    }
+
+    /// <summary>
+    /// The profile's image, for any signed-in viewer who sees the profile by name. A placeholder
+    /// never shows one, so a hidden or deleted profile answers like one without an image (D-028).
+    /// </summary>
+    public async Task<ImageContent> GetImageAsync(PersonId id, Viewer viewer, CancellationToken cancellationToken)
+    {
+        var person = await GetAsync(id, viewer, cancellationToken);
+        var imageId = person.ImageId ?? throw new ProfileImageNotFoundException();
+        return await queries.FindImageAsync(imageId, cancellationToken) ?? throw new ProfileImageNotFoundException();
     }
 
     /// <summary>
@@ -72,6 +113,14 @@ public sealed class PersonService(
 
     public Task<ProfileList> ListMaintainedAsync(AccountId maintainerId, CancellationToken cancellationToken) =>
         queries.ListMaintainedByAsync(maintainerId, limits.MaintainedListLimit, cancellationToken);
+
+    private async Task RemoveImageRowAsync(ProfileImageId? imageId, CancellationToken cancellationToken)
+    {
+        if (imageId is { } existingId && await images.FindAsync(existingId, cancellationToken) is { } image)
+        {
+            images.Remove(image);
+        }
+    }
 
     private async Task SaveAsync(Person person, CancellationToken cancellationToken)
     {

@@ -21,6 +21,13 @@ Define person profiles, account separation, and profile-maintainer authority.
 - Separate profiles that represent the same real person are handled through the reviewed merge workflow. Do not silently combine them based on name similarity.
 - Claiming a profile does not automatically deactivate its existing relationships.
 
+## Profile image
+
+- A profile may have one image (a photo). It is optional.
+- Only the profile's maintainer may add, replace or remove it. Changes are audited without the image.
+- The browser crops the image to a square, shrinks it and re-encodes it before upload, which drops embedded metadata such as the location where a photo was taken. The server accepts only JPEG, PNG or WebP images of at most 1 MiB.
+- The image shows on the person page and in the graph page's diagram, in place of the initials. The home overview stays dots.
+
 ## Voluntary handover
 
 - A maintainer may hand a profile over to another account. They create a one-time handover link and send it however they like; any signed-in user who opens it may accept it.
@@ -59,6 +66,9 @@ Define person profiles, account separation, and profile-maintainer authority.
 - `AC-01.15` A handover leaves every relationship and its consent state unchanged.
 - `AC-01.16` A handover link cannot be accepted once it has been used, cancelled, replaced or has expired, or when its creator no longer maintains the profile.
 - `AC-01.17` A claimed profile cannot be handed over.
+- `AC-01.18` A profile's maintainer can add, replace and remove its image; nobody else can.
+- `AC-01.19` Only a JPEG, PNG or WebP image of at most 1 MiB is accepted.
+- `AC-01.20` The Client shrinks and re-encodes an image before upload, removing its metadata.
 
 ## Open details
 

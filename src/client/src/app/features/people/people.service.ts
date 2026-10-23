@@ -28,6 +28,20 @@ export class PeopleService {
     );
   }
 
+  /** Stores an image the browser has already shrunk (`preparePhoto`); only the maintainer may (D-028). */
+  async setImage(id: string, image: Blob): Promise<string> {
+    const response = await firstValueFrom(
+      this.http.put<{ imageId: string }>(`/api/people/${encodeURIComponent(id)}/image`, image, {
+        headers: { 'Content-Type': image.type },
+      }),
+    );
+    return response.imageId;
+  }
+
+  removeImage(id: string): Promise<void> {
+    return firstValueFrom(this.http.delete<void>(`/api/people/${encodeURIComponent(id)}/image`));
+  }
+
   /** Erases the profile for good; its maintainer or an administrator may (PRD 05). */
   delete(id: string): Promise<void> {
     return firstValueFrom(this.http.delete<void>(`/api/people/${encodeURIComponent(id)}`));

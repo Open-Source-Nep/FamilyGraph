@@ -7,7 +7,8 @@ namespace Server.People;
 /// A profile as the signed-in user sees it. It never names the maintaining account. For a profile
 /// hidden from you, <see cref="Placeholder"/> is <c>Private</c>, or <c>Deleted</c> for a deleted
 /// one, and the name parts are null (PRD 05).
-/// <see cref="Visibility"/> is <c>Public</c> or <c>Private</c>.
+/// <see cref="Visibility"/> is <c>Public</c> or <c>Private</c>. <see cref="ImageId"/> names the
+/// current image at <c>/api/people/{id}/image</c>, and is null without one or for a placeholder (D-028).
 /// </summary>
 public sealed record PersonResponse(
     Guid Id,
@@ -16,7 +17,8 @@ public sealed record PersonResponse(
     string? LastName,
     string? Placeholder,
     string Visibility,
-    bool MaintainedByYou)
+    bool MaintainedByYou,
+    Guid? ImageId)
 {
     internal static PersonResponse From(PersonReference person) => new(
         person.Id.Value,
@@ -25,7 +27,8 @@ public sealed record PersonResponse(
         person.Name?.LastName,
         person.Placeholder?.Name,
         person.Visibility.Name,
-        person.MaintainedByViewer);
+        person.MaintainedByViewer,
+        person.ImageId?.Value);
 }
 
 /// <summary>One of your profiles, which you always see by name, Private or not (PRD 05).</summary>
@@ -39,3 +42,6 @@ public sealed record ProfileListResponse(IReadOnlyList<PersonSummaryResponse> Pe
             person.Id.Value, person.Name.FirstName, person.Name.MiddleName, person.Name.LastName, person.Visibility.Name))],
         list.IsTruncated);
 }
+
+/// <summary>The ID of the image just stored (D-028).</summary>
+public sealed record ImageResponse(Guid ImageId);

@@ -172,7 +172,7 @@ internal sealed class EfGraphQueries(FamilyGraphDbContext context, GraphLimits l
             SELECT person.id AS "Id", person.first_name AS "FirstName", person.middle_name AS "MiddleName",
                 person.last_name AS "LastName", person.visibility AS "Visibility",
                 person.deleted_at IS NOT NULL AS "IsDeleted",
-                person.maintainer_id = {viewerId.Value} AS "MaintainedByViewer"
+                person.maintainer_id = {viewerId.Value} AS "MaintainedByViewer", person.image_id AS "ImageId"
             FROM people AS person
             JOIN unnest({values}) AS wanted (id) ON wanted.id = person.id
             """).ToListAsync(token), cancellationToken);
@@ -182,7 +182,8 @@ internal sealed class EfGraphQueries(FamilyGraphDbContext context, GraphLimits l
             new PersonName(row.FirstName, row.MiddleName, row.LastName),
             ProfileVisibility.FromValue(row.Visibility),
             row.IsDeleted,
-            row.MaintainedByViewer))];
+            row.MaintainedByViewer,
+            row.ImageId is { } imageId ? new ProfileImageId(imageId) : null))];
     }
 
     private Task<List<Guid>> ReachedAsync(Guid[] starts, int rowLimit, CancellationToken cancellationToken) =>
@@ -223,5 +224,12 @@ internal sealed class EfGraphQueries(FamilyGraphDbContext context, GraphLimits l
     private sealed record LinkRow(Guid Id, Guid ParentId, Guid ChildId, int Type);
 
     private sealed record PersonRow(
-        Guid Id, string FirstName, string? MiddleName, string? LastName, int Visibility, bool IsDeleted, bool MaintainedByViewer);
+        Guid Id,
+        string FirstName,
+        string? MiddleName,
+        string? LastName,
+        int Visibility,
+        bool IsDeleted,
+        bool MaintainedByViewer,
+        Guid? ImageId);
 }

@@ -17,6 +17,11 @@ public sealed record PersonRenamed(PersonId PersonId, AccountId ActorId) : Perso
 public sealed record PersonVisibilityChanged(PersonId PersonId, AccountId ActorId, ProfileVisibility Visibility)
     : PersonEvent(PersonId, ActorId);
 
+/// <summary>Records that the image was set or replaced, without the image (D-015, D-028).</summary>
+public sealed record PersonImageChanged(PersonId PersonId, AccountId ActorId) : PersonEvent(PersonId, ActorId);
+
+public sealed record PersonImageRemoved(PersonId PersonId, AccountId ActorId) : PersonEvent(PersonId, ActorId);
+
 /// <summary>Records who deleted the profile and in which role, never the erased name (AC-05.11, D-015).</summary>
 public sealed record PersonDeleted(PersonId PersonId, AccountId ActorId, ProfileDeleter DeletedBy)
     : PersonEvent(PersonId, ActorId);

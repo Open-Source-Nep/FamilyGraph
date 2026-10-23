@@ -15,6 +15,8 @@ internal static class ValueConverters
 
     public static readonly ValueConverter<HandoverId, Guid> HandoverId = new(id => id.Value, value => new HandoverId(value));
 
+    public static readonly ValueConverter<ProfileImageId, Guid> ProfileImageId = new(id => id.Value, value => new ProfileImageId(value));
+
     public static readonly ValueConverter<AccountId, Guid> AccountId = new(id => id.Value, value => new AccountId(value));
 
     public static ValueConverter<TEnum, int> Enum<TEnum>()

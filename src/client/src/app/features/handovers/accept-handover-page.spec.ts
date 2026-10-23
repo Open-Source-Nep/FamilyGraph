@@ -16,6 +16,7 @@ describe('AcceptHandoverPage', () => {
     lastName: 'Rai',
     placeholder: null,
     visibility: 'Public',
+    imageId: null,
     maintainedByYou: false,
   };
 

@@ -31,6 +31,9 @@ const messages: Record<string, string> = {
   'handover.own_profile': 'You already maintain this profile.',
   'handover.already_open': 'Another handover link was just created. Reload the page.',
   'person.deleted': 'This profile was deleted.',
+  'person.no_image': 'This profile has no photo. Reload the page.',
+  'profile_image.too_large': 'This photo is too large. Choose a smaller one.',
+  'profile_image.unsupported_format': 'Choose a JPEG, PNG or WebP photo.',
   'graph.timeout': 'The family graph took too long to load. Please try again.',
 };
 

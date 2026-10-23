@@ -8,17 +8,18 @@ import { PersonRelatives } from '../relationships/person-relatives';
 import { PeopleService } from './people.service';
 import { Person, PersonName, Visibility, fullName } from './person';
 import { PersonNameForm } from './person-name-form';
+import { PersonPhoto } from './person-photo';
 import { problemMessage } from './problem';
 
 /**
- * One profile with its parents and children. Its maintainer can rename it, make it Public or
- * Private and hand it over to another account, and its maintainer or an administrator can delete it; the server enforces all three
- * (PRD 01, PRD 05). A Private profile hidden from you or a deleted one shows only its
+ * One profile with its photo, parents and children. Its maintainer can rename it, change its photo,
+ * make it Public or Private and hand it over to another account, and its maintainer or an
+ * administrator can delete it; the server enforces all of these (PRD 01, PRD 05). A Private profile hidden from you or a deleted one shows only its
  * placeholder, with its parents and children.
  */
 @Component({
   selector: 'app-person-page',
-  imports: [PersonHandover, PersonNameForm, PersonRelatives, RouterLink],
+  imports: [PersonHandover, PersonNameForm, PersonPhoto, PersonRelatives, RouterLink],
   templateUrl: './person-page.html',
 })
 export class PersonPage {
@@ -65,6 +66,13 @@ export class PersonPage {
         (error: unknown) => this.error.set(problemMessage(error)),
       );
     });
+  }
+
+  protected photoChanged(imageId: string | null): void {
+    const person = this.person();
+    if (person) {
+      this.person.set({ ...person, imageId });
+    }
   }
 
   protected async setVisibility(visibility: Visibility): Promise<void> {

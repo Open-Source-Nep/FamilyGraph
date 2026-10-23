@@ -1,0 +1,25 @@
+@if (url(); as url) {
+  <img class="photo" [src]="url" [alt]="alt()" width="160" height="160" />
+}
+@if (person().maintainedByYou && !person().placeholder) {
+  <p class="actions">
+    <label class="button secondary" [class.disabled]="saving()">
+      {{ url() ? 'Change photo' : 'Add photo' }}
+      <input
+        #file
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        [disabled]="saving()"
+        (change)="choose(file)"
+      />
+    </label>
+    @if (url()) {
+      <button type="button" class="secondary" [disabled]="saving()" (click)="remove()">
+        Remove photo
+      </button>
+    }
+  </p>
+}
+@if (error(); as error) {
+  <p class="error" role="alert">{{ error }}</p>
+}

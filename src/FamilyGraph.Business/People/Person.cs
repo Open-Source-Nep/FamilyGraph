@@ -36,6 +36,9 @@ public sealed class Person : AuditedEntity
 
     public bool IsDeleted => DeletedAt is not null;
 
+    /// <summary>The profile's current <see cref="ProfileImage"/>, or <see langword="null"/> if it has none.</summary>
+    public ProfileImageId? ImageId { get; private set; }
+
     /// <summary>Creates a profile. The creating account becomes its maintainer.</summary>
     public static Person Create(PersonName name, AccountId creatorId)
     {
@@ -87,7 +90,7 @@ public sealed class Person : AuditedEntity
     }
 
     /// <summary>
-    /// Deletes the profile: its name is erased for good and it remains as a <c>Deleted</c>
+    /// Deletes the profile: its name and image are erased for good and it remains as a <c>Deleted</c>
     /// placeholder (PRD 05). Its maintainer may do this, or an administrator for moderation; the
     /// event records which. Its links and their consent are unchanged, so active links stay
     /// traversable.
@@ -100,8 +103,45 @@ public sealed class Person : AuditedEntity
             : throw new NotProfileMaintainerException(Id);
 
         Name = PersonName.Erased;
+        ImageId = null;
         DeletedAt = deletedAt;
         Record(new PersonDeleted(Id, actorId, deleter));
+    }
+
+    /// <summary>
+    /// Sets or replaces the profile's image (D-028). Only the current maintainer may do this. The
+    /// caller stores the returned image and removes the one it replaces.
+    /// </summary>
+    public ProfileImage SetImage(byte[] content, AccountId actorId)
+    {
+        EnsureNotDeleted();
+        if (!IsMaintainedBy(actorId))
+        {
+            throw new NotProfileMaintainerException(Id);
+        }
+
+        var image = ProfileImage.Create(Id, content);
+        ImageId = image.Id;
+        Record(new PersonImageChanged(Id, actorId));
+        return image;
+    }
+
+    /// <summary>Removes the profile's image. Only the current maintainer may do this.</summary>
+    public void RemoveImage(AccountId actorId)
+    {
+        EnsureNotDeleted();
+        if (!IsMaintainedBy(actorId))
+        {
+            throw new NotProfileMaintainerException(Id);
+        }
+
+        if (ImageId is null)
+        {
+            throw new ProfileHasNoImageException(Id);
+        }
+
+        ImageId = null;
+        Record(new PersonImageRemoved(Id, actorId));
     }
 
     /// <summary>
@@ -141,6 +181,9 @@ public sealed class NotProfileMaintainerException(PersonId personId)
 
 public sealed class ProfileDeletedException(PersonId personId)
     : ConflictException("person.deleted", $"Profile {personId.Value} was deleted.");
+
+public sealed class ProfileHasNoImageException(PersonId personId)
+    : ConflictException("person.no_image", $"Profile {personId.Value} has no image.");
 
 public sealed class ProfileVisibilityUnchangedException(PersonId personId, ProfileVisibility visibility)
     : ConflictException("person.visibility_unchanged", $"Profile {personId.Value} is already {visibility}.");

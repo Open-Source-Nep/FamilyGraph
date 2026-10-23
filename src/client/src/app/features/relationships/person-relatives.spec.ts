@@ -14,6 +14,7 @@ const maya: Person = {
   lastName: null,
   placeholder: null,
   visibility: 'Public',
+  imageId: null,
   maintainedByYou: true,
 };
 
@@ -27,6 +28,7 @@ const relatives: DirectRelatives = {
       lastName: 'Rai',
       placeholder: null,
       visibility: 'Public',
+      imageId: null,
       type: 'Adoptive',
       maintainedByYou: true,
     },
@@ -38,6 +40,7 @@ const relatives: DirectRelatives = {
       lastName: null,
       placeholder: null,
       visibility: 'Public',
+      imageId: null,
       type: 'Biological',
       maintainedByYou: false,
     },

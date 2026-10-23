@@ -17,7 +17,7 @@ public class PersonServiceTests
     private static Viewer As(AccountId account) => new(account, IsAdministrator: false);
 
     private PersonService Service(int maintainedListLimit = PeopleLimits.DefaultMaintainedListLimit) =>
-        new(_people, _people, _people, _people, new FixedTimeProvider(Now), new PeopleLimits(maintainedListLimit));
+        new(_people, _people, _people, _people, _people, new FixedTimeProvider(Now), new PeopleLimits(maintainedListLimit));
 
     [Fact]
     [Trait("AC", "AC-01.1")]
@@ -211,5 +211,94 @@ public class PersonServiceTests
 
         Assert.NotEqual(first, second);
         Assert.True(_people.People[second].IsMaintainedBy(Bob));
+    }
+
+    private static readonly byte[] Jpeg = [0xFF, 0xD8, 0xFF, 0xE0];
+    private static readonly byte[] Png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+
+    [Fact]
+    [Trait("AC", "AC-01.18")]
+    public async Task Maintainer_sets_an_image_which_viewers_of_the_profile_can_load()
+    {
+        var service = Service();
+        var id = await service.CreateAsync(new PersonName("Maya"), Alice, Cancellation);
+
+        var imageId = await service.SetImageAsync(id, Jpeg, Alice, Cancellation);
+
+        Assert.Equal(imageId, (await service.GetAsync(id, As(Bob), Cancellation)).ImageId);
+        var image = await service.GetImageAsync(id, As(Bob), Cancellation);
+        Assert.Equal((imageId, ImageFormat.Jpeg, Jpeg), (image.Id, image.Format, image.Content));
+        Assert.Equal((new PersonImageChanged(id, Alice), Now), _people.AuditEvents[^1]);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-01.18")]
+    public async Task Replacing_the_image_removes_the_old_one()
+    {
+        var service = Service();
+        var id = await service.CreateAsync(new PersonName("Maya"), Alice, Cancellation);
+        var first = await service.SetImageAsync(id, Jpeg, Alice, Cancellation);
+
+        var second = await service.SetImageAsync(id, Png, Alice, Cancellation);
+
+        Assert.Equal([second], _people.Images.Keys);
+        Assert.NotEqual(first, second);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-01.18")]
+    public async Task Removing_the_image_deletes_it()
+    {
+        var service = Service();
+        var id = await service.CreateAsync(new PersonName("Maya"), Alice, Cancellation);
+        await service.SetImageAsync(id, Jpeg, Alice, Cancellation);
+
+        await service.RemoveImageAsync(id, Alice, Cancellation);
+
+        Assert.Empty(_people.Images);
+        Assert.Null(_people.People[id].ImageId);
+        await Assert.ThrowsAsync<ProfileImageNotFoundException>(() => service.GetImageAsync(id, As(Alice), Cancellation));
+    }
+
+    [Fact]
+    [Trait("AC", "AC-01.18")]
+    public async Task Someone_else_cannot_set_the_image_and_nothing_is_stored()
+    {
+        var service = Service();
+        var id = await service.CreateAsync(new PersonName("Maya"), Alice, Cancellation);
+
+        await Assert.ThrowsAsync<NotProfileMaintainerException>(() => service.SetImageAsync(id, Jpeg, Bob, Cancellation));
+
+        Assert.Empty(_people.Images);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-05.13")]
+    public async Task A_private_profile_image_is_not_found_for_others_but_loads_for_its_maintainer()
+    {
+        var service = Service();
+        var id = await service.CreateAsync(new PersonName("Maya"), Alice, Cancellation);
+        await service.SetImageAsync(id, Jpeg, Alice, Cancellation);
+        await service.SetVisibilityAsync(id, ProfileVisibility.Private, Alice, Cancellation);
+
+        await Assert.ThrowsAsync<ProfileImageNotFoundException>(() => service.GetImageAsync(id, As(Bob), Cancellation));
+        Assert.Null((await service.GetAsync(id, As(Bob), Cancellation)).ImageId);
+        Assert.Equal(Jpeg, (await service.GetImageAsync(id, As(Alice), Cancellation)).Content);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-05.10")]
+    [Trait("AC", "AC-05.13")]
+    public async Task Deleting_the_profile_erases_its_image()
+    {
+        var service = Service();
+        var id = await service.CreateAsync(new PersonName("Maya"), Alice, Cancellation);
+        await service.SetImageAsync(id, Jpeg, Alice, Cancellation);
+
+        await service.DeleteAsync(id, As(Alice), Cancellation);
+
+        Assert.Empty(_people.Images);
+        await Assert.ThrowsAsync<ProfileImageNotFoundException>(
+            () => service.GetImageAsync(id, new Viewer(Bob, IsAdministrator: true), Cancellation));
     }
 }

@@ -10,13 +10,14 @@ namespace FamilyGraph.Application.Privacy;
 public sealed record PersonReference
 {
     internal PersonReference(
-        PersonId id, PersonName? name, PersonPlaceholder? placeholder, ProfileVisibility visibility, bool maintainedByViewer)
+        PersonId id, PersonName? name, PersonPlaceholder? placeholder, ProfileVisibility visibility, bool maintainedByViewer, ProfileImageId? imageId)
     {
         Id = id;
         Name = name;
         Placeholder = placeholder;
         Visibility = visibility;
         MaintainedByViewer = maintainedByViewer;
+        ImageId = imageId;
     }
 
     public PersonId Id { get; }
@@ -34,4 +35,7 @@ public sealed record PersonReference
 
     /// <summary>Whether the viewer maintains the profile, never which account does (D-019).</summary>
     public bool MaintainedByViewer { get; }
+
+    /// <summary>The profile's image, or <see langword="null"/> if it has none or is a placeholder (D-028).</summary>
+    public ProfileImageId? ImageId { get; }
 }

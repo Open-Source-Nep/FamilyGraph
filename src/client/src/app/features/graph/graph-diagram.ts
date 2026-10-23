@@ -15,6 +15,7 @@ import cytoscape, { Core, ElementDefinition } from 'cytoscape';
 import dagre, { DagreLayoutOptions } from 'cytoscape-dagre';
 
 import { fullName, initials } from '../people/person';
+import { PhotoLoader } from '../people/photo-loader.service';
 import { familyLayout } from './family-layout';
 import { LocalViewPerson } from './graph';
 import { ShownGraph, generationLabel } from './shown-graph';
@@ -69,6 +70,16 @@ function avatarImage(personInitials: string, colour: string): string {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
+/** The person's photo in the avatar's circle, in place of the initials (D-028). */
+function photoAvatar(photoDataUrl: string): string {
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${avatarSize}" height="${avatarSize}">` +
+    `<clipPath id="c"><circle cx="12" cy="12" r="12"/></clipPath>` +
+    `<image href="${photoDataUrl}" width="${avatarSize}" height="${avatarSize}" ` +
+    `preserveAspectRatio="xMidYMid slice" clip-path="url(#c)"/></svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
 /** The person under the pointer, placed relative to the canvas. */
 interface Hovered {
   row: LocalViewPerson;
@@ -80,7 +91,7 @@ interface Hovered {
  * The tree diagram of the shown people (PRD 08, D-024): parents above children, laid out by
  * dagre and drawn by Cytoscape on a canvas. The home page's dots use the family layout instead,
  * which keeps children right below their parents. Adoptive links are dashed and people with relatives
- * not shown have a double border. Each person has a coloured initial avatar and hovering shows their
+ * not shown have a double border. Each person has their photo or a coloured initial avatar and hovering shows their
  * details. The dots mode (the home page) draws each person as a small coloured dot, with no legend
  * or details; hovering shows only their name. The canvas is not keyboard or screen reader accessible, so the page always
  * offers the same people as links or text next to it (AC-09.2).
@@ -92,6 +103,7 @@ interface Hovered {
 })
 export class GraphDiagram {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly photos = inject(PhotoLoader);
 
   readonly graph = input.required<ShownGraph>();
   readonly selectedId = input<string | null>(null);
@@ -159,6 +171,9 @@ export class GraphDiagram {
         cy.add(this.elements(this.graph()));
       });
       cy.layout(dots ? this.dotsLayout(this.graph()) : layout).run();
+      if (!dots) {
+        this.showPhotos(cy, this.graph());
+      }
       // A small family would otherwise be zoomed in until the dots are no longer small.
       if (dots && cy.zoom() > 1) {
         cy.zoom(1);
@@ -183,6 +198,18 @@ export class GraphDiagram {
 
   protected fit(): void {
     this.cy()?.fit(undefined, 24);
+  }
+
+  /** Swaps initials for photos as they load; the home page's dots never show photos (D-028). */
+  private showPhotos(cy: Core, graph: ShownGraph): void {
+    for (const { person } of graph.people) {
+      void this.photos.dataUrl(person).then((photo) => {
+        const node = cy.getElementById(person.id);
+        if (photo && !cy.destroyed() && node.nonempty()) {
+          node.data('avatar', photoAvatar(photo));
+        }
+      });
+    }
   }
 
   /** Families grouped under their parents rather than spread out evenly (D-024). */
