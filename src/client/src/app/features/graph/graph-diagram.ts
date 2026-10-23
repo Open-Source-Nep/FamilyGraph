@@ -15,6 +15,7 @@ import cytoscape, { Core, ElementDefinition } from 'cytoscape';
 import dagre, { DagreLayoutOptions } from 'cytoscape-dagre';
 
 import { fullName, initials } from '../people/person';
+import { familyLayout } from './family-layout';
 import { LocalViewPerson } from './graph';
 import { ShownGraph, generationLabel } from './shown-graph';
 
@@ -28,7 +29,7 @@ const layout: DagreLayoutOptions = {
   padding: 24,
 };
 
-const dotsLayout: DagreLayoutOptions = { ...layout, nodeSep: 10, rankSep: 28, padding: 16 };
+const dotSize = 12;
 
 /** Avatar and dot fills, dark enough for white initials. */
 const avatarColours = [
@@ -77,7 +78,8 @@ interface Hovered {
 
 /**
  * The tree diagram of the shown people (PRD 08, D-024): parents above children, laid out by
- * dagre and drawn by Cytoscape on a canvas. Adoptive links are dashed and people with relatives
+ * dagre and drawn by Cytoscape on a canvas. The home page's dots use the family layout instead,
+ * which keeps children right below their parents. Adoptive links are dashed and people with relatives
  * not shown have a double border. Each person has a coloured initial avatar and hovering shows their
  * details. The dots mode (the home page) draws each person as a small coloured dot, with no legend
  * or details; hovering shows only their name. The canvas is not keyboard or screen reader accessible, so the page always
@@ -156,7 +158,7 @@ export class GraphDiagram {
         cy.style(this.style(dots));
         cy.add(this.elements(this.graph()));
       });
-      cy.layout(dots ? dotsLayout : layout).run();
+      cy.layout(dots ? this.dotsLayout(this.graph()) : layout).run();
       // A small family would otherwise be zoomed in until the dots are no longer small.
       if (dots && cy.zoom() > 1) {
         cy.zoom(1);
@@ -181,6 +183,16 @@ export class GraphDiagram {
 
   protected fit(): void {
     this.cy()?.fit(undefined, 24);
+  }
+
+  /** Families grouped under their parents rather than spread out evenly (D-024). */
+  private dotsLayout(graph: ShownGraph): cytoscape.PresetLayoutOptions {
+    const positions = familyLayout(
+      graph.people.map((row) => ({ id: row.person.id, width: dotSize })),
+      graph.links,
+      { height: dotSize, nodeSep: 8, groupSep: 24, rankSep: 28 },
+    );
+    return { name: 'preset', positions: Object.fromEntries(positions), padding: 16 };
   }
 
   private elements(graph: ShownGraph): ElementDefinition[] {
@@ -239,7 +251,12 @@ export class GraphDiagram {
       ? [
           {
             selector: 'node',
-            style: { shape: 'ellipse', width: 12, height: 12, 'background-color': 'data(colour)' },
+            style: {
+              shape: 'ellipse',
+              width: dotSize,
+              height: dotSize,
+              'background-color': 'data(colour)',
+            },
           },
         ]
       : [
