@@ -41,7 +41,7 @@ internal sealed class InMemoryPeople
     public Task<ProfileList> ListMaintainedByAsync(AccountId maintainerId, int limit, CancellationToken cancellationToken)
     {
         var maintained = People.Values
-            .Where(person => person.IsMaintainedBy(maintainerId))
+            .Where(person => person.IsMaintainedBy(maintainerId) && !person.IsDeleted)
             .OrderBy(person => person.Name.FirstName, StringComparer.Ordinal)
             .Select(person => new PersonSummary(person.Id, person.Name, person.Visibility))
             .ToList();
@@ -103,10 +103,10 @@ internal sealed class InMemoryPeople
         var inactive = NotDeletedLinks()
             .Where(link => !link.IsActive)
             .Select(link => (Link: link, Parent: People[link.ParentId], Child: People[link.ChildId]))
-            .Where(row => row.Parent.IsMaintainedBy(viewerId) || row.Child.IsMaintainedBy(viewerId))
+            .Where(row => Owns(row.Parent, viewerId) || Owns(row.Child, viewerId))
             .OrderByDescending(row =>
-                (row.Parent.IsMaintainedBy(viewerId) && row.Link.ParentApproval == EndpointApproval.Pending)
-                || (row.Child.IsMaintainedBy(viewerId) && row.Link.ChildApproval == EndpointApproval.Pending))
+                (Owns(row.Parent, viewerId) && row.Link.ParentApproval == EndpointApproval.Pending)
+                || (Owns(row.Child, viewerId) && row.Link.ChildApproval == EndpointApproval.Pending))
             .ThenBy(row => IsHidden(Record(row.Parent.Id, viewer), viewer))
             .ThenBy(row => IsHidden(Record(row.Parent.Id, viewer), viewer) ? "" : row.Parent.Name.FirstName, StringComparer.Ordinal)
             .ThenBy(row => IsHidden(Record(row.Child.Id, viewer), viewer))
@@ -145,8 +145,11 @@ internal sealed class InMemoryPeople
         return Task.CompletedTask;
     }
 
+    private static bool Owns(Person person, AccountId viewerId) => person.IsMaintainedBy(viewerId) && !person.IsDeleted;
+
     private static bool IsHidden(PersonRecord person, Viewer viewer) =>
-        person.Visibility == ProfileVisibility.Private && !person.MaintainedByViewer && !viewer.IsAdministrator;
+        person.IsDeleted
+        || (person.Visibility == ProfileVisibility.Private && !person.MaintainedByViewer && !viewer.IsAdministrator);
 
     private PersonRecord Record(PersonId id, Viewer viewer) => PersonRecord.From(People[id], viewer.AccountId);
 

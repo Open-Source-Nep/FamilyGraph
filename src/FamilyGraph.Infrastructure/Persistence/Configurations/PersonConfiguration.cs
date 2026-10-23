@@ -19,6 +19,7 @@ internal sealed class PersonConfiguration : IEntityTypeConfiguration<Person>
             name.Property(part => part.MiddleName).HasColumnName("middle_name");
             name.Property(part => part.LastName).HasColumnName("last_name");
         });
+        builder.Ignore(person => person.IsDeleted);
         builder.Ignore(person => person.PendingEvents);
 
         builder.HasIndex(person => person.MaintainerId).HasDatabaseName("ix_people_maintainer_id");

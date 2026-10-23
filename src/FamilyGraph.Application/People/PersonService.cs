@@ -5,7 +5,7 @@ using FamilyGraph.Business.People;
 namespace FamilyGraph.Application.People;
 
 /// <summary>
-/// Creates, renames, sets the visibility of and reads person profiles (PRD 01, PRD 05, #12, #18).
+/// Creates, renames, sets the visibility of, deletes and reads person profiles (PRD 01, PRD 05, #12, #18).
 /// The creating account becomes the maintainer, and only the maintainer can rename or change the
 /// visibility; <see cref="Person"/> enforces both. A profile is never matched or merged by name.
 /// </summary>
@@ -41,6 +41,20 @@ public sealed class PersonService(
     {
         var person = await people.FindAsync(id, cancellationToken) ?? throw new PersonNotFoundException();
         person.SetVisibility(visibility, actorId);
+        await SaveAsync(person, cancellationToken);
+    }
+
+    /// <summary>
+    /// Deletes the profile for good: its name is erased and it remains a <c>Deleted</c>
+    /// placeholder (PRD 05). Its maintainer may, or an administrator for moderation. Its links and
+    /// their consent are unchanged.
+    /// </summary>
+    public async Task DeleteAsync(PersonId id, Viewer actor, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(actor);
+
+        var person = await people.FindAsync(id, cancellationToken) ?? throw new PersonNotFoundException();
+        person.Delete(actor.AccountId, actor.IsAdministrator, time.GetUtcNow());
         await SaveAsync(person, cancellationToken);
     }
 

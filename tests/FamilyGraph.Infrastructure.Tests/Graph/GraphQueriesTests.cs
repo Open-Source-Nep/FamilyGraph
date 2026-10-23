@@ -211,19 +211,18 @@ public class GraphQueriesTests(PostgresFixture postgres)
 
     [Fact]
     [Trait("AC", "AC-05.2")]
+    [Trait("AC", "AC-05.3")]
     [Trait("AC", "AC-05.4")]
-    public async Task Graph_reads_load_visibility_so_a_private_person_is_a_placeholder_the_walk_passes_through()
+    public async Task Graph_reads_load_visibility_and_deletion_so_placeholders_stay_on_the_walk()
     {
         await using var services = await NewServicesAsync();
         var grandmother = TestData.NewPerson(Maintainer, "Gita");
         var mother = TestData.NewPerson(Maintainer, "Sita");
         var you = TestData.NewPerson(Maintainer, "Maya");
         mother.SetVisibility(ProfileVisibility.Private, Maintainer);
-        await SaveAsync(services, [
-            grandmother, mother, you,
-            TestData.NewLink(grandmother, mother, Maintainer),
-            TestData.NewLink(mother, you, Maintainer),
-        ]);
+        var links = new[] { TestData.NewLink(grandmother, mother, Maintainer), TestData.NewLink(mother, you, Maintainer) };
+        grandmother.Delete(Maintainer, actorIsAdministrator: false, DateTimeOffset.UtcNow);
+        await SaveAsync(services, [grandmother, mother, you, .. links]);
 
         await using var scope = services.CreateAsyncScope();
         var service = new GraphService(
@@ -235,10 +234,10 @@ public class GraphQueriesTests(PostgresFixture postgres)
         var connections = await service.FindConnectionsAsync(you.Id, grandmother.Id, viewer, Cancellation);
 
         Assert.Equal(
-            [("Maya", null), (null, PersonPlaceholder.Private), ("Gita", null)],
+            [("Maya", null), (null, PersonPlaceholder.Private), (null, PersonPlaceholder.Deleted)],
             view.People.Select(row => (row.Person.Name?.FirstName, row.Person.Placeholder)));
         Assert.Equal(
-            [PersonPlaceholder.Private, null],
+            [PersonPlaceholder.Private, PersonPlaceholder.Deleted],
             Assert.Single(connections.Paths).Steps.Select(step => step.Person.Placeholder));
     }
 

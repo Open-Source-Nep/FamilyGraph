@@ -70,6 +70,25 @@ public class GraphServiceTests
     }
 
     [Fact]
+    [Trait("AC", "AC-05.3")]
+    [Trait("AC", "AC-05.4")]
+    public async Task Paths_pass_through_a_deleted_placeholder()
+    {
+        var grandmother = AddPerson("Gita", Alice);
+        var mother = AddPerson("Sita", Alice);
+        var you = AddPerson("Maya", Alice);
+        AddLink(grandmother, mother);
+        AddLink(mother, you);
+        _store.People[mother].Delete(Alice, actorIsAdministrator: false, DateTimeOffset.UtcNow);
+
+        var connections = await Service().FindConnectionsAsync(you, grandmother, As(Alice), Cancellation);
+
+        Assert.Equal(
+            [PersonPlaceholder.Deleted, null],
+            Assert.Single(connections.Paths).Steps.Select(step => step.Person.Placeholder));
+    }
+
+    [Fact]
     public async Task Local_view_of_an_unknown_person_is_not_found()
     {
         await Assert.ThrowsAsync<PersonNotFoundException>(

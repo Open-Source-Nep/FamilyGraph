@@ -7,7 +7,7 @@ namespace Server.Graph;
 /// <summary>
 /// A person as you may see them in the graph. <see cref="MaintainedByYou"/> never names the
 /// maintaining account (D-019). A person hidden from you has <see cref="Placeholder"/>
-/// <c>Private</c> and no name, and stays in the graph with their links (PRD 05).
+/// <c>Private</c> or <c>Deleted</c> and no name, and stays in the graph with their links (PRD 05).
 /// </summary>
 public sealed record GraphPersonResponse(
     Guid Id,

@@ -131,6 +131,42 @@ public class PersonServiceTests
     }
 
     [Fact]
+    [Trait("AC", "AC-05.10")]
+    [Trait("AC", "AC-05.11")]
+    public async Task Maintainer_deletes_a_profile_which_leaves_a_deleted_placeholder_and_their_list()
+    {
+        var service = Service();
+        var id = await service.CreateAsync(new PersonName("Maya", lastName: "Rai"), Alice, Cancellation);
+
+        await service.DeleteAsync(id, As(Alice), Cancellation);
+
+        Assert.Equal((new PersonDeleted(id, Alice, ProfileDeleter.Maintainer), Now), _people.AuditEvents[^1]);
+        Assert.Equal(Now, _people.People[id].DeletedAt);
+        var asMaintainer = await service.GetAsync(id, As(Alice), Cancellation);
+        Assert.Equal((null, PersonPlaceholder.Deleted, false), (asMaintainer.Name, asMaintainer.Placeholder, asMaintainer.MaintainedByViewer));
+        Assert.Empty((await service.ListMaintainedAsync(Alice, Cancellation)).People);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-05.11")]
+    public async Task Administrator_deletes_another_accounts_profile_and_others_cannot()
+    {
+        var service = Service();
+        var id = await service.CreateAsync(new PersonName("Maya"), Alice, Cancellation);
+
+        await Assert.ThrowsAsync<NotProfileMaintainerException>(() => service.DeleteAsync(id, As(Bob), Cancellation));
+        await service.DeleteAsync(id, new Viewer(Bob, IsAdministrator: true), Cancellation);
+
+        Assert.Equal(new PersonDeleted(id, Bob, ProfileDeleter.Administrator), _people.AuditEvents[^1].Event);
+    }
+
+    [Fact]
+    public async Task Deleting_an_unknown_profile_is_not_found()
+    {
+        await Assert.ThrowsAsync<PersonNotFoundException>(() => Service().DeleteAsync(PersonId.New(), As(Alice), Cancellation));
+    }
+
+    [Fact]
     public async Task Viewing_an_unknown_profile_is_not_found()
     {
         await Assert.ThrowsAsync<PersonNotFoundException>(() => Service().GetAsync(PersonId.New(), As(Alice), Cancellation));

@@ -62,6 +62,15 @@ describe('PeopleService', () => {
     await changed;
   });
 
+  it('deletes a profile with a DELETE', async () => {
+    const done = service.delete('p1');
+    const request = http.expectOne('/api/people/p1');
+    expect(request.request.method).toBe('DELETE');
+    request.flush(null, { status: 204, statusText: 'No Content' });
+
+    await done;
+  });
+
   it('lists the profiles the user maintains', async () => {
     const list = service.listMaintained();
     http.expectOne('/api/people/maintained').flush({ people: [maya], isTruncated: false });

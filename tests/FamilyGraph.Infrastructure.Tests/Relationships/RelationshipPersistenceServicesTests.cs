@@ -380,6 +380,26 @@ public class RelationshipPersistenceServicesTests(PostgresFixture postgres)
         Assert.Equal(ProfileVisibility.Private, list.Links[1].Parent.Person.Visibility);
     }
 
+    [Fact]
+    public async Task Inactive_links_leave_out_those_whose_only_endpoint_you_maintain_was_deleted()
+    {
+        await using var services = await NewServicesAsync();
+        var former = TestData.NewAccount();
+        var deleted = TestData.NewPerson(former, "Hari");
+        var child = TestData.NewPerson(Maintainer, "Maya");
+        var link = TestData.NewLink(deleted, child, Maintainer);
+        deleted.Delete(former, actorIsAdministrator: false, DateTimeOffset.UtcNow);
+        await SaveAsync(services, deleted, child, link);
+
+        await using var scope = services.CreateAsyncScope();
+        var queries = scope.ServiceProvider.GetRequiredService<IRelationshipQueries>();
+        var asFormer = await queries.ListInactiveLinksAsync(As(former), limit: 10, Cancellation);
+        var asOther = await queries.ListInactiveLinksAsync(As(Maintainer), limit: 10, Cancellation);
+
+        Assert.Empty(asFormer.Links);
+        Assert.True(Assert.Single(asOther.Links).Parent.Person.IsDeleted);
+    }
+
     private static async Task SaveAsync(ServiceProvider services, params object[] entities)
     {
         await using var scope = services.CreateAsyncScope();

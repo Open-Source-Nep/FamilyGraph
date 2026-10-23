@@ -8,8 +8,8 @@ export interface PersonName {
 /** Public profiles show their name to signed-in users; Private ones only to their maintainer and administrators (PRD 05). */
 export type Visibility = 'Public' | 'Private';
 
-/** What you see instead of a profile hidden from you. It carries no name or details (PRD 05). */
-export type Placeholder = 'Private';
+/** What you see instead of a Private profile hidden from you or a deleted one. It carries no name or details (PRD 05). */
+export type Placeholder = 'Private' | 'Deleted';
 
 /** A person as the server lets you see them: a profile hidden from you has a `placeholder` and no name. */
 export interface PersonLabel {

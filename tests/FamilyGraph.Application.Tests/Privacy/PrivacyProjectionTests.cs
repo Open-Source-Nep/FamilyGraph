@@ -47,6 +47,19 @@ public class PrivacyProjectionTests
         Assert.Equal((Name, null, false), (person.Name, person.Placeholder, person.MaintainedByViewer));
     }
 
-    private static PersonRecord Record(ProfileVisibility visibility, bool maintainedByViewer) =>
-        new(PersonId.New(), Name, visibility, maintainedByViewer);
+    [Fact]
+    [Trait("AC", "AC-05.3")]
+    public void Deleted_profile_is_a_deleted_placeholder_to_everyone_including_its_maintainer_and_administrators()
+    {
+        var record = Record(ProfileVisibility.Public, maintainedByViewer: true, isDeleted: true);
+
+        var asMaintainer = PrivacyProjection.Project(record, new Viewer(Alice, false));
+        var asAdministrator = PrivacyProjection.Project(record, new Viewer(Alice, true));
+
+        Assert.All([asMaintainer, asAdministrator], person =>
+            Assert.Equal((record.Id, null, PersonPlaceholder.Deleted, false), (person.Id, person.Name, person.Placeholder, person.MaintainedByViewer)));
+    }
+
+    private static PersonRecord Record(ProfileVisibility visibility, bool maintainedByViewer, bool isDeleted = false) =>
+        new(PersonId.New(), Name, visibility, isDeleted, maintainedByViewer);
 }

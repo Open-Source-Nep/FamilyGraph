@@ -26,7 +26,10 @@ public sealed record PersonReference
 
     public PersonPlaceholder? Placeholder { get; }
 
-    /// <summary>The profile's setting. A placeholder already says it is Private, so this reveals nothing more.</summary>
+    /// <summary>
+    /// The profile's setting. A <c>Private</c> placeholder already says it is Private, and a
+    /// <c>Deleted</c> one has no details to protect, so this reveals nothing more.
+    /// </summary>
     public ProfileVisibility Visibility { get; }
 
     /// <summary>Whether the viewer maintains the profile, never which account does (D-019).</summary>

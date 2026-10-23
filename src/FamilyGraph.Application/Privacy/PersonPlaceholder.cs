@@ -7,6 +7,9 @@ public sealed class PersonPlaceholder : BaseEnum<PersonPlaceholder>
 {
     public static readonly PersonPlaceholder Private = new(1, nameof(Private));
 
+    /// <summary>A deleted profile, whose name is erased. Nobody sees through it.</summary>
+    public static readonly PersonPlaceholder Deleted = new(2, nameof(Deleted));
+
     private PersonPlaceholder(int value, string name)
         : base(value, name)
     {

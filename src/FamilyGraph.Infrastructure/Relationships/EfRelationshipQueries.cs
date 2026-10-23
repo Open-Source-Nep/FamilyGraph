@@ -10,8 +10,8 @@ namespace FamilyGraph.Infrastructure.Relationships;
 /// <summary>
 /// People hidden from the viewer sort after the others and by ID only, with an empty name in the
 /// sort key, so the order cannot hint at a hidden name (D-025). The rule matches
-/// <see cref="PrivacyProjection"/>: Private, not maintained by the viewer, and the viewer is not
-/// an administrator.
+/// <see cref="PrivacyProjection"/>: deleted, or Private, not maintained by the viewer, and the
+/// viewer is not an administrator.
 /// </summary>
 internal sealed class EfRelationshipQueries(FamilyGraphDbContext context) : IRelationshipQueries
 {
@@ -28,12 +28,13 @@ internal sealed class EfRelationshipQueries(FamilyGraphDbContext context) : IRel
                 from link in ActiveLinks()
                 where link.ChildId == personId
                 join parent in context.Set<Person>() on link.ParentId equals parent.Id
-                let hidden = !seesAll && parent.Visibility == ProfileVisibility.Private && parent.MaintainerId != viewerId
+                let hidden = parent.DeletedAt != null
+                    || (!seesAll && parent.Visibility == ProfileVisibility.Private && parent.MaintainerId != viewerId)
                 orderby hidden, hidden ? "" : parent.Name.FirstName, hidden ? "" : parent.Name.MiddleName,
                     hidden ? "" : parent.Name.LastName, parent.Id
                 select new RelativeData(
                     link.Id,
-                    new PersonRecord(parent.Id, parent.Name, parent.Visibility, parent.MaintainerId == viewerId),
+                    new PersonRecord(parent.Id, parent.Name, parent.Visibility, parent.DeletedAt != null, parent.MaintainerId == viewerId),
                     link.Type,
                     null))
             .Take(limit + 1)
@@ -43,12 +44,13 @@ internal sealed class EfRelationshipQueries(FamilyGraphDbContext context) : IRel
                 from link in ActiveLinks()
                 where link.ParentId == personId
                 join child in context.Set<Person>() on link.ChildId equals child.Id
-                let hidden = !seesAll && child.Visibility == ProfileVisibility.Private && child.MaintainerId != viewerId
+                let hidden = child.DeletedAt != null
+                    || (!seesAll && child.Visibility == ProfileVisibility.Private && child.MaintainerId != viewerId)
                 orderby link.BirthOrder == null, link.BirthOrder, hidden, hidden ? "" : child.Name.FirstName,
                     hidden ? "" : child.Name.MiddleName, hidden ? "" : child.Name.LastName, child.Id
                 select new RelativeData(
                     link.Id,
-                    new PersonRecord(child.Id, child.Name, child.Visibility, child.MaintainerId == viewerId),
+                    new PersonRecord(child.Id, child.Name, child.Visibility, child.DeletedAt != null, child.MaintainerId == viewerId),
                     link.Type,
                     link.BirthOrder))
             .Take(limit + 1)
@@ -75,11 +77,15 @@ internal sealed class EfRelationshipQueries(FamilyGraphDbContext context) : IRel
                     && !(link.ParentApproval == EndpointApproval.Approved && link.ChildApproval == EndpointApproval.Approved)
                 join parent in context.Set<Person>() on link.ParentId equals parent.Id
                 join child in context.Set<Person>() on link.ChildId equals child.Id
-                where parent.MaintainerId == viewerId || child.MaintainerId == viewerId
-                let awaitingViewer = (parent.MaintainerId == viewerId && link.ParentApproval == EndpointApproval.Pending)
-                    || (child.MaintainerId == viewerId && link.ChildApproval == EndpointApproval.Pending)
-                let parentHidden = !seesAll && parent.Visibility == ProfileVisibility.Private && parent.MaintainerId != viewerId
-                let childHidden = !seesAll && child.Visibility == ProfileVisibility.Private && child.MaintainerId != viewerId
+                let ownsParent = parent.MaintainerId == viewerId && parent.DeletedAt == null
+                let ownsChild = child.MaintainerId == viewerId && child.DeletedAt == null
+                where ownsParent || ownsChild
+                let awaitingViewer = (ownsParent && link.ParentApproval == EndpointApproval.Pending)
+                    || (ownsChild && link.ChildApproval == EndpointApproval.Pending)
+                let parentHidden = parent.DeletedAt != null
+                    || (!seesAll && parent.Visibility == ProfileVisibility.Private && parent.MaintainerId != viewerId)
+                let childHidden = child.DeletedAt != null
+                    || (!seesAll && child.Visibility == ProfileVisibility.Private && child.MaintainerId != viewerId)
                 orderby awaitingViewer descending, parentHidden, parentHidden ? "" : parent.Name.FirstName,
                     parentHidden ? "" : parent.Name.MiddleName, parentHidden ? "" : parent.Name.LastName,
                     childHidden, childHidden ? "" : child.Name.FirstName, childHidden ? "" : child.Name.MiddleName,
@@ -88,10 +94,10 @@ internal sealed class EfRelationshipQueries(FamilyGraphDbContext context) : IRel
                     link.Id,
                     link.Type,
                     new LinkEndpointData(
-                        new PersonRecord(parent.Id, parent.Name, parent.Visibility, parent.MaintainerId == viewerId),
+                        new PersonRecord(parent.Id, parent.Name, parent.Visibility, parent.DeletedAt != null, parent.MaintainerId == viewerId),
                         link.ParentApproval),
                     new LinkEndpointData(
-                        new PersonRecord(child.Id, child.Name, child.Visibility, child.MaintainerId == viewerId),
+                        new PersonRecord(child.Id, child.Name, child.Visibility, child.DeletedAt != null, child.MaintainerId == viewerId),
                         link.ChildApproval),
                     false))
             .Take(limit + 1)

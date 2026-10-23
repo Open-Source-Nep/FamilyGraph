@@ -30,6 +30,11 @@ public sealed class Person : AuditedEntity
     /// <summary>New profiles start Public (PRD 05).</summary>
     public ProfileVisibility Visibility { get; private set; } = ProfileVisibility.Public;
 
+    /// <summary>When the profile was deleted and its name erased, or <see langword="null"/>.</summary>
+    public DateTimeOffset? DeletedAt { get; private set; }
+
+    public bool IsDeleted => DeletedAt is not null;
+
     /// <summary>Creates a profile. The creating account becomes its maintainer.</summary>
     public static Person Create(PersonName name, AccountId creatorId)
     {
@@ -47,6 +52,7 @@ public sealed class Person : AuditedEntity
     {
         ArgumentNullException.ThrowIfNull(newName);
 
+        EnsureNotDeleted();
         if (!IsMaintainedBy(actorId))
         {
             throw new NotProfileMaintainerException(Id);
@@ -64,6 +70,7 @@ public sealed class Person : AuditedEntity
     {
         ArgumentNullException.ThrowIfNull(visibility);
 
+        EnsureNotDeleted();
         if (!IsMaintainedBy(actorId))
         {
             throw new NotProfileMaintainerException(Id);
@@ -77,10 +84,40 @@ public sealed class Person : AuditedEntity
         Visibility = visibility;
         Record(new PersonVisibilityChanged(Id, actorId, visibility));
     }
+
+    /// <summary>
+    /// Deletes the profile: its name is erased for good and it remains as a <c>Deleted</c>
+    /// placeholder (PRD 05). Its maintainer may do this, or an administrator for moderation; the
+    /// event records which. Its links and their consent are unchanged, so active links stay
+    /// traversable.
+    /// </summary>
+    public void Delete(AccountId actorId, bool actorIsAdministrator, DateTimeOffset deletedAt)
+    {
+        EnsureNotDeleted();
+        var deleter = IsMaintainedBy(actorId) ? ProfileDeleter.Maintainer
+            : actorIsAdministrator ? ProfileDeleter.Administrator
+            : throw new NotProfileMaintainerException(Id);
+
+        Name = PersonName.Erased;
+        DeletedAt = deletedAt;
+        Record(new PersonDeleted(Id, actorId, deleter));
+    }
+
+    /// <summary>A deleted profile accepts no further change, nor consent on its side of a link.</summary>
+    public void EnsureNotDeleted()
+    {
+        if (IsDeleted)
+        {
+            throw new ProfileDeletedException(Id);
+        }
+    }
 }
 
 public sealed class NotProfileMaintainerException(PersonId personId)
     : NotPermittedException("person.not_maintainer", $"Only the maintainer of profile {personId.Value} can change it.");
+
+public sealed class ProfileDeletedException(PersonId personId)
+    : ConflictException("person.deleted", $"Profile {personId.Value} was deleted.");
 
 public sealed class ProfileVisibilityUnchangedException(PersonId personId, ProfileVisibility visibility)
     : ConflictException("person.visibility_unchanged", $"Profile {personId.Value} is already {visibility}.");

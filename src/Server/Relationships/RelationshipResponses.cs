@@ -11,8 +11,8 @@ public sealed record CreatedLinkResponse(Guid Id, Guid ParentId, Guid ChildId, s
 
 /// <summary>
 /// A relative through an active link. <see cref="MaintainedByYou"/> never names the maintaining
-/// account (D-019). A relative hidden from you has <see cref="Placeholder"/> <c>Private</c> and no
-/// name; the link's type still shows (PRD 05, AC-05.9).
+/// account (D-019). A relative hidden from you has <see cref="Placeholder"/> <c>Private</c> or
+/// <c>Deleted</c> and no name; the link's type still shows (PRD 05, AC-05.9).
 /// </summary>
 public sealed record RelativeResponse(
     Guid LinkId,
@@ -74,7 +74,7 @@ public sealed record DirectRelativesResponse(
 /// <summary>
 /// One side of a link: the person, its approval (<c>Pending</c>, <c>Approved</c> or
 /// <c>Disagreed</c>) and whether you maintain it (D-021). A person hidden from you has
-/// <see cref="Placeholder"/> <c>Private</c> and no name (PRD 05).
+/// <see cref="Placeholder"/> <c>Private</c> or <c>Deleted</c> and no name (PRD 05).
 /// </summary>
 public sealed record LinkEndpointResponse(
     Guid Id,

@@ -171,7 +171,7 @@
       </div>
     </form>
   }
-} @else {
+} @else if (person().placeholder !== 'Deleted') {
   <p>
     <button type="button" class="secondary" (click)="startAdding()">Add parents or children</button>
   </p>

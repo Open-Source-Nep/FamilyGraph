@@ -4,7 +4,8 @@ namespace FamilyGraph.Application.People;
 
 /// <summary>
 /// A profile on the list of profiles the viewer maintains. The maintainer always sees their own
-/// profiles' names, Private or not (PRD 05), so the list needs no privacy projection.
+/// profiles' names, Private or not (PRD 05), so the list needs no privacy projection. Deleted
+/// profiles are not on it: there is nothing left to maintain (D-026).
 /// </summary>
 public sealed record PersonSummary(PersonId Id, PersonName Name, ProfileVisibility Visibility);
 

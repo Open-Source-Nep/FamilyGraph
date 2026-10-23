@@ -5,7 +5,8 @@ namespace Server.People;
 
 /// <summary>
 /// A profile as the signed-in user sees it. It never names the maintaining account. For a profile
-/// hidden from you, <see cref="Placeholder"/> is <c>Private</c> and the name parts are null (PRD 05).
+/// hidden from you, <see cref="Placeholder"/> is <c>Private</c>, or <c>Deleted</c> for a deleted
+/// one, and the name parts are null (PRD 05).
 /// <see cref="Visibility"/> is <c>Public</c> or <c>Private</c>.
 /// </summary>
 public sealed record PersonResponse(

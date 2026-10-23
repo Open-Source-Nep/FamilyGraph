@@ -8,8 +8,8 @@ namespace FamilyGraph.Application.Relationships;
 /// Read models of parent–child links (D-002). Relationship views return only active links
 /// (PRD 03); the consent view returns the inactive links of the viewer's own profiles (D-021).
 /// People come back as <see cref="PersonRecord"/>s for <see cref="PrivacyProjection"/>. Lists
-/// sorted by name put people hidden from the <paramref name="viewer"/> last, by ID, so their
-/// place in the list reveals nothing about their name (D-025).
+/// sorted by name put people hidden from the viewer (deleted, or Private and not theirs) last, by
+/// ID, so their place in the list reveals nothing about their name (D-025).
 /// </summary>
 public interface IRelationshipQueries
 {
@@ -21,7 +21,8 @@ public interface IRelationshipQueries
         PersonId personId, Viewer viewer, int limit, CancellationToken cancellationToken);
 
     /// <summary>
-    /// The non-deleted, inactive links with at least one endpoint the viewer maintains, those
+    /// The non-deleted, inactive links with at least one non-deleted endpoint the viewer maintains
+    /// (a deleted profile's consent is frozen, D-026), those
     /// waiting for the viewer's approval first, then by parent and child name. At most
     /// <paramref name="limit"/> links (D-010).
     /// </summary>

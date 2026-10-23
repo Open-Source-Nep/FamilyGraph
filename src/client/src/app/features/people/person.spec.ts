@@ -37,3 +37,17 @@ describe('a private placeholder', () => {
     expect(initials(hidden)).toBe('');
   });
 });
+
+describe('a deleted placeholder', () => {
+  it('is named Deleted', () => {
+    expect(
+      fullName({
+        firstName: null,
+        middleName: null,
+        lastName: null,
+        placeholder: 'Deleted',
+        visibility: 'Public',
+      }),
+    ).toBe('Deleted');
+  });
+});

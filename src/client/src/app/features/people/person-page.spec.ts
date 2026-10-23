@@ -1,6 +1,8 @@
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
+import { AuthService } from '../../core/auth/auth.service';
 import { RelationshipsService } from '../relationships/relationships.service';
 import { PeopleService } from './people.service';
 import { Person } from './person';
@@ -10,9 +12,13 @@ describe('PersonPage', () => {
   let fixture: ComponentFixture<PersonPage>;
   let person: Person;
   let visibilityCalls: [string, string][];
+  let deleted: string[];
+  const isAdministrator = signal(false);
 
   beforeEach(() => {
     visibilityCalls = [];
+    deleted = [];
+    isAdministrator.set(false);
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
@@ -20,12 +26,25 @@ describe('PersonPage', () => {
           provide: PeopleService,
           useValue: {
             get: () => Promise.resolve(person),
+            delete: (id: string) => {
+              deleted.push(id);
+              person = {
+                ...person,
+                firstName: null,
+                middleName: null,
+                lastName: null,
+                placeholder: 'Deleted',
+                maintainedByYou: false,
+              };
+              return Promise.resolve();
+            },
             setVisibility: (id: string, visibility: string) => {
               visibilityCalls.push([id, visibility]);
               return Promise.resolve();
             },
           },
         },
+        { provide: AuthService, useValue: { isAdministrator } },
         {
           provide: RelationshipsService,
           useValue: {
@@ -111,5 +130,29 @@ describe('PersonPage', () => {
     await show(false);
 
     expect(button('Make private')).toBeUndefined();
+  });
+
+  it('lets the maintainer delete the profile after confirming', async () => {
+    await show(true);
+
+    button('Delete profile')!.click();
+    await fixture.whenStable();
+    expect(deleted).toEqual([]);
+    button('Delete')!.click();
+    await fixture.whenStable();
+
+    expect(deleted).toEqual(['p1']);
+    expect(fixture.nativeElement.querySelector('h1').textContent).toBe('Deleted');
+    expect(fixture.nativeElement.textContent).toContain('This profile was deleted.');
+    expect(button('Delete profile')).toBeUndefined();
+  });
+
+  it('offers deletion to administrators but not to other users', async () => {
+    await show(false);
+    expect(button('Delete profile')).toBeUndefined();
+
+    isAdministrator.set(true);
+    await show(false);
+    expect(button('Delete profile')).toBeDefined();
   });
 });

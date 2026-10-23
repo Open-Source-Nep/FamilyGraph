@@ -184,6 +184,43 @@ public class RelationshipServiceTests
     }
 
     [Fact]
+    [Trait("AC", "AC-05.3")]
+    [Trait("AC", "AC-05.9")]
+    [Trait("AC", "AC-05.12")]
+    public async Task Deleted_relative_stays_as_a_placeholder_and_cannot_be_linked_again()
+    {
+        var child = AddPerson("Maya", Alice);
+        var parent = AddPerson("Hari", Alice);
+        var other = AddPerson("Gita", Alice);
+        var service = Service();
+        await service.CreateLinkAsync(parent, child, ParentChildType.Adoptive, Alice, Cancellation);
+        _store.People[parent].Delete(Alice, actorIsAdministrator: false, Now);
+
+        var relatives = await service.ListDirectRelativesAsync(child, As(Alice), Cancellation);
+
+        var relative = Assert.Single(relatives.Parents);
+        Assert.Equal((parent, null, PersonPlaceholder.Deleted, ParentChildType.Adoptive), (relative.Person.Id, relative.Person.Name, relative.Person.Placeholder, relative.Type));
+        await Assert.ThrowsAsync<LinkToDeletedProfileException>(
+            () => service.CreateLinkAsync(parent, other, ParentChildType.Biological, Alice, Cancellation));
+    }
+
+    [Fact]
+    public async Task Pending_link_of_a_deleted_profile_leaves_its_former_maintainers_approvals()
+    {
+        var parent = AddPerson("Hari", Bob);
+        var child = AddPerson("Maya", Alice);
+        var service = Service();
+        await service.CreateLinkAsync(parent, child, ParentChildType.Biological, Alice, Cancellation);
+        _store.People[parent].Delete(Bob, actorIsAdministrator: false, Now);
+
+        var asFormerMaintainer = await service.ListInactiveLinksAsync(As(Bob), Cancellation);
+        var asOtherMaintainer = await service.ListInactiveLinksAsync(As(Alice), Cancellation);
+
+        Assert.Empty(asFormerMaintainer.Links);
+        Assert.Equal(PersonPlaceholder.Deleted, Assert.Single(asOtherMaintainer.Links).Parent.Person.Placeholder);
+    }
+
+    [Fact]
     [Trait("AC", "AC-05.5")]
     public async Task Making_an_endpoint_private_leaves_the_link_state_unchanged()
     {

@@ -18,6 +18,9 @@ public sealed record PersonName
         LastName = Normalize(lastName);
     }
 
+    /// <summary>What a deleted profile keeps instead of its name (PRD 05).</summary>
+    public static PersonName Erased { get; } = new("[erased]");
+
     public string FirstName { get; }
 
     public string? MiddleName { get; }

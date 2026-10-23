@@ -14,7 +14,9 @@
       />
     } @else {
       <h1>{{ name() }}</h1>
-      @if (person.placeholder) {
+      @if (person.placeholder === 'Deleted') {
+        <p class="hint">This profile was deleted. Its name and details were erased.</p>
+      } @else if (person.placeholder) {
         <p class="hint">This profile is private. Its name and details are hidden.</p>
       } @else {
         <dl>
@@ -62,6 +64,26 @@
           A private profile shows as “Private” to everyone but you and administrators. Its
           relationships stay in the family graph.
         </p>
+      }
+      @if (canDelete()) {
+        @if (confirmingDelete()) {
+          <div class="actions">
+            <span
+              >Delete this profile? Its name is erased for good and it stays as “Deleted”, with its
+              links. This cannot be undone.</span
+            >
+            <button type="button" [disabled]="saving()" (click)="deleteProfile()">Delete</button>
+            <button type="button" class="secondary" (click)="confirmingDelete.set(false)">
+              Keep
+            </button>
+          </div>
+        } @else {
+          <p>
+            <button type="button" class="secondary" (click)="confirmingDelete.set(true)">
+              Delete profile
+            </button>
+          </p>
+        }
       }
       <p><a [routerLink]="['/people', person.id, 'graph']">Show the family graph</a></p>
       <app-person-relatives [person]="person" />

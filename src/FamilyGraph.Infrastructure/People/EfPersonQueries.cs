@@ -12,7 +12,8 @@ internal sealed class EfPersonQueries(FamilyGraphDbContext context) : IPersonQue
         context.Set<Person>()
             .AsNoTracking()
             .Where(person => person.Id == id)
-            .Select(person => new PersonRecord(person.Id, person.Name, person.Visibility, person.MaintainerId == viewerId))
+            .Select(person => new PersonRecord(
+                person.Id, person.Name, person.Visibility, person.DeletedAt != null, person.MaintainerId == viewerId))
             .SingleOrDefaultAsync(cancellationToken);
 
     public async Task<ProfileList> ListMaintainedByAsync(AccountId maintainerId, int limit, CancellationToken cancellationToken)
@@ -22,7 +23,7 @@ internal sealed class EfPersonQueries(FamilyGraphDbContext context) : IPersonQue
         // One extra row tells whether the list was cut short.
         var people = await context.Set<Person>()
             .AsNoTracking()
-            .Where(person => person.MaintainerId == maintainerId)
+            .Where(person => person.MaintainerId == maintainerId && person.DeletedAt == null)
             .OrderBy(person => person.Name.FirstName)
             .ThenBy(person => person.Name.MiddleName)
             .ThenBy(person => person.Name.LastName)

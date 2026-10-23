@@ -9,6 +9,9 @@ public interface IPersonQueries
     /// <summary>The person before privacy is applied, for <see cref="PrivacyProjection"/>.</summary>
     Task<PersonRecord?> FindAsync(PersonId id, AccountId viewerId, CancellationToken cancellationToken);
 
-    /// <summary>The profiles the account maintains, sorted by name, at most <paramref name="limit"/> of them.</summary>
+    /// <summary>
+    /// The non-deleted profiles the account maintains, sorted by name, at most
+    /// <paramref name="limit"/> of them.
+    /// </summary>
     Task<ProfileList> ListMaintainedByAsync(AccountId maintainerId, int limit, CancellationToken cancellationToken);
 }

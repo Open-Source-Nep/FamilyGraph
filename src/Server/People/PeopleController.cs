@@ -8,7 +8,7 @@ namespace Server.People;
 
 /// <summary>
 /// Person profiles (PRD 01, PRD 05, #12, #18): create a profile, view one, rename one you maintain
-/// or make it Public or Private, and list the profiles you maintain. A profile is never an account,
+/// or make it Public or Private, delete one, and list the profiles you maintain. A profile is never an account,
 /// and creating one never links it to the signed-in user's identity.
 /// </summary>
 [ApiController]
@@ -45,6 +45,18 @@ public sealed class PeopleController(PersonService people) : ControllerBase
     public async Task<IActionResult> SetVisibility(Guid id, VisibilityRequest request, CancellationToken cancellationToken)
     {
         await people.SetVisibilityAsync(ToPersonId(id), request.ToVisibility(), User.AccountId(), cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Deletes the profile for good, leaving a <c>Deleted</c> placeholder (PRD 05); 204. Its
+    /// maintainer may, or an administrator (403 <c>person.not_maintainer</c> otherwise); a deleted
+    /// profile is 409 <c>person.deleted</c>.
+    /// </summary>
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
+    {
+        await people.DeleteAsync(ToPersonId(id), User.Viewer(), cancellationToken);
         return NoContent();
     }
 
