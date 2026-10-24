@@ -16,8 +16,9 @@ public class PersonServiceTests
 
     private static Viewer As(AccountId account) => new(account, IsAdministrator: false);
 
-    private PersonService Service(int maintainedListLimit = PeopleLimits.DefaultMaintainedListLimit) =>
-        new(_people, _people, _people, _people, _people, new FixedTimeProvider(Now), new PeopleLimits(maintainedListLimit));
+    private PersonService Service(
+        int maintainedListLimit = PeopleLimits.DefaultMaintainedListLimit, int searchLimit = PeopleLimits.DefaultSearchLimit) =>
+        new(_people, _people, _people, _people, _people, new FixedTimeProvider(Now), new PeopleLimits(maintainedListLimit, searchLimit));
 
     [Fact]
     [Trait("AC", "AC-01.1")]
@@ -235,6 +236,79 @@ public class PersonServiceTests
 
         Assert.Single(list.People);
         Assert.True(list.IsTruncated);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-08.11")]
+    public async Task Search_finds_public_profiles_of_every_maintainer_and_your_own_private_ones()
+    {
+        var service = Service();
+        var bobsPublic = await service.CreateAsync(new PersonName("Maya", lastName: "Rai"), null, Bob, Cancellation);
+        var alicesPrivate = await service.CreateAsync(new PersonName("Maya", lastName: "Gurung"), null, Alice, Cancellation);
+        await service.SetVisibilityAsync(alicesPrivate, ProfileVisibility.Private, Alice, Cancellation);
+        await service.CreateAsync(new PersonName("Gita"), null, Bob, Cancellation);
+
+        var result = await service.SearchAsync("maya", As(Alice), Cancellation);
+
+        Assert.Equal([alicesPrivate, bobsPublic], result.People.Select(person => person.Id));
+        Assert.All(result.People, person => Assert.Null(person.Placeholder));
+        Assert.Equal([true, false], result.People.Select(person => person.MaintainedByViewer));
+        Assert.False(result.IsTruncated);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-05.1")]
+    [Trait("AC", "AC-08.11")]
+    public async Task Search_never_finds_a_private_or_deleted_profile_by_its_hidden_name()
+    {
+        var service = Service();
+        var hidden = await service.CreateAsync(new PersonName("Maya"), null, Bob, Cancellation);
+        await service.SetVisibilityAsync(hidden, ProfileVisibility.Private, Bob, Cancellation);
+        var deleted = await service.CreateAsync(new PersonName("Maya"), null, Alice, Cancellation);
+        await service.DeleteAsync(deleted, As(Alice), Cancellation);
+
+        Assert.Empty((await service.SearchAsync("Maya", As(Alice), Cancellation)).People);
+        Assert.Empty((await service.SearchAsync("erased", As(Alice), Cancellation)).People);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-08.11")]
+    public async Task Every_word_of_the_search_must_appear_in_a_name_part()
+    {
+        var service = Service();
+        var mayaRai = await service.CreateAsync(new PersonName("Maya", "Devi", "Rai"), null, Bob, Cancellation);
+        await service.CreateAsync(new PersonName("Maya", lastName: "Gurung"), null, Bob, Cancellation);
+
+        var result = await service.SearchAsync("  rai   MAY ", As(Alice), Cancellation);
+
+        Assert.Equal(mayaRai, Assert.Single(result.People).Id);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("   ")]
+    public async Task Blank_search_finds_nobody(string? text)
+    {
+        var service = Service();
+        await service.CreateAsync(new PersonName("Maya"), null, Bob, Cancellation);
+
+        var result = await service.SearchAsync(text, As(Alice), Cancellation);
+
+        Assert.Empty(result.People);
+        Assert.False(result.IsTruncated);
+    }
+
+    [Fact]
+    public async Task Search_stops_at_the_configured_limit_and_says_so()
+    {
+        var service = Service(searchLimit: 1);
+        await service.CreateAsync(new PersonName("Maya"), null, Bob, Cancellation);
+        await service.CreateAsync(new PersonName("Mayank"), null, Bob, Cancellation);
+
+        var result = await service.SearchAsync("may", As(Alice), Cancellation);
+
+        Assert.Single(result.People);
+        Assert.True(result.IsTruncated);
     }
 
     [Fact]

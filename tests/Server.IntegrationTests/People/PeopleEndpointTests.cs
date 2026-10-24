@@ -12,6 +12,7 @@ public class PeopleEndpointTests(AccountTestFactory factory) : IClassFixture<Acc
 
     [Theory]
     [InlineData("GET", "/api/people/maintained")]
+    [InlineData("GET", "/api/people/search?q=maya")]
     [InlineData("GET", "/api/people/0199f6a2-0000-7000-8000-000000000001")]
     public async Task People_require_a_session(string method, string url)
     {
@@ -193,6 +194,30 @@ public class PeopleEndpointTests(AccountTestFactory factory) : IClassFixture<Acc
 
         Assert.Equal(["Asha", "Maya"], list!.People.Select(person => person.FirstName));
         Assert.False(list.IsTruncated);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-08.11")]
+    public async Task Search_finds_public_profiles_maintained_by_someone_else()
+    {
+        var id = await CreateAsync("gita@example.org", "Zarina");
+        var (browser, _) = await SignInAsync("maya@example.org");
+
+        var result = await browser.GetFromJsonAsync<PersonSearchResponse>("/api/people/search?q=zari", Cancellation);
+
+        var person = Assert.Single(result!.People);
+        Assert.Equal((id, "Zarina", false), (person.Id, person.FirstName, person.MaintainedByYou));
+        Assert.False(result.IsTruncated);
+    }
+
+    [Fact]
+    public async Task Search_longer_than_a_full_name_is_a_bad_request()
+    {
+        var (browser, _) = await SignInAsync("maya@example.org");
+
+        using var response = await browser.GetAsync($"/api/people/search?q={new string('a', 303)}", Cancellation);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     private async Task<(HttpClient Browser, string Token)> SignInAsync(string email)

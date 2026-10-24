@@ -1,5 +1,6 @@
 using FamilyGraph.Application.People;
 using FamilyGraph.Business.People;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Net.Http.Headers;
@@ -9,7 +10,7 @@ namespace Server.People;
 
 /// <summary>
 /// Person profiles (PRD 01, PRD 05, #12, #18, #74, #80): create a profile, view one, rename one you
-/// maintain, set its gender, make it Public or Private or set its image, delete one, and list the profiles you maintain. A profile is never an account,
+/// maintain, set its gender, make it Public or Private or set its image, delete one, list the profiles you maintain, and search by name (#85). A profile is never an account,
 /// and creating one never links it to the signed-in user's identity.
 /// </summary>
 [ApiController]
@@ -17,6 +18,9 @@ namespace Server.People;
 [Route("api/people")]
 public sealed class PeopleController(PersonService people) : ControllerBase
 {
+    /// <summary>Longer than a full name can be (three parts of at most 100 characters each).</summary>
+    private const int MaxSearchLength = 302;
+
     [HttpPost]
     public async Task<ActionResult<PersonResponse>> Create(CreatePersonRequest request, CancellationToken cancellationToken)
     {
@@ -112,6 +116,17 @@ public sealed class PeopleController(PersonService people) : ControllerBase
     [HttpGet("maintained")]
     public async Task<ProfileListResponse> ListMaintained(CancellationToken cancellationToken) =>
         ProfileListResponse.From(await people.ListMaintainedAsync(User.AccountId(), cancellationToken));
+
+    /// <summary>
+    /// Finds people by name to link to (D-032): Public profiles and your own whose names contain
+    /// every word of <paramref name="q"/>, the top <c>People:SearchLimit</c> (20) by name, and
+    /// <c>isTruncated</c> when there are more ("refine your search", D-010). A Private profile is never
+    /// found by its hidden name. A query longer than a full name can be is 400.
+    /// </summary>
+    [HttpGet("search")]
+    public async Task<PersonSearchResponse> Search(
+        [FromQuery, StringLength(MaxSearchLength)] string? q, CancellationToken cancellationToken) =>
+        PersonSearchResponse.From(await people.SearchAsync(q, User.Viewer(), cancellationToken));
 
     /// <summary>
     /// Reads at most one byte more than an image may have, so a larger body is never buffered and

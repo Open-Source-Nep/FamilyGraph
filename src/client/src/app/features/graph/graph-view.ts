@@ -6,7 +6,8 @@ import { PeopleService } from '../people/people.service';
 import { PersonSummary, fullName } from '../people/person';
 import { relationHint } from '../relationships/relationship';
 import { problemMessage } from '../people/problem';
-import { GraphDiagram } from './graph-diagram';
+import { AddRelatives, AddRelativesResult } from './add-relatives';
+import { AddRelativeRequest, GraphDiagram } from './graph-diagram';
 import { GraphService } from './graph.service';
 import { ConnectionCandidate, PersonConnections } from './person-connections';
 import {
@@ -21,12 +22,13 @@ import {
 /**
  * The family graph around a person (PRD 08, #23): a tree diagram of the people nearest to them,
  * expandable from people with relatives not shown (AC-08.4, AC-08.5), the same people as a
- * navigable list (AC-09.2), and how the person is related to someone else (AC-08.6). Shown on
- * a person's graph page.
+ * navigable list (AC-09.2), and how the person is related to someone else (AC-08.6). The
+ * diagram's menu adds parents, children or a spouse to someone (D-032), and the people near them
+ * are then loaded again. Shown on a person's graph page.
  */
 @Component({
   selector: 'app-graph-view',
-  imports: [GraphDiagram, PersonConnections, RouterLink],
+  imports: [AddRelatives, GraphDiagram, PersonConnections, RouterLink],
   templateUrl: './graph-view.html',
   styleUrl: './graph-view.css',
 })
@@ -51,6 +53,8 @@ export class GraphView {
   protected readonly loadingAround = signal<string | null>(null);
   protected readonly notice = signal<string | null>(null);
   protected readonly error = signal<string | null>(null);
+  /** The person and relation the add dialog is open for. */
+  protected readonly adding = signal<AddRelativeRequest | null>(null);
   private readonly maintained = signal<PersonSummary[]>([]);
 
   protected readonly centre = computed(() => {
@@ -124,6 +128,34 @@ export class GraphView {
       this.error.set(problemMessage(error));
     } finally {
       this.loadingAround.set(null);
+    }
+  }
+
+  protected startAdding(request: AddRelativeRequest): void {
+    this.notice.set(null);
+    this.error.set(null);
+    this.adding.set(request);
+  }
+
+  /** Shows the new active links by merging the view around the person (pending ones stay hidden). */
+  protected async finishAdding({ changed, message }: AddRelativesResult): Promise<void> {
+    const request = this.adding();
+    this.adding.set(null);
+    if (message) {
+      this.notice.set(message);
+    }
+    if (!changed || !request) {
+      return;
+    }
+    const centreId = this.id();
+    try {
+      const view = await this.graph.localView(request.person.id);
+      const shown = this.shown();
+      if (shown && this.id() === centreId) {
+        this.shown.set(expand(shown, view).graph);
+      }
+    } catch (error) {
+      this.error.set(problemMessage(error));
     }
   }
 

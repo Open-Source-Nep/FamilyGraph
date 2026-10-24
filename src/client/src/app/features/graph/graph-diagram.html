@@ -32,4 +32,19 @@
       }
     </div>
   }
+  @if (menu(); as menu) {
+    <div
+      #menu
+      class="menu"
+      role="menu"
+      [attr.aria-label]="'Add relatives of ' + fullName(menu.row.person)"
+      [style.left.px]="menu.x"
+      [style.top.px]="menu.y"
+      (keydown.escape)="closeMenu()"
+    >
+      <button type="button" role="menuitem" (click)="choose('parent')">Add parent</button>
+      <button type="button" role="menuitem" (click)="choose('child')">Add children</button>
+      <button type="button" role="menuitem" (click)="choose('spouse')">Add spouse</button>
+    </div>
+  }
 </div>

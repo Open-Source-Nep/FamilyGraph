@@ -17,7 +17,7 @@ import dagre, { DagreLayoutOptions } from 'cytoscape-dagre';
 import { fullName, initials } from '../people/person';
 import { PhotoLoader } from '../people/photo-loader.service';
 import { familyLayout } from './family-layout';
-import { LocalViewPerson } from './graph';
+import { GraphPerson, LocalViewPerson } from './graph';
 import { ShownGraph, generationLabel } from './shown-graph';
 
 cytoscape.use(dagre);
@@ -82,6 +82,15 @@ function photoAvatar(photoDataUrl: string): string {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
+/** Who you can add to a person from the diagram's menu (D-032). */
+export type AddRelation = 'parent' | 'child' | 'spouse';
+
+/** A request from the menu to add relatives of a person. */
+export interface AddRelativeRequest {
+  person: GraphPerson;
+  relation: AddRelation;
+}
+
 /** The person under the pointer, placed relative to the canvas. */
 interface Hovered {
   row: LocalViewPerson;
@@ -96,8 +105,11 @@ interface Hovered {
  * that is dotted once the marriage ended (D-031). Adoptive links are dashed and people with relatives
  * not shown have a double border. Each person has their photo or a coloured initial avatar and hovering shows their
  * details. The dots mode (the home page) draws each person as a small coloured dot, with no legend
- * or details; hovering shows only their name. The canvas is not keyboard or screen reader accessible, so the page always
- * offers the same people as links or text next to it (AC-09.2).
+ * or details; hovering shows only their name. With `addMenu`, right-clicking or pressing and
+ * holding a person opens a menu to add their parents, children or spouse (D-032); a deleted
+ * person has none, because nobody can be linked to them. The canvas is not keyboard or screen
+ * reader accessible, so the page always offers the same people as links or text next to it, and
+ * the person page the same ways to add relatives (AC-09.2).
  */
 @Component({
   selector: 'app-graph-diagram',
@@ -112,11 +124,16 @@ export class GraphDiagram {
   readonly selectedId = input<string | null>(null);
   /** Only dots and lines, with the name alone on hover: no legend, centre or "has more" borders. */
   readonly dots = input(false);
+  /** Offers the menu to add relatives; never in dots mode. */
+  readonly addMenu = input(false);
   readonly selected = output<string>();
+  readonly addRelative = output<AddRelativeRequest>();
 
   protected readonly fullName = fullName;
   protected readonly generationLabel = generationLabel;
   protected readonly hovered = signal<Hovered | null>(null);
+  /** The person whose menu is open, placed like the tooltip. */
+  protected readonly menu = signal<Hovered | null>(null);
 
   protected readonly summary = computed(() => {
     const count = this.graph().people.length;
@@ -127,6 +144,7 @@ export class GraphDiagram {
   });
 
   private readonly canvas = viewChild.required<ElementRef<HTMLElement>>('canvas');
+  private readonly menuElement = viewChild<ElementRef<HTMLElement>>('menu');
   private readonly cy = signal<Core | null>(null);
 
   constructor() {
@@ -141,7 +159,21 @@ export class GraphDiagram {
       });
       cy.on('tap', 'node', (event) => {
         this.hovered.set(null);
+        this.menu.set(null);
         this.selected.emit(event.target.id());
+      });
+      // A right click, or a long press on a touch screen.
+      cy.on('cxttap taphold', 'node', (event) => this.openMenu(event.target));
+      cy.on('tap cxttap', (event) => {
+        if (event.target === cy) {
+          this.menu.set(null);
+        }
+      });
+      // The browser's own menu would cover the diagram's.
+      container.addEventListener('contextmenu', (event) => {
+        if (this.addMenu() && !this.dots()) {
+          event.preventDefault();
+        }
       });
       cy.on('mouseover', 'node', (event) => {
         const row = this.graph().people.find((row) => row.person.id === event.target.id());
@@ -155,7 +187,10 @@ export class GraphDiagram {
         this.hovered.set(null);
       });
       // The tooltip would drift from its node while panning or zooming.
-      cy.on('viewport', () => this.hovered.set(null));
+      cy.on('viewport', () => {
+        this.hovered.set(null);
+        this.menu.set(null);
+      });
       this.cy.set(cy);
     });
     inject(DestroyRef).onDestroy(() => this.cy()?.destroy());
@@ -168,6 +203,7 @@ export class GraphDiagram {
       }
       const dots = this.dots();
       this.hovered.set(null);
+      this.menu.set(null);
       cy.batch(() => {
         cy.elements().remove();
         cy.style(this.style(dots));
@@ -205,6 +241,31 @@ export class GraphDiagram {
 
   protected fit(): void {
     this.cy()?.fit(undefined, 24);
+  }
+
+  protected choose(relation: AddRelation): void {
+    const menu = this.menu();
+    this.menu.set(null);
+    if (menu) {
+      this.addRelative.emit({ person: menu.row.person, relation });
+    }
+  }
+
+  protected closeMenu(): void {
+    this.menu.set(null);
+  }
+
+  private openMenu(node: cytoscape.NodeSingular): void {
+    const row = this.graph().people.find((row) => row.person.id === node.id());
+    if (!this.addMenu() || this.dots() || !row || row.person.placeholder === 'Deleted') {
+      return;
+    }
+    const position = node.renderedPosition();
+    const radius = node.renderedOuterHeight() / 2;
+    this.hovered.set(null);
+    this.menu.set({ row, x: position.x, y: position.y + radius });
+    // The menu renders on the next change detection; then its first item takes the focus.
+    setTimeout(() => this.menuElement()?.nativeElement.querySelector('button')?.focus());
   }
 
   /** Swaps initials for photos as they load; the home page's dots never show photos (D-028). */

@@ -31,6 +31,15 @@ describe('PeopleService', () => {
 
   afterEach(() => http.verify());
 
+  it('searches people by name with the text as a query parameter', async () => {
+    const found = service.search('maya rai');
+    const request = http.expectOne((req) => req.url === '/api/people/search');
+    expect(request.request.method).toBe('GET');
+    expect(request.request.params.get('q')).toBe('maya rai');
+    request.flush({ people: [maya], isTruncated: true });
+    expect(await found).toEqual({ people: [maya], isTruncated: true });
+  });
+
   it('creates a profile with a POST', async () => {
     const created = service.create(
       { firstName: 'Maya', middleName: null, lastName: null },

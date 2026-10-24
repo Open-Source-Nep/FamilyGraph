@@ -55,6 +55,12 @@ export interface ProfileList {
   isTruncated: boolean;
 }
 
+/** People found by name (D-032); `isTruncated` says more match, so refine the search. */
+export interface PersonSearchResult {
+  people: Person[];
+  isTruncated: boolean;
+}
+
 /** The person's image; the image ID in the URL changes with each new image. */
 export function imageUrl(person: { id: string; imageId: string | null }): string | null {
   return person.imageId

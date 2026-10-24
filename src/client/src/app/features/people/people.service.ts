@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Service, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-import { Gender, Person, PersonName, ProfileList, Visibility } from './person';
+import { Gender, Person, PersonName, PersonSearchResult, ProfileList, Visibility } from './person';
 
 /** Person profile requests. The server checks who may change a profile. */
 @Service()
@@ -57,5 +57,15 @@ export class PeopleService {
 
   listMaintained(): Promise<ProfileList> {
     return firstValueFrom(this.http.get<ProfileList>('/api/people/maintained'));
+  }
+
+  /**
+   * Public profiles and your own whose names contain every word of `text`, the top matches only.
+   * A Private profile is never found by its hidden name (D-032).
+   */
+  search(text: string): Promise<PersonSearchResult> {
+    return firstValueFrom(
+      this.http.get<PersonSearchResult>('/api/people/search', { params: { q: text } }),
+    );
   }
 }

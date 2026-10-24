@@ -23,6 +23,15 @@ Enable people to explore a large interconnected family graph without treating de
 - Adoptive links are drawn differently from biological links (e.g. dashed) with a legend. The exact styling is a UI decision.
 - Active marriages are a step in any direction, like parents and children: local views, the overview and paths walk them. Spouses are in the same generation, drawn side by side with a distinct line, and a former marriage is labelled as former.
 
+## Adding relatives from the graph (agreed 2026-10-24)
+
+- On the graph page's diagram, right-clicking a person (or pressing and holding on a touch screen) opens a menu: **Add parent**, **Add children** and **Add spouse**. The home page dots and the text view have no such menu; keyboard and screen reader users add relatives from the person page (PRD 09).
+- A deleted person has no menu, because nothing can be linked to them (PRD 05). Every other person has it, including people maintained by someone else.
+- The choice opens a searchable list. For a person you maintain, it starts with your connections: your own profiles and the people you see by name who are linked to them through active links. Typing a name also searches every Public profile, including those maintained by someone else, so separate families can be joined. A Private or deleted profile is never found by its hidden name, and a match is never treated as the same person (PRD 01, PRD 06).
+- For a person someone else maintains, the list holds only your own profiles, because the creator must maintain one of the two people (PRD 03).
+- As on the person page, you can tick several parents or children and choose Biological or Adoptive (Biological by default); a spouse is one person. **Add a new person** creates a profile you maintain (a first name is required, gender optional) and ticks it.
+- Each link or marriage is created on its own under the usual rules: a side maintained by someone else starts pending and stays out of the graph until they approve (PRD 03), and cycles, duplicates and marriages between a parent and child are rejected (PRD 02).
+
 ## Relationship explanations
 
 - The first release shows **no derived relationship labels** (such as "sibling" or "cousin"). An explanation shows the path between two people step by step, e.g. "Sita → parent: Maya → parent: Gita → child: Rina → child: You".
@@ -56,6 +65,10 @@ Enable people to explore a large interconnected family graph without treating de
 - `AC-08.7` An explanation marks each adoptive step as "adoptive parent" or "adopted child".
 - `AC-08.8` Where a person's gender is known and visible, they are named mother, father, daughter or son instead of parent or child; otherwise parent or child.
 - `AC-08.9` Views and paths walk active marriages as one step within a generation; a spouse is named husband, wife or spouse, and "former" when the marriage ended.
+- `AC-08.10` Right-clicking a person who is not deleted in the graph page's diagram offers Add parent, Add children and Add spouse, which create links and marriages under the usual consent rules.
+- `AC-08.11` For a person you maintain, the list starts with your profiles and the people linked to them, and typing searches every Public profile; a Private or deleted profile is never found by its hidden name.
+- `AC-08.12` For a person someone else maintains, the list offers only your own profiles.
+- `AC-08.13` "Add a new person" creates a profile you maintain and selects it for linking.
 
 ## Open details
 

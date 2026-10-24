@@ -47,5 +47,12 @@ public sealed record ProfileListResponse(IReadOnlyList<PersonSummaryResponse> Pe
         list.IsTruncated);
 }
 
+/// <summary>People found by name (D-032); <see cref="IsTruncated"/> says there are more, so refine the search (D-010).</summary>
+public sealed record PersonSearchResponse(IReadOnlyList<PersonResponse> People, bool IsTruncated)
+{
+    internal static PersonSearchResponse From(PersonSearchResult result) =>
+        new([.. result.People.Select(PersonResponse.From)], result.IsTruncated);
+}
+
 /// <summary>The ID of the image just stored (D-028).</summary>
 public sealed record ImageResponse(Guid ImageId);
