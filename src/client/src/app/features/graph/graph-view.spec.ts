@@ -2,9 +2,13 @@ import { Component, input, output } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
+import { signal } from '@angular/core';
+
+import { AuthService } from '../../core/auth/auth.service';
 import { PeopleService } from '../people/people.service';
 import { GraphPerson, LocalView } from './graph';
 import { AddRelatives, AddRelativesResult } from './add-relatives';
+import { DeletePerson } from './delete-person';
 import { AddRelation, AddRelativeRequest, GraphDiagram } from './graph-diagram';
 import { GraphView } from './graph-view';
 import { GraphService } from './graph.service';
@@ -16,8 +20,16 @@ class StubDiagram {
   readonly graph = input.required<ShownGraph>();
   readonly selectedId = input<string | null>(null);
   readonly addMenu = input(false);
+  readonly administrator = input(false);
   readonly selected = output<string>();
   readonly addRelative = output<AddRelativeRequest>();
+  readonly deletePerson = output<GraphPerson>();
+}
+
+@Component({ selector: 'app-delete-person', template: '' })
+class StubDeletePerson {
+  readonly person = input.required<GraphPerson>();
+  readonly closed = output<boolean>();
 }
 
 @Component({ selector: 'app-add-relatives', template: '' })
@@ -42,8 +54,10 @@ const person = (id: string, firstName: string): GraphPerson => ({
 describe('GraphView', () => {
   let fixture: ComponentFixture<GraphView>;
   let views: Record<string, LocalView>;
+  let administrator: ReturnType<typeof signal<boolean>>;
 
   beforeEach(() => {
+    administrator = signal(false);
     views = {
       maya: {
         centreId: 'maya',
@@ -83,13 +97,23 @@ describe('GraphView', () => {
         },
         {
           provide: PeopleService,
-          useValue: { listMaintained: () => Promise.resolve({ people: [], isTruncated: false }) },
+          useValue: {
+            listMaintained: () => Promise.resolve({ people: [], isTruncated: false }),
+            get: (id: string) =>
+              Promise.resolve({
+                ...person(id, ''),
+                firstName: null,
+                lastName: null,
+                placeholder: 'Deleted',
+              }),
+          },
         },
+        { provide: AuthService, useValue: { isAdministrator: administrator } },
       ],
     });
     TestBed.overrideComponent(GraphView, {
-      remove: { imports: [GraphDiagram, AddRelatives] },
-      add: { imports: [StubDiagram, StubAddRelatives] },
+      remove: { imports: [GraphDiagram, AddRelatives, DeletePerson] },
+      add: { imports: [StubDiagram, StubAddRelatives, StubDeletePerson] },
     });
   });
 
@@ -172,5 +196,55 @@ describe('GraphView', () => {
     expect(text()).toContain('Linked 1 person to Rina Rai.');
     expect(text()).toContain('Kiran Rai');
     expect(text()).toContain('2 generations below');
+  });
+
+  it('tells the diagram whether you are an administrator (AC-08.14)', async () => {
+    administrator.set(true);
+    await show();
+
+    expect(diagram().administrator()).toBe(true);
+  });
+
+  it('deletes from the diagram menu after confirming and shows the placeholder (AC-08.14)', async () => {
+    await show();
+    const gita = views['maya'].people[1].person;
+
+    diagram().deletePerson.emit(gita);
+    await fixture.whenStable();
+    const dialog = () =>
+      fixture.debugElement.query((el) => el.name === 'app-delete-person')?.componentInstance as
+        StubDeletePerson | undefined;
+    expect(dialog()?.person()).toBe(gita);
+
+    dialog()!.closed.emit(true);
+    await fixture.whenStable();
+
+    expect(dialog()).toBeUndefined();
+    expect(text()).toContain('Deleted Gita Rai. They stay in the graph as “Deleted”');
+    const list = [...fixture.nativeElement.querySelectorAll('.graph-people')]
+      .map((ul) => ul.textContent)
+      .join(' ');
+    expect(list).not.toContain('Gita');
+    expect(list).toContain('Parents: Deleted');
+    const row = diagram()
+      .graph()
+      .people.find((row) => row.person.id === 'gita');
+    expect(row?.person.placeholder).toBe('Deleted');
+    expect(diagram().graph().links).toHaveLength(2);
+  });
+
+  it('keeps the view as it was when the deletion is cancelled', async () => {
+    await show();
+
+    diagram().deletePerson.emit(views['maya'].people[1].person);
+    await fixture.whenStable();
+    (
+      fixture.debugElement.query((el) => el.name === 'app-delete-person')
+        .componentInstance as StubDeletePerson
+    ).closed.emit(false);
+    await fixture.whenStable();
+
+    expect(text()).toContain('Gita Rai');
+    expect(text()).not.toContain('Deleted');
   });
 });
