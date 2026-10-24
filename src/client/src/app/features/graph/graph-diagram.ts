@@ -106,10 +106,11 @@ interface Hovered {
  * not shown have a double border. Each person has their photo or a coloured initial avatar and hovering shows their
  * details. The dots mode (the home page) draws each person as a small coloured dot, with no legend
  * or details; hovering shows only their name. With `addMenu`, right-clicking or pressing and
- * holding a person opens a menu to add their parents, children or spouse (D-032); a deleted
- * person has none, because nobody can be linked to them. The canvas is not keyboard or screen
+ * holding a person opens a menu to add their parents, children or spouse (D-032), and to delete the
+ * profile when you maintain it or are an administrator (D-034); a deleted person has no menu,
+ * because nobody can be linked to them and they cannot be deleted again. The canvas is not keyboard or screen
  * reader accessible, so the page always offers the same people as links or text next to it, and
- * the person page the same ways to add relatives (AC-09.2).
+ * the person page the same ways to add relatives and delete the profile (AC-09.2).
  */
 @Component({
   selector: 'app-graph-diagram',
@@ -126,8 +127,11 @@ export class GraphDiagram {
   readonly dots = input(false);
   /** Offers the menu to add relatives; never in dots mode. */
   readonly addMenu = input(false);
+  /** The viewer is an administrator, so the menu offers to delete anyone (PRD 05). */
+  readonly administrator = input(false);
   readonly selected = output<string>();
   readonly addRelative = output<AddRelativeRequest>();
+  readonly deletePerson = output<GraphPerson>();
 
   protected readonly fullName = fullName;
   protected readonly generationLabel = generationLabel;
@@ -248,6 +252,19 @@ export class GraphDiagram {
     this.menu.set(null);
     if (menu) {
       this.addRelative.emit({ person: menu.row.person, relation });
+    }
+  }
+
+  /** The server decides; this only leaves the item out for people you could not delete. */
+  protected canDelete(person: GraphPerson): boolean {
+    return person.maintainedByYou || this.administrator();
+  }
+
+  protected chooseDelete(): void {
+    const menu = this.menu();
+    this.menu.set(null);
+    if (menu) {
+      this.deletePerson.emit(menu.row.person);
     }
   }
 
