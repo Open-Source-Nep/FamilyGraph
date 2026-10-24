@@ -2,10 +2,12 @@ import { Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { AuthService } from '../../core/auth/auth.service';
+import { DataImport } from './data-import';
 
 @Component({
   selector: 'app-account-page',
   templateUrl: './account-page.html',
+  imports: [DataImport],
 })
 export class AccountPage {
   private readonly auth = inject(AuthService);

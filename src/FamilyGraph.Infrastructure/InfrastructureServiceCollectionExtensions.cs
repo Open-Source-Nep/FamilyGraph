@@ -2,12 +2,14 @@ using FamilyGraph.Application.Accounts;
 using FamilyGraph.Application.Export;
 using FamilyGraph.Application.Graph;
 using FamilyGraph.Application.Handovers;
+using FamilyGraph.Application.Import;
 using FamilyGraph.Application.People;
 using FamilyGraph.Application.Persistence;
 using FamilyGraph.Application.Relationships;
 using FamilyGraph.Infrastructure.Export;
 using FamilyGraph.Infrastructure.Handovers;
 using FamilyGraph.Infrastructure.Identity;
+using FamilyGraph.Infrastructure.Import;
 using FamilyGraph.Infrastructure.People;
 using FamilyGraph.Infrastructure.Persistence;
 using FamilyGraph.Infrastructure.Relationships;
@@ -59,6 +61,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IGraphQueries, EfGraphQueries>();
         services.AddScoped<IHandoverStore, EfHandoverStore>();
         services.AddScoped<IExportQueries, EfExportQueries>();
+        services.AddScoped<IImportStore, EfImportStore>();
         return services;
     }
 

@@ -55,6 +55,26 @@ public sealed class Person : AuditedEntity
         return person;
     }
 
+    /// <summary>
+    /// Restores a profile from an export file with its ID (D-033). A deleted profile keeps only the
+    /// erased name and no gender. It records no event: the import's one <c>DataImported</c> covers it.
+    /// </summary>
+    public static Person Import(
+        PersonId id,
+        PersonName name,
+        ProfileVisibility visibility,
+        DateTimeOffset? deletedAt,
+        AccountId maintainerId,
+        Gender? gender)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        ArgumentNullException.ThrowIfNull(visibility);
+
+        return deletedAt is null
+            ? new Person(id, name, maintainerId) { Visibility = visibility, Gender = gender }
+            : new Person(id, PersonName.Erased, maintainerId) { Visibility = visibility, DeletedAt = deletedAt };
+    }
+
     public bool IsMaintainedBy(AccountId accountId) => MaintainerId == accountId;
 
     /// <summary>Renames the person. Only the current maintainer may do this.</summary>

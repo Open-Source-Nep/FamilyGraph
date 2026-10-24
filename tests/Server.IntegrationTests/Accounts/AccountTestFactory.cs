@@ -6,6 +6,7 @@ using FamilyGraph.Application.Accounts;
 using FamilyGraph.Application.Export;
 using FamilyGraph.Application.Graph;
 using FamilyGraph.Application.Handovers;
+using FamilyGraph.Application.Import;
 using FamilyGraph.Application.People;
 using FamilyGraph.Application.Persistence;
 using FamilyGraph.Application.Relationships;
@@ -17,12 +18,13 @@ using Server.Accounts;
 using Server.IntegrationTests.Export;
 using Server.IntegrationTests.Graph;
 using Server.IntegrationTests.Handovers;
+using Server.IntegrationTests.Import;
 using Server.IntegrationTests.People;
 
 namespace Server.IntegrationTests.Accounts;
 
 /// <summary>
-/// Runs the Server with in-memory account, people, link and handover stores, graph and export queries and a fake Google ID token
+/// Runs the Server with in-memory account, people, link and handover stores, graph and export queries, the import store and a fake Google ID token
 /// validator, so the endpoints are tested without Google or a database. A fake ID token is
 /// "subject|email|verified|nonce" (see <see cref="IdToken"/>).
 /// </summary>
@@ -34,6 +36,7 @@ public sealed class AccountTestFactory : WebApplicationFactory<Program>
     {
         Graph = new InMemoryGraph(People);
         Export = new InMemoryExport(Store, People);
+        Import = new InMemoryImport(Store, People);
     }
 
     public InMemoryAccountStore Store { get; } = new();
@@ -45,6 +48,8 @@ public sealed class AccountTestFactory : WebApplicationFactory<Program>
     public InMemoryHandovers Handovers { get; } = new();
 
     public InMemoryExport Export { get; }
+
+    public InMemoryImport Import { get; }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -65,6 +70,7 @@ public sealed class AccountTestFactory : WebApplicationFactory<Program>
             services.AddSingleton<IGraphQueries>(Graph);
             services.AddSingleton<IHandoverStore>(Handovers);
             services.AddSingleton<IExportQueries>(Export);
+            services.AddSingleton<IImportStore>(Import);
             services.AddSingleton<IGoogleIdTokenValidator, FakeIdTokenValidator>();
         });
     }

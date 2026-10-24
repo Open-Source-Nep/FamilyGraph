@@ -33,6 +33,51 @@ public static class LinkCycleCheck
             throw new LinkCycleUnverifiableException();
         }
     }
+
+    /// <summary>
+    /// Whether a whole set of links makes someone their own ancestor, for an import that has every
+    /// link at once (D-033). It removes people without a remaining parent until none is left; any
+    /// link that remains is on or below a cycle.
+    /// </summary>
+    public static bool HasCycle(IEnumerable<(PersonId ParentId, PersonId ChildId)> links)
+    {
+        ArgumentNullException.ThrowIfNull(links);
+
+        var childrenOf = new Dictionary<PersonId, List<PersonId>>();
+        var parentCount = new Dictionary<PersonId, int>();
+        var linkCount = 0;
+        foreach (var (parentId, childId) in links)
+        {
+            if (parentId == childId)
+            {
+                return true;
+            }
+
+            if (!childrenOf.TryGetValue(parentId, out var children))
+            {
+                childrenOf[parentId] = children = [];
+            }
+
+            children.Add(childId);
+            parentCount[childId] = parentCount.GetValueOrDefault(childId) + 1;
+            linkCount++;
+        }
+
+        var roots = new Queue<PersonId>(childrenOf.Keys.Where(person => !parentCount.ContainsKey(person)));
+        while (roots.TryDequeue(out var person))
+        {
+            foreach (var child in childrenOf.GetValueOrDefault(person) ?? [])
+            {
+                linkCount--;
+                if (--parentCount[child] == 0)
+                {
+                    roots.Enqueue(child);
+                }
+            }
+        }
+
+        return linkCount > 0;
+    }
 }
 
 public sealed class SelfLinkException()
