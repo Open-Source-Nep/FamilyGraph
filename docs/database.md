@@ -13,7 +13,7 @@ The Server builds its connection from the `Database` section. Each key is an Npg
 
 The Server starts without `Database:Host`, but any request that uses the database fails until it is set.
 
-Self-hosted instances run migrations as a separate step before the app starts; the app never migrates at startup (D-011). The Docker image, compose file and migration bundle come with #33.
+Self-hosted instances run migrations as a separate step before the app starts; the app never migrates at startup (D-011). The Docker image is described in `docs/deployment.md`; the compose file and migration bundle come with #33.
 
 ## Local development
 

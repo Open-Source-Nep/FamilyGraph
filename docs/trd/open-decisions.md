@@ -231,6 +231,7 @@ For each major decision, record:
   - **Artifact:** one Docker image containing Server and the built Client, plus `deploy/docker-compose.yml` that runs the app, PostgreSQL and the migration step. Configuration (Google client, admin emails, connection string, limits) comes from environment variables.
   - **Migrations:** an EF Core migration bundle runs as a separate one-off step before the app starts; the app does not migrate at startup. A failed migration stops the deploy.
 - **Consequences:** #33 adds the Dockerfile, `deploy/` and self-hosting docs. HTTPS is terminated by the operator's reverse proxy or host; the docs explain this. #34 builds and publishes the image.
+- **Implementation (2026-10-24, part of #33):** `src/Server/Dockerfile` builds with `src/` as the context in three stages: Node 24 runs the production Angular build, the .NET 10 SDK publishes Server with that output copied into `wwwroot`, and the `aspnet:10.0` runtime runs it as the non-root `app` user on port 8080. Server serves `wwwroot` with `index.html` as the fallback for every non-file path outside `/api/`. Setup: `docs/deployment.md`. `deploy/`, the compose file and the migration bundle are still to come.
 
 ### D-012: CI/CD, configuration and releases
 
@@ -243,6 +244,7 @@ For each major decision, record:
   - **Configuration:** standard ASP.NET Core configuration. `appsettings.json` holds safe defaults only. Instance-specific values (Google client ID and secret, admin emails, connection string, query limits) come from environment variables, listed in a documented `deploy/.env.example`. Secrets are never committed. Local development uses `dotnet user-secrets`.
   - **Releases:** semantic versions from Git tags (`vX.Y.Z`). A pushed tag builds the Docker image and publishes it to GitHub Container Registry (`ghcr.io/open-source-nep/familygraph`). Self-hosters pin a version in the compose file.
 - **Consequences:** #34 adds the CI workflow first and the release workflow after #33's Dockerfile. Required status checks on `main` are a repository setting for the maintainers.
+- **Amendment (agreed 2026-10-24, Ash):** publishing is manual for now. `.github/workflows/publish.yml` runs only from the Actions tab (`workflow_dispatch`) and pushes `ghcr.io/open-source-nep/familygraph` tagged `latest`, `sha-<commit>` and, when given, a version such as `1.2.0`. Publishing on pushed `vX.Y.Z` tags can be added later.
 
 ### D-013: Consent state transitions
 

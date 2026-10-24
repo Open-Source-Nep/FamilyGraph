@@ -44,7 +44,7 @@ public class MarriageEndpointTests(AccountTestFactory factory) : IClassFixture<A
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         Assert.True(created!.IsActive);
-        Assert.Equal([ram, sita], new[] { created.FirstSpouseId, created.SecondSpouseId }.Order());
+        Assert.Equal(new[] { ram, sita }.Order(), [created.FirstSpouseId, created.SecondSpouseId]);
         var ofRam = Assert.Single((await SpousesAsync(browser, ram)).Spouses);
         Assert.Equal(("Sita", "Female", false), (ofRam.FirstName, ofRam.Gender, ofRam.IsFormer));
         Assert.Equal("Ram", Assert.Single((await SpousesAsync(browser, sita)).Spouses).FirstName);
