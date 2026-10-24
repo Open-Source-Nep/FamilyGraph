@@ -39,7 +39,8 @@ Enable people to explore a large interconnected family graph without treating de
 - Administrators define label rules for the instance. A rule maps an exact step sequence (each step "up" to a parent or "down" to a child) to a label, e.g. up, up, down, down → "first cousin".
 - Labelling the relationship between two people uses the shortest path. No matching rule means no label, only the path.
 - Labels are display text only and never become stored facts. Adoption on the path is still flagged. Rule changes are audited.
-- Rules cannot depend on gender, which is optional and often hidden (PRD 01, PRD 05), or on birth order, which is stored per parent for display only (PRD 02). Distinguishing full and half siblings needs a built-in rule, because both share the step sequence up, down.
+- A rule may also depend on the gender of the person being labelled (PRD 01), e.g. up, down with Female → "sister". When that gender is Other, not set or hidden behind a placeholder (PRD 05), the rule without a gender applies, e.g. up, down → "sibling". Gender rules never reveal a hidden gender.
+- Rules cannot depend on birth order, which is stored per parent for display only (PRD 02). Distinguishing full and half siblings needs a built-in rule, because both share the step sequence up, down.
 - Open: per-language labels, and whether to ship a default rule set.
 
 ## Acceptance criteria
