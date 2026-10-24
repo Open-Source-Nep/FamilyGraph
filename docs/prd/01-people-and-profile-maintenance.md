@@ -21,6 +21,12 @@ Define person profiles, account separation, and profile-maintainer authority.
 - Separate profiles that represent the same real person are handled through the reviewed merge workflow. Do not silently combine them based on name similarity.
 - Claiming a profile does not automatically deactivate its existing relationships.
 
+## Gender
+
+- A profile may have a gender: Male, Female or Other. It is optional and starts unset; a new person still needs only a first name.
+- It can be given when the profile is created. Only the profile's maintainer may set, change or clear it. Changes are audited without the gender.
+- The gender is shown wherever the name is, and hidden like the name (PRD 05). Relationship wording uses it (PRD 08).
+
 ## Profile image
 
 - A profile may have one image (a photo). It is optional.
@@ -69,6 +75,8 @@ Define person profiles, account separation, and profile-maintainer authority.
 - `AC-01.18` A profile's maintainer can add, replace and remove its image; nobody else can.
 - `AC-01.19` Only a JPEG, PNG or WebP image of at most 1 MiB is accepted.
 - `AC-01.20` The Client shrinks and re-encodes an image before upload, removing its metadata.
+- `AC-01.21` A person can be created with or without a gender, which is Male, Female or Other.
+- `AC-01.22` Only a profile's maintainer can set, change or clear its gender, and the audit history records the change without the gender.
 
 ## Open details
 

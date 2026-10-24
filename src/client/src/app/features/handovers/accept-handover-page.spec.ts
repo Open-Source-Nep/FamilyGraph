@@ -17,6 +17,7 @@ describe('AcceptHandoverPage', () => {
     placeholder: null,
     visibility: 'Public',
     imageId: null,
+    gender: null,
     maintainedByYou: false,
   };
 

@@ -213,21 +213,38 @@ public class PrivacyEndpointTests(AccountTestFactory factory) : IClassFixture<Ac
             overview.People.Select(person => (person.Id, person.FirstName, person.Placeholder)));
     }
 
+    [Fact]
+    [Trait("AC", "AC-05.14")]
+    public async Task A_private_profile_shows_its_gender_only_to_its_maintainer_and_administrators()
+    {
+        var family = await PrivateParentAsync(approved: false);
+        var (admin, _) = await SignInAsync(AccountTestFactory.AdministratorEmail);
+
+        var (asOther, asMaintainer, asAdministrator) = (
+            await GetPersonAsync(family.Viewer, family.Hidden),
+            await GetPersonAsync(family.Owner, family.Hidden),
+            await GetPersonAsync(admin, family.Hidden));
+
+        Assert.Equal(((string?)null, "Male", "Male"), (asOther.Gender, asMaintainer.Gender, asAdministrator.Gender));
+    }
+
+    /// <summary>The hidden person is the only one with a gender, so no "Male" may appear either (D-030).</summary>
     private static void AssertHidden(string body)
     {
+        Assert.DoesNotContain("\"Male\"", body, StringComparison.Ordinal);
         Assert.DoesNotContain(HiddenFirstName, body, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(HiddenLastName, body, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
-    /// Another account's Private profile "Zebediah Quillfeather", with a Public parent Gita, is the
+    /// Another account's Private profile "Zebediah Quillfeather" (Male), with a Public parent Gita, is the
     /// adoptive parent of the viewer's Maya. The link waits for the owner's approval unless
     /// <paramref name="approved"/>.
     /// </summary>
     private async Task<Family> PrivateParentAsync(bool approved)
     {
         var (owner, ownerToken) = await SignInAsync(UniqueEmail());
-        var hidden = await CreatePersonAsync(owner, ownerToken, HiddenFirstName, HiddenLastName);
+        var hidden = await CreatePersonAsync(owner, ownerToken, HiddenFirstName, HiddenLastName, "Male");
         var grandparent = await CreatePersonAsync(owner, ownerToken, "Gita");
         (await CreateLinkAsync(owner, ownerToken, grandparent, hidden, "Biological")).Dispose();
         (await SetVisibilityAsync(owner, ownerToken, hidden, "Private")).Dispose();
@@ -265,9 +282,10 @@ public class PrivacyEndpointTests(AccountTestFactory factory) : IClassFixture<Ac
     private static async Task<PersonResponse> GetPersonAsync(HttpClient browser, Guid id) =>
         (await browser.GetFromJsonAsync<PersonResponse>($"/api/people/{id}", Cancellation))!;
 
-    private static async Task<Guid> CreatePersonAsync(HttpClient browser, string token, string firstName, string? lastName = null)
+    private static async Task<Guid> CreatePersonAsync(
+        HttpClient browser, string token, string firstName, string? lastName = null, string? gender = null)
     {
-        using var response = await SendAsync(browser, token, HttpMethod.Post, "/api/people", new { firstName, lastName });
+        using var response = await SendAsync(browser, token, HttpMethod.Post, "/api/people", new { firstName, lastName, gender });
         return (await response.Content.ReadFromJsonAsync<PersonResponse>(Cancellation))!.Id;
     }
 

@@ -12,7 +12,7 @@ public sealed record CreatedLinkResponse(Guid Id, Guid ParentId, Guid ChildId, s
 /// <summary>
 /// A relative through an active link. <see cref="MaintainedByYou"/> never names the maintaining
 /// account (D-019). A relative hidden from you has <see cref="Placeholder"/> <c>Private</c> or
-/// <c>Deleted</c> and no name; the link's type still shows (PRD 05, AC-05.9).
+/// <c>Deleted</c> and no name or gender; the link's type still shows (PRD 05, AC-05.9, D-030).
 /// </summary>
 public sealed record RelativeResponse(
     Guid LinkId,
@@ -23,7 +23,8 @@ public sealed record RelativeResponse(
     string? Placeholder,
     string Visibility,
     string Type,
-    bool MaintainedByYou);
+    bool MaintainedByYou,
+    string? Gender);
 
 /// <summary><see cref="BirthOrder"/> is null while the child is unordered (D-016).</summary>
 public sealed record ChildResponse(
@@ -36,7 +37,8 @@ public sealed record ChildResponse(
     string Visibility,
     string Type,
     bool MaintainedByYou,
-    int? BirthOrder);
+    int? BirthOrder,
+    string? Gender);
 
 /// <summary>Parents and children through active links. Each list says whether it stopped at its limit (D-010).</summary>
 public sealed record DirectRelativesResponse(
@@ -55,7 +57,8 @@ public sealed record DirectRelativesResponse(
             parent.Person.Placeholder?.Name,
             parent.Person.Visibility.Name,
             parent.Type.Name,
-            parent.Person.MaintainedByViewer))],
+            parent.Person.MaintainedByViewer,
+            parent.Person.Gender?.Name))],
         relatives.ParentsTruncated,
         [.. relatives.Children.Select(child => new ChildResponse(
             child.LinkId.Value,
@@ -67,7 +70,8 @@ public sealed record DirectRelativesResponse(
             child.Person.Visibility.Name,
             child.Type.Name,
             child.Person.MaintainedByViewer,
-            child.BirthOrder))],
+            child.BirthOrder,
+            child.Person.Gender?.Name))],
         relatives.ChildrenTruncated);
 }
 
@@ -84,7 +88,8 @@ public sealed record LinkEndpointResponse(
     string? Placeholder,
     string Visibility,
     string Approval,
-    bool MaintainedByYou)
+    bool MaintainedByYou,
+    string? Gender)
 {
     internal static LinkEndpointResponse From(LinkEndpointView endpoint) => new(
         endpoint.Person.Id.Value,
@@ -94,7 +99,8 @@ public sealed record LinkEndpointResponse(
         endpoint.Person.Placeholder?.Name,
         endpoint.Person.Visibility.Name,
         endpoint.Approval.Name,
-        endpoint.Person.MaintainedByViewer);
+        endpoint.Person.MaintainedByViewer,
+        endpoint.Person.Gender?.Name);
 }
 
 /// <summary>A link's per-endpoint consent, shown to the maintainers of its profiles (D-021).</summary>

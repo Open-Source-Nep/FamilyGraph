@@ -8,8 +8,8 @@ using Server.Accounts;
 namespace Server.People;
 
 /// <summary>
-/// Person profiles (PRD 01, PRD 05, #12, #18, #74): create a profile, view one, rename one you
-/// maintain, make it Public or Private or set its image, delete one, and list the profiles you maintain. A profile is never an account,
+/// Person profiles (PRD 01, PRD 05, #12, #18, #74, #80): create a profile, view one, rename one you
+/// maintain, set its gender, make it Public or Private or set its image, delete one, and list the profiles you maintain. A profile is never an account,
 /// and creating one never links it to the signed-in user's identity.
 /// </summary>
 [ApiController]
@@ -18,9 +18,9 @@ namespace Server.People;
 public sealed class PeopleController(PersonService people) : ControllerBase
 {
     [HttpPost]
-    public async Task<ActionResult<PersonResponse>> Create(PersonNameRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<PersonResponse>> Create(CreatePersonRequest request, CancellationToken cancellationToken)
     {
-        var id = await people.CreateAsync(request.ToName(), User.AccountId(), cancellationToken);
+        var id = await people.CreateAsync(request.ToName(), request.ToGender(), User.AccountId(), cancellationToken);
         var person = await people.GetAsync(id, User.Viewer(), cancellationToken);
         return CreatedAtAction(nameof(Get), new { id = id.Value }, PersonResponse.From(person));
     }
@@ -35,6 +35,17 @@ public sealed class PeopleController(PersonService people) : ControllerBase
     public async Task<IActionResult> Rename(Guid id, PersonNameRequest request, CancellationToken cancellationToken)
     {
         await people.RenameAsync(ToPersonId(id), request.ToName(), User.AccountId(), cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Sets, changes or clears (null) the person's gender (D-030). Only the profile's maintainer
+    /// may (403 <c>person.not_maintainer</c>).
+    /// </summary>
+    [HttpPut("{id:guid}/gender")]
+    public async Task<IActionResult> SetGender(Guid id, GenderRequest request, CancellationToken cancellationToken)
+    {
+        await people.SetGenderAsync(ToPersonId(id), request.ToGender(), User.AccountId(), cancellationToken);
         return NoContent();
     }
 

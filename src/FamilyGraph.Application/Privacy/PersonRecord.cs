@@ -13,13 +13,14 @@ public sealed record PersonRecord(
     ProfileVisibility Visibility,
     bool IsDeleted,
     bool MaintainedByViewer,
-    ProfileImageId? ImageId)
+    ProfileImageId? ImageId,
+    Gender? Gender)
 {
     public static PersonRecord From(Person person, AccountId viewerId)
     {
         ArgumentNullException.ThrowIfNull(person);
 
         return new PersonRecord(
-            person.Id, person.Name, person.Visibility, person.IsDeleted, person.IsMaintainedBy(viewerId), person.ImageId);
+            person.Id, person.Name, person.Visibility, person.IsDeleted, person.IsMaintainedBy(viewerId), person.ImageId, person.Gender);
     }
 }

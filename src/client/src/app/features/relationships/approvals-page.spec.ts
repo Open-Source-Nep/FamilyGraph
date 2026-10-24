@@ -25,6 +25,7 @@ function endpoint(
     placeholder: null,
     visibility: 'Public',
     imageId: null,
+    gender: null,
     approval,
     maintainedByYou,
   };

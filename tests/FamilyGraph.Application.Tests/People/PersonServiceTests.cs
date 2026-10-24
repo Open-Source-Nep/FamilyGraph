@@ -24,7 +24,7 @@ public class PersonServiceTests
     [Trait("AC", "AC-01.7")]
     public async Task Create_saves_a_profile_with_only_a_first_name_maintained_by_the_creator()
     {
-        var id = await Service().CreateAsync(new PersonName("Maya"), Alice, Cancellation);
+        var id = await Service().CreateAsync(new PersonName("Maya"), null, Alice, Cancellation);
 
         var person = _people.People[id];
         Assert.Equal(new PersonName("Maya"), person.Name);
@@ -35,7 +35,7 @@ public class PersonServiceTests
     [Fact]
     public async Task Create_saves_the_creation_audit_event_with_the_time()
     {
-        var id = await Service().CreateAsync(new PersonName("Maya"), Alice, Cancellation);
+        var id = await Service().CreateAsync(new PersonName("Maya"), null, Alice, Cancellation);
 
         var (auditEvent, occurredAt) = Assert.Single(_people.AuditEvents);
         Assert.Equal(new PersonCreated(id, Alice), auditEvent);
@@ -47,7 +47,7 @@ public class PersonServiceTests
     public async Task Maintainer_renames_the_profile_and_the_rename_is_audited()
     {
         var service = Service();
-        var id = await service.CreateAsync(new PersonName("Maya"), Alice, Cancellation);
+        var id = await service.CreateAsync(new PersonName("Maya"), null, Alice, Cancellation);
 
         await service.RenameAsync(id, new PersonName("Maya", "Devi", "Rai"), Alice, Cancellation);
 
@@ -60,7 +60,7 @@ public class PersonServiceTests
     public async Task Rename_by_someone_else_is_refused_and_nothing_is_saved()
     {
         var service = Service();
-        var id = await service.CreateAsync(new PersonName("Maya"), Alice, Cancellation);
+        var id = await service.CreateAsync(new PersonName("Maya"), null, Alice, Cancellation);
 
         await Assert.ThrowsAsync<NotProfileMaintainerException>(
             () => service.RenameAsync(id, new PersonName("Gita"), Bob, Cancellation));
@@ -81,7 +81,7 @@ public class PersonServiceTests
     public async Task Any_account_can_view_a_profile_and_learns_only_whether_it_maintains_it()
     {
         var service = Service();
-        var id = await service.CreateAsync(new PersonName("Maya"), Alice, Cancellation);
+        var id = await service.CreateAsync(new PersonName("Maya"), null, Alice, Cancellation);
 
         var asMaintainer = await service.GetAsync(id, As(Alice), Cancellation);
         var asOther = await service.GetAsync(id, As(Bob), Cancellation);
@@ -92,11 +92,48 @@ public class PersonServiceTests
     }
 
     [Fact]
+    [Trait("AC", "AC-01.21")]
+    public async Task A_person_is_created_with_a_gender()
+    {
+        var service = Service();
+
+        var id = await service.CreateAsync(new PersonName("Maya"), Gender.Female, Alice, Cancellation);
+
+        Assert.Equal(Gender.Female, (await service.GetAsync(id, new Viewer(Alice, false), Cancellation)).Gender);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-01.22")]
+    public async Task Maintainer_sets_the_gender_and_the_change_is_audited()
+    {
+        var service = Service();
+        var id = await service.CreateAsync(new PersonName("Maya"), null, Alice, Cancellation);
+
+        await service.SetGenderAsync(id, Gender.Female, Alice, Cancellation);
+
+        Assert.Equal(Gender.Female, _people.People[id].Gender);
+        Assert.Equal((new PersonGenderChanged(id, Alice), Now), _people.AuditEvents[^1]);
+        Assert.Equal(2, _people.SaveCount);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-01.22")]
+    public async Task Someone_other_than_the_maintainer_cannot_set_the_gender()
+    {
+        var service = Service();
+        var id = await service.CreateAsync(new PersonName("Maya"), null, Alice, Cancellation);
+
+        await Assert.ThrowsAsync<NotProfileMaintainerException>(() => service.SetGenderAsync(id, Gender.Male, Bob, Cancellation));
+        Assert.Null(_people.People[id].Gender);
+        Assert.Equal(1, _people.SaveCount);
+    }
+
+    [Fact]
     [Trait("AC", "AC-05.7")]
     public async Task Maintainer_makes_a_profile_private_and_the_change_is_audited()
     {
         var service = Service();
-        var id = await service.CreateAsync(new PersonName("Maya"), Alice, Cancellation);
+        var id = await service.CreateAsync(new PersonName("Maya"), null, Alice, Cancellation);
 
         await service.SetVisibilityAsync(id, ProfileVisibility.Private, Alice, Cancellation);
 
@@ -118,7 +155,7 @@ public class PersonServiceTests
     public async Task Private_profile_is_a_placeholder_to_others_but_not_to_its_maintainer_or_administrators()
     {
         var service = Service();
-        var id = await service.CreateAsync(new PersonName("Maya"), Alice, Cancellation);
+        var id = await service.CreateAsync(new PersonName("Maya"), null, Alice, Cancellation);
         await service.SetVisibilityAsync(id, ProfileVisibility.Private, Alice, Cancellation);
 
         var asOther = await service.GetAsync(id, As(Bob), Cancellation);
@@ -136,7 +173,7 @@ public class PersonServiceTests
     public async Task Maintainer_deletes_a_profile_which_leaves_a_deleted_placeholder_and_their_list()
     {
         var service = Service();
-        var id = await service.CreateAsync(new PersonName("Maya", lastName: "Rai"), Alice, Cancellation);
+        var id = await service.CreateAsync(new PersonName("Maya", lastName: "Rai"), null, Alice, Cancellation);
 
         await service.DeleteAsync(id, As(Alice), Cancellation);
 
@@ -152,7 +189,7 @@ public class PersonServiceTests
     public async Task Administrator_deletes_another_accounts_profile_and_others_cannot()
     {
         var service = Service();
-        var id = await service.CreateAsync(new PersonName("Maya"), Alice, Cancellation);
+        var id = await service.CreateAsync(new PersonName("Maya"), null, Alice, Cancellation);
 
         await Assert.ThrowsAsync<NotProfileMaintainerException>(() => service.DeleteAsync(id, As(Bob), Cancellation));
         await service.DeleteAsync(id, new Viewer(Bob, IsAdministrator: true), Cancellation);
@@ -177,9 +214,9 @@ public class PersonServiceTests
     public async Task One_account_lists_the_many_profiles_it_maintains_and_no_others()
     {
         var service = Service();
-        await service.CreateAsync(new PersonName("Maya"), Alice, Cancellation);
-        await service.CreateAsync(new PersonName("Gita"), Alice, Cancellation);
-        await service.CreateAsync(new PersonName("Ram"), Bob, Cancellation);
+        await service.CreateAsync(new PersonName("Maya"), null, Alice, Cancellation);
+        await service.CreateAsync(new PersonName("Gita"), null, Alice, Cancellation);
+        await service.CreateAsync(new PersonName("Ram"), null, Bob, Cancellation);
 
         var list = await service.ListMaintainedAsync(Alice, Cancellation);
 
@@ -191,8 +228,8 @@ public class PersonServiceTests
     public async Task Maintained_list_stops_at_the_configured_limit_and_says_so()
     {
         var service = Service(maintainedListLimit: 1);
-        await service.CreateAsync(new PersonName("Maya"), Alice, Cancellation);
-        await service.CreateAsync(new PersonName("Gita"), Alice, Cancellation);
+        await service.CreateAsync(new PersonName("Maya"), null, Alice, Cancellation);
+        await service.CreateAsync(new PersonName("Gita"), null, Alice, Cancellation);
 
         var list = await service.ListMaintainedAsync(Alice, Cancellation);
 
@@ -206,8 +243,8 @@ public class PersonServiceTests
     {
         var service = Service();
 
-        var first = await service.CreateAsync(new PersonName("Maya", lastName: "Rai"), Alice, Cancellation);
-        var second = await service.CreateAsync(new PersonName("Maya", lastName: "Rai"), Bob, Cancellation);
+        var first = await service.CreateAsync(new PersonName("Maya", lastName: "Rai"), null, Alice, Cancellation);
+        var second = await service.CreateAsync(new PersonName("Maya", lastName: "Rai"), null, Bob, Cancellation);
 
         Assert.NotEqual(first, second);
         Assert.True(_people.People[second].IsMaintainedBy(Bob));
@@ -221,7 +258,7 @@ public class PersonServiceTests
     public async Task Maintainer_sets_an_image_which_viewers_of_the_profile_can_load()
     {
         var service = Service();
-        var id = await service.CreateAsync(new PersonName("Maya"), Alice, Cancellation);
+        var id = await service.CreateAsync(new PersonName("Maya"), null, Alice, Cancellation);
 
         var imageId = await service.SetImageAsync(id, Jpeg, Alice, Cancellation);
 
@@ -236,7 +273,7 @@ public class PersonServiceTests
     public async Task Replacing_the_image_removes_the_old_one()
     {
         var service = Service();
-        var id = await service.CreateAsync(new PersonName("Maya"), Alice, Cancellation);
+        var id = await service.CreateAsync(new PersonName("Maya"), null, Alice, Cancellation);
         var first = await service.SetImageAsync(id, Jpeg, Alice, Cancellation);
 
         var second = await service.SetImageAsync(id, Png, Alice, Cancellation);
@@ -250,7 +287,7 @@ public class PersonServiceTests
     public async Task Removing_the_image_deletes_it()
     {
         var service = Service();
-        var id = await service.CreateAsync(new PersonName("Maya"), Alice, Cancellation);
+        var id = await service.CreateAsync(new PersonName("Maya"), null, Alice, Cancellation);
         await service.SetImageAsync(id, Jpeg, Alice, Cancellation);
 
         await service.RemoveImageAsync(id, Alice, Cancellation);
@@ -265,7 +302,7 @@ public class PersonServiceTests
     public async Task Someone_else_cannot_set_the_image_and_nothing_is_stored()
     {
         var service = Service();
-        var id = await service.CreateAsync(new PersonName("Maya"), Alice, Cancellation);
+        var id = await service.CreateAsync(new PersonName("Maya"), null, Alice, Cancellation);
 
         await Assert.ThrowsAsync<NotProfileMaintainerException>(() => service.SetImageAsync(id, Jpeg, Bob, Cancellation));
 
@@ -277,7 +314,7 @@ public class PersonServiceTests
     public async Task A_private_profile_image_is_not_found_for_others_but_loads_for_its_maintainer()
     {
         var service = Service();
-        var id = await service.CreateAsync(new PersonName("Maya"), Alice, Cancellation);
+        var id = await service.CreateAsync(new PersonName("Maya"), null, Alice, Cancellation);
         await service.SetImageAsync(id, Jpeg, Alice, Cancellation);
         await service.SetVisibilityAsync(id, ProfileVisibility.Private, Alice, Cancellation);
 
@@ -292,7 +329,7 @@ public class PersonServiceTests
     public async Task Deleting_the_profile_erases_its_image()
     {
         var service = Service();
-        var id = await service.CreateAsync(new PersonName("Maya"), Alice, Cancellation);
+        var id = await service.CreateAsync(new PersonName("Maya"), null, Alice, Cancellation);
         await service.SetImageAsync(id, Jpeg, Alice, Cancellation);
 
         await service.DeleteAsync(id, As(Alice), Cancellation);

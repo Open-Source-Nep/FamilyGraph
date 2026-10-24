@@ -90,6 +90,10 @@ namespace FamilyGraph.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("deleted_at");
 
+                    b.Property<int?>("Gender")
+                        .HasColumnType("integer")
+                        .HasColumnName("gender");
+
                     b.Property<Guid?>("ImageId")
                         .HasColumnType("uuid")
                         .HasColumnName("image_id");

@@ -13,6 +13,7 @@ const maya: Person = {
   placeholder: null,
   visibility: 'Public',
   imageId: null,
+  gender: null,
   maintainedByYou: true,
 };
 
@@ -31,10 +32,18 @@ describe('PeopleService', () => {
   afterEach(() => http.verify());
 
   it('creates a profile with a POST', async () => {
-    const created = service.create({ firstName: 'Maya', middleName: null, lastName: null });
+    const created = service.create(
+      { firstName: 'Maya', middleName: null, lastName: null },
+      'Female',
+    );
     const request = http.expectOne('/api/people');
     expect(request.request.method).toBe('POST');
-    expect(request.request.body).toEqual({ firstName: 'Maya', middleName: null, lastName: null });
+    expect(request.request.body).toEqual({
+      firstName: 'Maya',
+      middleName: null,
+      lastName: null,
+      gender: 'Female',
+    });
     request.flush(maya);
 
     expect(await created).toEqual(maya);
@@ -51,6 +60,16 @@ describe('PeopleService', () => {
     request.flush(null, { status: 204, statusText: 'No Content' });
 
     await renamed;
+  });
+
+  it('sets and clears the gender with a PUT', async () => {
+    const changed = service.setGender('p1', null);
+    const request = http.expectOne('/api/people/p1/gender');
+    expect(request.request.method).toBe('PUT');
+    expect(request.request.body).toEqual({ gender: null });
+    request.flush(null, { status: 204, statusText: 'No Content' });
+
+    await changed;
   });
 
   it('sets the visibility with a PUT', async () => {
@@ -86,7 +105,7 @@ describe('PeopleService', () => {
     expect(request.request.method).toBe('PUT');
     expect(request.request.body).toBe(photo);
     expect(request.request.headers.get('Content-Type')).toBe('image/jpeg');
-    request.flush({ imageId: 'i1' });
+    request.flush({ imageId: 'i1', gender: null });
 
     expect(await stored).toBe('i1');
   });

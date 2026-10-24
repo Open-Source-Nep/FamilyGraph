@@ -6,7 +6,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { PersonHandover } from '../handovers/person-handover';
 import { PersonRelatives } from '../relationships/person-relatives';
 import { PeopleService } from './people.service';
-import { Person, PersonName, Visibility, fullName } from './person';
+import { Person, PersonDetails, PersonName, Visibility, fullName } from './person';
 import { PersonNameForm } from './person-name-form';
 import { PersonPhoto } from './person-photo';
 import { problemMessage } from './problem';
@@ -111,7 +111,8 @@ export class PersonPage {
     }
   }
 
-  protected async rename(name: PersonName): Promise<void> {
+  /** Saves the name and the gender, each only when it changed. */
+  protected async saveDetails({ name, gender }: PersonDetails): Promise<void> {
     const person = this.person();
     if (!person) {
       return;
@@ -119,8 +120,19 @@ export class PersonPage {
     this.saving.set(true);
     this.error.set(null);
     try {
-      await this.people.rename(person.id, name);
-      this.person.set({ ...person, ...name });
+      const previous = this.editableName();
+      if (
+        name.firstName !== previous?.firstName ||
+        name.middleName !== previous.middleName ||
+        name.lastName !== previous.lastName
+      ) {
+        await this.people.rename(person.id, name);
+        this.person.set({ ...person, ...name });
+      }
+      if (gender !== person.gender) {
+        await this.people.setGender(person.id, gender);
+        this.person.update((current) => current && { ...current, gender });
+      }
       this.editing.set(false);
     } catch (error) {
       this.error.set(problemMessage(error));

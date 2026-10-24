@@ -22,7 +22,7 @@
         @for (link of section.links; track link.id) {
           <li>
             <a [routerLink]="['/people', link.parent.id]">{{ fullName(link.parent) }}</a>
-            as {{ link.type === 'Adoptive' ? 'adoptive parent' : 'parent' }} of
+            as {{ relationWord('parent', link.parent.gender, link.type) }} of
             <a [routerLink]="['/people', link.child.id]">{{ fullName(link.child) }}</a>
             @if (section.yours) {
               <div class="actions">

@@ -13,12 +13,16 @@ describe('PersonPage', () => {
   let fixture: ComponentFixture<PersonPage>;
   let person: Person;
   let visibilityCalls: [string, string][];
+  let genderCalls: [string, string | null][];
+  let renamed: string[];
   let deleted: string[];
   let removedImages: string[];
   const isAdministrator = signal(false);
 
   beforeEach(() => {
     visibilityCalls = [];
+    genderCalls = [];
+    renamed = [];
     deleted = [];
     removedImages = [];
     isAdministrator.set(false);
@@ -43,6 +47,14 @@ describe('PersonPage', () => {
             },
             removeImage: (id: string) => {
               removedImages.push(id);
+              return Promise.resolve();
+            },
+            rename: (id: string) => {
+              renamed.push(id);
+              return Promise.resolve();
+            },
+            setGender: (id: string, gender: string | null) => {
+              genderCalls.push([id, gender]);
               return Promise.resolve();
             },
             setVisibility: (id: string, visibility: string) => {
@@ -78,6 +90,7 @@ describe('PersonPage', () => {
       placeholder: null,
       visibility: 'Public',
       imageId: null,
+      gender: null,
       maintainedByYou,
       ...changes,
     };
@@ -90,7 +103,7 @@ describe('PersonPage', () => {
     [...fixture.nativeElement.querySelectorAll('button')].find(
       (button: HTMLButtonElement) => button.textContent?.trim() === text,
     );
-  const editButton = () => button('Edit name');
+  const editButton = () => button('Edit details');
 
   it('shows the full name', async () => {
     await show(false);
@@ -104,6 +117,33 @@ describe('PersonPage', () => {
 
     await show(false);
     expect(editButton()).toBeUndefined();
+  });
+
+  it('shows the gender when it is set', async () => {
+    await show(false);
+    expect(fixture.nativeElement.querySelector('dl').textContent).not.toContain('Gender');
+
+    await show(false, { gender: 'Female' });
+    expect(fixture.nativeElement.querySelector('dl').textContent).toContain('GenderFemale');
+  });
+
+  // AC-01.22: the maintainer sets the gender; an unchanged name is not saved again.
+  it('lets the maintainer set the gender with the details form', async () => {
+    await show(true);
+    editButton()!.click();
+    await fixture.whenStable();
+
+    const select = fixture.nativeElement.querySelector('select') as HTMLSelectElement;
+    select.selectedIndex = Array.from(select.options).findIndex(
+      (option) => option.textContent?.trim() === 'Other',
+    );
+    select.dispatchEvent(new Event('change'));
+    button('Save')!.click();
+    await fixture.whenStable();
+
+    expect(genderCalls).toEqual([['p1', 'Other']]);
+    expect(renamed).toEqual([]);
+    expect(fixture.nativeElement.querySelector('dl').textContent).toContain('GenderOther');
   });
 
   it('offers a handover to the maintainer only', async () => {
@@ -121,6 +161,7 @@ describe('PersonPage', () => {
       placeholder: 'Private',
       visibility: 'Private',
       imageId: null,
+      gender: null,
     });
 
     expect(fixture.nativeElement.querySelector('h1').textContent).toBe('Private');
@@ -181,7 +222,7 @@ describe('PersonPage', () => {
     );
 
   it('shows the photo to anyone who sees the profile', async () => {
-    await show(false, { imageId: 'i1' });
+    await show(false, { imageId: 'i1', gender: null });
 
     expect(photo()!.getAttribute('src')).toBe('/api/people/p1/image?v=i1');
     expect(photo()!.alt).toBe('Photo of Maya Rai');
@@ -202,7 +243,7 @@ describe('PersonPage', () => {
   });
 
   it('lets the maintainer remove the photo', async () => {
-    await show(true, { imageId: 'i1' });
+    await show(true, { imageId: 'i1', gender: null });
 
     button('Remove photo')!.click();
     await fixture.whenStable();

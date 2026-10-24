@@ -1,5 +1,5 @@
 import { PersonLabel } from '../people/person';
-import { ParentChildType } from '../relationships/relationship';
+import { ParentChildType, relationWord } from '../relationships/relationship';
 
 /**
  * A person as you may see them in the graph. `maintainedByYou` never names the maintaining
@@ -69,11 +69,14 @@ export interface Connections {
   searchComplete: boolean;
 }
 
-/** A step's wording: an adoptive step reads "adoptive parent" or "adopted child" (AC-08.7). */
-export function stepLabel(step: Pick<ConnectionStep, 'relation' | 'type'>): string {
-  const adoptive = step.type === 'Adoptive';
-  if (step.relation === 'Parent') {
-    return adoptive ? 'adoptive parent' : 'parent';
-  }
-  return adoptive ? 'adopted child' : 'child';
+/**
+ * A step's wording, from the gender of the step's person where it is known: "mother", "son", or
+ * "parent" and "child" otherwise (D-030). An adoptive step reads "adoptive …" or "adopted …" (AC-08.7).
+ */
+export function stepLabel(step: Pick<ConnectionStep, 'relation' | 'type' | 'person'>): string {
+  return relationWord(
+    step.relation === 'Parent' ? 'parent' : 'child',
+    step.person.gender,
+    step.type,
+  );
 }

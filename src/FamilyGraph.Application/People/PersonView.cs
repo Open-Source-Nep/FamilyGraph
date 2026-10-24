@@ -7,7 +7,7 @@ namespace FamilyGraph.Application.People;
 /// profiles' names, Private or not (PRD 05), so the list needs no privacy projection. Deleted
 /// profiles are not on it: there is nothing left to maintain (D-026).
 /// </summary>
-public sealed record PersonSummary(PersonId Id, PersonName Name, ProfileVisibility Visibility);
+public sealed record PersonSummary(PersonId Id, PersonName Name, ProfileVisibility Visibility, Gender? Gender);
 
 /// <summary>A list cut at its limit. <see cref="IsTruncated"/> says that more exist (D-010).</summary>
 public sealed record ProfileList(IReadOnlyList<PersonSummary> People, bool IsTruncated);

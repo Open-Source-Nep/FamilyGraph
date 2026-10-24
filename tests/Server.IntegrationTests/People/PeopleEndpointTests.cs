@@ -130,6 +130,54 @@ public class PeopleEndpointTests(AccountTestFactory factory) : IClassFixture<Acc
     }
 
     [Fact]
+    [Trait("AC", "AC-01.21")]
+    [Trait("AC", "AC-01.22")]
+    public async Task Gender_is_optional_at_creation_and_the_maintainer_sets_and_clears_it()
+    {
+        var (browser, token) = await SignInAsync("maya@example.org");
+        using var created = await SendAsync(browser, token, HttpMethod.Post, "/api/people", new { firstName = "Maya", gender = "Female" });
+        var person = (await created.Content.ReadFromJsonAsync<PersonResponse>(Cancellation))!;
+        Assert.Equal("Female", person.Gender);
+
+        using var changed = await SendAsync(browser, token, HttpMethod.Put, $"/api/people/{person.Id}/gender", new { gender = "Other" });
+        Assert.Equal(HttpStatusCode.NoContent, changed.StatusCode);
+        Assert.Equal("Other", (await browser.GetFromJsonAsync<PersonResponse>($"/api/people/{person.Id}", Cancellation))!.Gender);
+
+        using var cleared = await SendAsync(browser, token, HttpMethod.Put, $"/api/people/{person.Id}/gender", new { gender = (string?)null });
+        Assert.Equal(HttpStatusCode.NoContent, cleared.StatusCode);
+        Assert.Null((await browser.GetFromJsonAsync<PersonResponse>($"/api/people/{person.Id}", Cancellation))!.Gender);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-01.22")]
+    public async Task Setting_the_gender_by_someone_other_than_the_maintainer_is_forbidden()
+    {
+        var id = await CreateAsync("maya@example.org", "Maya");
+        var (other, token) = await SignInAsync("gita@example.org");
+
+        using var response = await SendAsync(other, token, HttpMethod.Put, $"/api/people/{id}/gender", new { gender = "Female" });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal("person.not_maintainer", await CodeAsync(response));
+        Assert.Null(factory.People.People[new PersonId(id)].Gender);
+    }
+
+    [Theory]
+    [Trait("AC", "AC-01.21")]
+    [InlineData("female")]
+    [InlineData("Unknown")]
+    public async Task An_unknown_gender_is_a_bad_request(string gender)
+    {
+        var (browser, token) = await SignInAsync("maya@example.org");
+        var id = await CreateAsync("maya@example.org", "Maya");
+
+        using var created = await SendAsync(browser, token, HttpMethod.Post, "/api/people", new { firstName = "Maya", gender });
+        using var changed = await SendAsync(browser, token, HttpMethod.Put, $"/api/people/{id}/gender", new { gender });
+
+        Assert.Equal((HttpStatusCode.BadRequest, HttpStatusCode.BadRequest), (created.StatusCode, changed.StatusCode));
+    }
+
+    [Fact]
     [Trait("AC", "AC-01.2")]
     public async Task Maintained_list_shows_every_profile_the_user_maintains_and_no_others()
     {

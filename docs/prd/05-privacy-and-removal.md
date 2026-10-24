@@ -21,9 +21,9 @@ Minimize personal data while allowing public exploration of family relationships
 
 - The graph is visible only to signed-in users. Anonymous visitors see no profiles or relationships.
 - Each profile is either **Public** or **Private**. New profiles start Public.
-- A Public profile shows its name and image to signed-in users.
+- A Public profile shows its name, gender and image to signed-in users.
 - A Private profile shows the `Private` placeholder to everyone except its maintainer and administrators.
-- A placeholder never shows the profile's image.
+- A placeholder never shows the profile's image or gender. Relationship wording next to a placeholder stays "parent" or "child" (PRD 08).
 - A relationship's type (biological or adoptive) may be shown next to a `Private` or `Deleted` placeholder, so adoption stays visible along paths (PRD 02).
 
 ## Profile deletion
@@ -52,6 +52,7 @@ Minimize personal data while allowing public exploration of family relationships
 - `AC-05.11` A profile can be deleted by its maintainer or an administrator, and the audit history distinguishes the two.
 - `AC-05.12` A new relationship cannot be created with a deleted profile.
 - `AC-05.13` A `Private` or `Deleted` placeholder never exposes the profile's image, and deleting a profile erases its image.
+- `AC-05.14` A `Private` or `Deleted` placeholder never exposes the profile's gender, and deleting a profile erases its gender.
 
 ## Open details
 

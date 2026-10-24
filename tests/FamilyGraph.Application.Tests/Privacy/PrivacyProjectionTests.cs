@@ -73,7 +73,18 @@ public class PrivacyProjectionTests
         Assert.Equal((image, (ProfileImageId?)null, (ProfileImageId?)null), (visible.ImageId, hidden.ImageId, deleted.ImageId));
     }
 
+    [Fact]
+    [Trait("AC", "AC-05.14")]
+    public void Gender_shows_with_the_name_and_never_on_a_placeholder()
+    {
+        var visible = PrivacyProjection.Project(Record(ProfileVisibility.Public, false), new Viewer(Alice, false));
+        var hidden = PrivacyProjection.Project(Record(ProfileVisibility.Private, false), new Viewer(Alice, false));
+        var deleted = PrivacyProjection.Project(Record(ProfileVisibility.Public, true, isDeleted: true), new Viewer(Alice, true));
+
+        Assert.Equal((Gender.Female, (Gender?)null, (Gender?)null), (visible.Gender, hidden.Gender, deleted.Gender));
+    }
+
     private static PersonRecord Record(
         ProfileVisibility visibility, bool maintainedByViewer, bool isDeleted = false, ProfileImageId? imageId = null) =>
-        new(PersonId.New(), Name, visibility, isDeleted, maintainedByViewer, imageId);
+        new(PersonId.New(), Name, visibility, isDeleted, maintainedByViewer, imageId, Gender.Female);
 }

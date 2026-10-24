@@ -34,7 +34,7 @@ internal sealed class EfRelationshipQueries(FamilyGraphDbContext context) : IRel
                     hidden ? "" : parent.Name.LastName, parent.Id
                 select new RelativeData(
                     link.Id,
-                    new PersonRecord(parent.Id, parent.Name, parent.Visibility, parent.DeletedAt != null, parent.MaintainerId == viewerId, parent.ImageId),
+                    new PersonRecord(parent.Id, parent.Name, parent.Visibility, parent.DeletedAt != null, parent.MaintainerId == viewerId, parent.ImageId, parent.Gender),
                     link.Type,
                     null))
             .Take(limit + 1)
@@ -50,7 +50,7 @@ internal sealed class EfRelationshipQueries(FamilyGraphDbContext context) : IRel
                     hidden ? "" : child.Name.MiddleName, hidden ? "" : child.Name.LastName, child.Id
                 select new RelativeData(
                     link.Id,
-                    new PersonRecord(child.Id, child.Name, child.Visibility, child.DeletedAt != null, child.MaintainerId == viewerId, child.ImageId),
+                    new PersonRecord(child.Id, child.Name, child.Visibility, child.DeletedAt != null, child.MaintainerId == viewerId, child.ImageId, child.Gender),
                     link.Type,
                     link.BirthOrder))
             .Take(limit + 1)
@@ -94,10 +94,10 @@ internal sealed class EfRelationshipQueries(FamilyGraphDbContext context) : IRel
                     link.Id,
                     link.Type,
                     new LinkEndpointData(
-                        new PersonRecord(parent.Id, parent.Name, parent.Visibility, parent.DeletedAt != null, parent.MaintainerId == viewerId, parent.ImageId),
+                        new PersonRecord(parent.Id, parent.Name, parent.Visibility, parent.DeletedAt != null, parent.MaintainerId == viewerId, parent.ImageId, parent.Gender),
                         link.ParentApproval),
                     new LinkEndpointData(
-                        new PersonRecord(child.Id, child.Name, child.Visibility, child.DeletedAt != null, child.MaintainerId == viewerId, child.ImageId),
+                        new PersonRecord(child.Id, child.Name, child.Visibility, child.DeletedAt != null, child.MaintainerId == viewerId, child.ImageId, child.Gender),
                         link.ChildApproval),
                     false))
             .Take(limit + 1)

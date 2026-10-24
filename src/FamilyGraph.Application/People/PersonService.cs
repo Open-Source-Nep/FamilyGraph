@@ -5,8 +5,8 @@ using FamilyGraph.Business.People;
 namespace FamilyGraph.Application.People;
 
 /// <summary>
-/// Creates, renames, sets the visibility and image of, deletes and reads person profiles (PRD 01,
-/// PRD 05, #12, #18, #74).
+/// Creates, renames, sets the gender, visibility and image of, deletes and reads person profiles (PRD 01,
+/// PRD 05, #12, #18, #74, #80).
 /// The creating account becomes the maintainer, and only the maintainer can rename or change the
 /// visibility; <see cref="Person"/> enforces both. A profile is never matched or merged by name.
 /// </summary>
@@ -19,9 +19,10 @@ public sealed class PersonService(
     TimeProvider time,
     PeopleLimits limits)
 {
-    public async Task<PersonId> CreateAsync(PersonName name, AccountId actorId, CancellationToken cancellationToken)
+    public async Task<PersonId> CreateAsync(
+        PersonName name, Gender? gender, AccountId actorId, CancellationToken cancellationToken)
     {
-        var person = Person.Create(name, actorId);
+        var person = Person.Create(name, actorId, gender);
         people.Add(person);
         await SaveAsync(person, cancellationToken);
         return person.Id;
@@ -31,6 +32,14 @@ public sealed class PersonService(
     {
         var person = await people.FindAsync(id, cancellationToken) ?? throw new PersonNotFoundException();
         person.Rename(name, actorId);
+        await SaveAsync(person, cancellationToken);
+    }
+
+    /// <summary>Sets, changes or clears the person's gender (D-030). Only the maintainer may.</summary>
+    public async Task SetGenderAsync(PersonId id, Gender? gender, AccountId actorId, CancellationToken cancellationToken)
+    {
+        var person = await people.FindAsync(id, cancellationToken) ?? throw new PersonNotFoundException();
+        person.SetGender(gender, actorId);
         await SaveAsync(person, cancellationToken);
     }
 

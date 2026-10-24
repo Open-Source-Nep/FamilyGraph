@@ -2,7 +2,14 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 
-import { CreatedLink, DirectRelatives, LinkConsent, LinkConsentList } from './relationship';
+import {
+  CreatedLink,
+  DirectRelatives,
+  LinkConsent,
+  LinkConsentList,
+  relationHint,
+  relationWord,
+} from './relationship';
 import { RelationshipsService } from './relationships.service';
 
 describe('RelationshipsService', () => {
@@ -79,5 +86,24 @@ describe('RelationshipsService', () => {
     expect(request.request.method).toBe('DELETE');
     request.flush(null, { status: 204, statusText: 'No Content' });
     await deleted;
+  });
+});
+
+describe('relationWord', () => {
+  it('uses gendered words where the gender is known (AC-08.8)', () => {
+    expect(relationWord('parent', 'Female', 'Biological')).toBe('mother');
+    expect(relationWord('parent', 'Male', 'Adoptive')).toBe('adoptive father');
+    expect(relationWord('child', 'Male', 'Biological')).toBe('son');
+    expect(relationWord('child', 'Female', 'Adoptive')).toBe('adopted daughter');
+  });
+
+  it('says parent or child for Other, not set or hidden (AC-08.8)', () => {
+    expect(relationWord('parent', 'Other', 'Biological')).toBe('parent');
+    expect(relationWord('child', null, 'Adoptive')).toBe('adopted child');
+  });
+
+  it('gives no hint for a plain parent or child', () => {
+    expect(relationHint('parent', null, 'Biological')).toBeNull();
+    expect(relationHint('child', 'Male', 'Biological')).toBe('son');
   });
 });

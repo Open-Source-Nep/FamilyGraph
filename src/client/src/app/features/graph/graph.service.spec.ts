@@ -2,7 +2,8 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 
-import { Connections, GraphOverview, LocalView, stepLabel } from './graph';
+import { Gender } from '../people/person';
+import { Connections, GraphOverview, GraphPerson, LocalView, stepLabel } from './graph';
 import { GraphService } from './graph.service';
 
 describe('GraphService', () => {
@@ -45,10 +46,32 @@ describe('GraphService', () => {
 });
 
 describe('stepLabel', () => {
+  const person = (gender: Gender | null) => ({ gender }) as GraphPerson;
+
   it('names adoptive steps (AC-08.7)', () => {
-    expect(stepLabel({ relation: 'Parent', type: 'Biological' })).toBe('parent');
-    expect(stepLabel({ relation: 'Child', type: 'Biological' })).toBe('child');
-    expect(stepLabel({ relation: 'Parent', type: 'Adoptive' })).toBe('adoptive parent');
-    expect(stepLabel({ relation: 'Child', type: 'Adoptive' })).toBe('adopted child');
+    expect(stepLabel({ relation: 'Parent', type: 'Biological', person: person(null) })).toBe(
+      'parent',
+    );
+    expect(stepLabel({ relation: 'Child', type: 'Biological', person: person(null) })).toBe(
+      'child',
+    );
+    expect(stepLabel({ relation: 'Parent', type: 'Adoptive', person: person(null) })).toBe(
+      'adoptive parent',
+    );
+    expect(stepLabel({ relation: 'Child', type: 'Adoptive', person: person(null) })).toBe(
+      'adopted child',
+    );
+  });
+
+  it("uses the step's person's gender where it is known (AC-08.8)", () => {
+    expect(stepLabel({ relation: 'Parent', type: 'Biological', person: person('Female') })).toBe(
+      'mother',
+    );
+    expect(stepLabel({ relation: 'Child', type: 'Adoptive', person: person('Male') })).toBe(
+      'adopted son',
+    );
+    expect(stepLabel({ relation: 'Parent', type: 'Biological', person: person('Other') })).toBe(
+      'parent',
+    );
   });
 });

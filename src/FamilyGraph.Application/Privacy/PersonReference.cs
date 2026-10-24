@@ -10,7 +10,7 @@ namespace FamilyGraph.Application.Privacy;
 public sealed record PersonReference
 {
     internal PersonReference(
-        PersonId id, PersonName? name, PersonPlaceholder? placeholder, ProfileVisibility visibility, bool maintainedByViewer, ProfileImageId? imageId)
+        PersonId id, PersonName? name, PersonPlaceholder? placeholder, ProfileVisibility visibility, bool maintainedByViewer, ProfileImageId? imageId, Gender? gender)
     {
         Id = id;
         Name = name;
@@ -18,6 +18,7 @@ public sealed record PersonReference
         Visibility = visibility;
         MaintainedByViewer = maintainedByViewer;
         ImageId = imageId;
+        Gender = gender;
     }
 
     public PersonId Id { get; }
@@ -38,4 +39,10 @@ public sealed record PersonReference
 
     /// <summary>The profile's image, or <see langword="null"/> if it has none or is a placeholder (D-028).</summary>
     public ProfileImageId? ImageId { get; }
+
+    /// <summary>
+    /// The person's gender, or <see langword="null"/> if it is not set or the person is a
+    /// placeholder: a placeholder shows nothing the name would not (D-030).
+    /// </summary>
+    public Gender? Gender { get; }
 }

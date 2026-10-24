@@ -91,7 +91,7 @@ public class HandoverPersistenceServicesTests(PostgresFixture postgres)
     private static async Task<PersonId> CreatePersonAsync(ServiceProvider services, AccountId maintainer)
     {
         await using var scope = services.CreateAsyncScope();
-        return await scope.ServiceProvider.GetRequiredService<PersonService>().CreateAsync(new PersonName("Maya"), maintainer, Cancellation);
+        return await scope.ServiceProvider.GetRequiredService<PersonService>().CreateAsync(new PersonName("Maya"), null, maintainer, Cancellation);
     }
 
     private static async Task<T> InScopeAsync<T>(ServiceProvider services, Func<HandoverService, Task<T>> action)

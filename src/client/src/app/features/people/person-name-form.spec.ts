@@ -1,16 +1,16 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { PersonName } from './person';
+import { PersonDetails } from './person';
 import { PersonNameForm } from './person-name-form';
 
 describe('PersonNameForm', () => {
   let fixture: ComponentFixture<PersonNameForm>;
-  let saved: PersonName[];
+  let saved: PersonDetails[];
 
   beforeEach(async () => {
     fixture = TestBed.createComponent(PersonNameForm);
     saved = [];
-    fixture.componentInstance.saved.subscribe((name) => saved.push(name));
+    fixture.componentInstance.saved.subscribe((details) => saved.push(details));
     await fixture.whenStable();
   });
 
@@ -34,7 +34,9 @@ describe('PersonNameForm', () => {
     type('lastName', '   ');
     await submit();
 
-    expect(saved).toEqual([{ firstName: 'Maya', middleName: null, lastName: null }]);
+    expect(saved).toEqual([
+      { name: { firstName: 'Maya', middleName: null, lastName: null }, gender: null },
+    ]);
   });
 
   it('asks for a first name instead of saving', async () => {
@@ -56,5 +58,23 @@ describe('PersonNameForm', () => {
     expect(input('firstName').value).toBe('Maya');
     expect(input('middleName').value).toBe('Devi');
     expect(input('lastName').value).toBe('Rai');
+  });
+
+  it('saves the chosen gender, which is optional (AC-01.21)', async () => {
+    fixture.componentRef.setInput('gender', 'Male');
+    await fixture.whenStable();
+    const select = fixture.nativeElement.querySelector('select') as HTMLSelectElement;
+    expect(select.selectedOptions[0].textContent?.trim()).toBe('Male');
+
+    select.selectedIndex = Array.from(select.options).findIndex(
+      (option) => option.textContent?.trim() === 'Female',
+    );
+    select.dispatchEvent(new Event('change'));
+    type('firstName', 'Maya');
+    await submit();
+
+    expect(saved).toEqual([
+      { name: { firstName: 'Maya', middleName: null, lastName: null }, gender: 'Female' },
+    ]);
   });
 });

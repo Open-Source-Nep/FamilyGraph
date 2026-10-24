@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 
 import { PeopleService } from '../people/people.service';
 import { PersonSummary, fullName } from '../people/person';
+import { relationHint } from '../relationships/relationship';
 import { problemMessage } from '../people/problem';
 import { GraphDiagram } from './graph-diagram';
 import { GraphService } from './graph.service';
@@ -39,6 +40,7 @@ export class GraphView {
   readonly notFound = output<void>();
 
   protected readonly fullName = fullName;
+  protected readonly relationHint = relationHint;
   protected readonly generationLabel = generationLabel;
   protected readonly maxShownPeople = maxShownPeople;
   protected readonly shown = signal<ShownGraph | null>(null);

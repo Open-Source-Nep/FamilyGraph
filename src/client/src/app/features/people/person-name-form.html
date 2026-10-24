@@ -17,6 +17,16 @@
     <input formControlName="lastName" autocomplete="off" [attr.maxlength]="maxLength" />
   </label>
 
+  <label>
+    Gender <span class="hint">(optional)</span>
+    <select formControlName="gender">
+      <option [ngValue]="null">Not set</option>
+      @for (gender of genders; track gender) {
+        <option [ngValue]="gender">{{ gender }}</option>
+      }
+    </select>
+  </label>
+
   <div class="actions">
     <button type="submit" [disabled]="busy()">{{ submitLabel() }}</button>
     <button type="button" class="secondary" (click)="cancelled.emit()">Cancel</button>

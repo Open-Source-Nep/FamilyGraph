@@ -5,8 +5,20 @@ export interface PersonName {
   lastName: string | null;
 }
 
+/** What a profile form saves: the name and the optional gender (D-030). */
+export interface PersonDetails {
+  name: PersonName;
+  gender: Gender | null;
+}
+
 /** Public profiles show their name to signed-in users; Private ones only to their maintainer and administrators (PRD 05). */
 export type Visibility = 'Public' | 'Private';
+
+/** A person's gender, if set; optional like everything but the first name (D-030). */
+export type Gender = 'Male' | 'Female' | 'Other';
+
+/** The genders in the order the forms offer them. */
+export const genders: readonly Gender[] = ['Male', 'Female', 'Other'];
 
 /** What you see instead of a Private profile hidden from you or a deleted one. It carries no name or details (PRD 05). */
 export type Placeholder = 'Private' | 'Deleted';
@@ -20,6 +32,8 @@ export interface PersonLabel {
   visibility: Visibility;
   /** The current image, or null without one. A placeholder never has one (D-028). */
   imageId: string | null;
+  /** Null when not set. A placeholder never has one (D-030). */
+  gender: Gender | null;
 }
 
 /** A profile as the signed-in user sees it, from `GET /api/people/{id}`. */
@@ -32,6 +46,7 @@ export interface Person extends PersonLabel {
 export interface PersonSummary extends PersonName {
   id: string;
   visibility: Visibility;
+  gender: Gender | null;
 }
 
 /** `isTruncated` says the list stopped at the server's limit. */
