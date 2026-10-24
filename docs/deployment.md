@@ -31,4 +31,7 @@ HTTPS is terminated by your reverse proxy or host. The session cookie is always 
 
 ## Database migrations
 
-The app never migrates at startup (D-011). Until the migration bundle arrives (#33), apply migrations from a checkout with `dotnet ef database update` and `--connection "<connection string>"` (`docs/database.md`).
+The app never migrates by itself (D-011). The image contains an EF Core migration bundle, `./efbundle`, which applies any pending migrations with the same `Database__*` settings as the app. It is safe to run again on an up-to-date database. Either:
+
+- run it as a one-off step before starting a new version: `docker run --rm --env-file familygraph.env ghcr.io/open-source-nep/familygraph ./efbundle`, or
+- set `FAMILYGRAPH_MIGRATE=true`, and the container runs it before every start. A failed migration stops the container, so the old version keeps serving where the host supports zero-downtime deploys. Use this where one-off steps are not available, such as Render's free plan.
