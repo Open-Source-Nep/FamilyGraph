@@ -103,6 +103,35 @@ public sealed class Marriage : AuditedEntity
         return marriage;
     }
 
+    /// <summary>
+    /// Restores a marriage from an export file with its ID, consent and former flag (D-033). The
+    /// spouses may come in either order; each keeps its own approval. The import checks the whole
+    /// file for duplicates and parent–child pairs first. It records no event: the import's one
+    /// <c>DataImported</c> covers it.
+    /// </summary>
+    public static Marriage Import(
+        LinkId id,
+        PersonId spouseId,
+        PersonId otherSpouseId,
+        EndpointApproval spouseApproval,
+        EndpointApproval otherSpouseApproval,
+        bool isFormer)
+    {
+        ArgumentNullException.ThrowIfNull(spouseApproval);
+        ArgumentNullException.ThrowIfNull(otherSpouseApproval);
+
+        if (spouseId == otherSpouseId)
+        {
+            throw new SelfMarriageException();
+        }
+
+        var marriage = spouseId.Value.CompareTo(otherSpouseId.Value) < 0
+            ? new Marriage(id, spouseId, otherSpouseId, spouseApproval, otherSpouseApproval)
+            : new Marriage(id, otherSpouseId, spouseId, otherSpouseApproval, spouseApproval);
+        marriage.IsFormer = isFormer;
+        return marriage;
+    }
+
     /// <summary>The other spouse of <paramref name="spouseId"/>.</summary>
     public PersonId OtherSpouseOf(PersonId spouseId) =>
         spouseId == FirstSpouseId ? SecondSpouseId

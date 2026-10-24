@@ -1,3 +1,5 @@
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
@@ -21,6 +23,8 @@ describe('AccountPage', () => {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
         {
           provide: AuthService,
           useValue: { account, isAdministrator, signOut: () => Promise.resolve() },
@@ -41,9 +45,17 @@ describe('AccountPage', () => {
     expect(exportLink()?.hasAttribute('download')).toBe(true);
   });
 
-  it('does not offer the data export to other users', async () => {
+  it('does not offer the data export or import to other users', async () => {
     await fixture.whenStable();
 
     expect(exportLink()).toBeNull();
+    expect((fixture.nativeElement as HTMLElement).querySelector('app-data-import')).toBeNull();
+  });
+
+  it('offers the data import to administrators', async () => {
+    isAdministrator.set(true);
+    await fixture.whenStable();
+
+    expect((fixture.nativeElement as HTMLElement).querySelector('app-data-import')).not.toBeNull();
   });
 });

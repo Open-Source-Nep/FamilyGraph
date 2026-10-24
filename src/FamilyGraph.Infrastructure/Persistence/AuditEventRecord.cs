@@ -5,6 +5,7 @@ using FamilyGraph.Business;
 using FamilyGraph.Business.Audit;
 using FamilyGraph.Business.Export;
 using FamilyGraph.Business.Handovers;
+using FamilyGraph.Business.Import;
 using FamilyGraph.Business.People;
 using FamilyGraph.Business.Relationships;
 
@@ -44,7 +45,7 @@ internal sealed class AuditEventRecord
 
     /// <summary>
     /// The link, marriage or person the event is about; a handover's events are about its person, and an
-    /// export is about the exporting account.
+    /// export or import is about the administrator's account.
     /// </summary>
     public Guid SubjectId { get; }
 
@@ -74,6 +75,7 @@ internal sealed class AuditEventRecord
         MarriageFormerChanged e => e.MarriageId.Value,
         HandoverEvent e => e.PersonId.Value,
         DataExported e => e.ActorId.Value,
+        DataImported e => e.ActorId.Value,
         _ => throw new ArgumentException($"No audit subject is defined for {auditEvent.GetType().Name}.", nameof(auditEvent)),
     };
 

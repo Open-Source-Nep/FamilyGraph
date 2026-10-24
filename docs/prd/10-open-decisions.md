@@ -53,6 +53,9 @@ This file is intentionally unresolved. Claude Code must not silently invent deci
 ## Data export
 - **Decided (2026-10-23):** only administrators export, and the export covers the whole instance: every profile (Private ones with names, deleted ones without), every non-deleted relationship with its consent state and birth order, and the maintainers' emails, as one file. Images, audit history and deleted relationships are left out. Each export is audited. Rejected alternatives: per-user export of one's own profiles; both; exporting images; only the active graph. See PRD 09.
 
+## Data import
+- **Decided (2026-10-24):** an administrator imports an export file only into an instance without profiles. Each profile goes to the account with its maintainer's email; when no such account exists, the importing administrator becomes the maintainer. A file with any problem is refused whole, with the problems listed. The import is recorded as one audit entry. Rejected alternatives: importing into an instance with data, skipping existing IDs or refusing only on clashes; the first configured administrator inheriting unmatched profiles; an audit entry per imported row; importing the valid rows and skipping the rest. See PRD 09.
+
 ## General rule
 When work depends on an unresolved item:
 1. Explain why the decision matters.

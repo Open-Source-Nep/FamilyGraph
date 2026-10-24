@@ -113,6 +113,37 @@ public sealed class ParentChildLink : AuditedEntity
     }
 
     /// <summary>
+    /// Restores a link from an export file with its ID, consent and birth order (D-033). The
+    /// import checks the whole file's links for duplicates, cycles and spouses first. It records no
+    /// event: the import's one <c>DataImported</c> covers it.
+    /// </summary>
+    public static ParentChildLink Import(
+        LinkId id,
+        PersonId parentId,
+        PersonId childId,
+        ParentChildType type,
+        EndpointApproval parentApproval,
+        EndpointApproval childApproval,
+        int? birthOrder)
+    {
+        ArgumentNullException.ThrowIfNull(type);
+        ArgumentNullException.ThrowIfNull(parentApproval);
+        ArgumentNullException.ThrowIfNull(childApproval);
+
+        if (parentId == childId)
+        {
+            throw new SelfLinkException();
+        }
+
+        if (birthOrder is < 1)
+        {
+            throw new InvalidBirthOrderException();
+        }
+
+        return new ParentChildLink(id, parentId, childId, type, parentApproval, childApproval) { BirthOrder = birthOrder };
+    }
+
+    /// <summary>
     /// Approves the link for <paramref name="endpoint"/>, from pending or from disagreed (restoring
     /// approval). The other side's valid approval is kept, so this can reactivate the link; if it
     /// does, the cycle check runs again first (PRD 02).
