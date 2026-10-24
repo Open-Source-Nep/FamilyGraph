@@ -2,12 +2,14 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
 import { ApprovalsPage } from './approvals-page';
+import { MarriagesService } from './marriages.service';
 import {
   EndpointApproval,
   LinkConsent,
   LinkConsentList,
   LinkEndpoint,
   LinkEndpointConsent,
+  MarriageConsentList,
 } from './relationship';
 import { RelationshipsService } from './relationships.service';
 
@@ -38,7 +40,8 @@ function link(id: string, parent: LinkEndpointConsent, child: LinkEndpointConsen
 describe('ApprovalsPage', () => {
   let fixture: ComponentFixture<ApprovalsPage>;
   let list: LinkConsentList;
-  let calls: [string, string, LinkEndpoint][];
+  let marriages: MarriageConsentList;
+  let calls: [string, string, LinkEndpoint | string][];
 
   const consent = (action: string) => (linkId: string, side: LinkEndpoint) => {
     calls.push([action, linkId, side]);
@@ -60,6 +63,19 @@ describe('ApprovalsPage', () => {
               calls.push(['delete', linkId, 'Parent']);
               return Promise.resolve();
             },
+          },
+        },
+        {
+          provide: MarriagesService,
+          useValue: {
+            listInactive: () => Promise.resolve(marriages),
+            approve: (marriageId: string, spouseId: string) => {
+              calls.push(['approve marriage', marriageId, spouseId]);
+              const found = marriages.marriages.find((item) => item.id === marriageId)!;
+              return Promise.resolve({ ...found, isActive: true });
+            },
+            disagree: () => Promise.reject(new Error('not expected')),
+            delete: () => Promise.reject(new Error('not expected')),
           },
         },
       ],
@@ -86,6 +102,7 @@ describe('ApprovalsPage', () => {
 
   beforeEach(() => {
     calls = [];
+    marriages = { marriages: [], isTruncated: false };
     list = {
       links: [
         // Bob linked his Ram as a parent of your Hari.
@@ -195,6 +212,29 @@ describe('ApprovalsPage', () => {
     await render();
 
     expect(buttons()).not.toContain('Delete link');
+  });
+
+  it('lists marriages waiting for your approval and approves them (D-031)', async () => {
+    list = { links: [], isTruncated: false };
+    marriages = {
+      marriages: [
+        {
+          id: 'm1',
+          first: endpoint('p1', 'Ram', 'Approved', false),
+          second: endpoint('p6', 'Sita', 'Pending', true),
+          isFormer: false,
+          isActive: false,
+        },
+      ],
+      isTruncated: false,
+    };
+    await render();
+
+    expect(text()).toContain('Ram married to Sita');
+    await click('Approve');
+
+    expect(calls).toContainEqual(['approve marriage', 'm1', 'p6']);
+    expect(text()).toContain('The marriage of Ram and Sita is now active.');
   });
 
   it('says when nothing is waiting', async () => {

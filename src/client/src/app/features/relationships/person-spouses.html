@@ -1,0 +1,100 @@
+@if (spouses(); as spouses) {
+  <h2>Spouses</h2>
+  @if (spouses.spouses.length === 0) {
+    <p class="hint">No marriages are linked.</p>
+  } @else {
+    <ul class="people">
+      @for (spouse of spouses.spouses; track spouse.marriageId) {
+        <li>
+          <a [routerLink]="['/people', spouse.id]">{{ fullName(spouse) }}</a>
+          @if (
+            relationHint('spouse', spouse.gender, spouse.isFormer ? 'FormerMarriage' : 'Marriage');
+            as hint
+          ) {
+            <span class="hint"> ({{ hint }})</span>
+          }
+          @if (canMark(spouse)) {
+            <button
+              type="button"
+              class="link-button"
+              [disabled]="saving()"
+              (click)="setFormer(spouse, !spouse.isFormer)"
+            >
+              {{ spouse.isFormer ? 'Mark as current' : 'Mark as former' }}
+            </button>
+          }
+          @if (removal(spouse); as removal) {
+            @if (confirming() === spouse.marriageId) {
+              <div class="actions">
+                @if (removal.kind === 'delete') {
+                  <span
+                    >Delete this marriage? This cannot be undone; you can add it again later.</span
+                  >
+                  <button type="button" [disabled]="saving()" (click)="remove(spouse, removal)">
+                    Delete
+                  </button>
+                } @else {
+                  <span>Withdraw your approval? The marriage stops being active.</span>
+                  <button type="button" [disabled]="saving()" (click)="remove(spouse, removal)">
+                    Withdraw
+                  </button>
+                }
+                <button type="button" class="secondary" (click)="confirming.set(null)">Keep</button>
+              </div>
+            } @else {
+              <button type="button" class="link-button" (click)="confirming.set(spouse.marriageId)">
+                {{ removal.kind === 'delete' ? 'Delete marriage' : 'Withdraw approval' }}
+              </button>
+            }
+          }
+        </li>
+      }
+    </ul>
+    @if (spouses.isTruncated) {
+      <p class="hint">Only the first {{ spouses.spouses.length }} spouses are shown.</p>
+    }
+  }
+}
+
+@if (notice(); as notice) {
+  <p role="status">{{ notice }}</p>
+}
+@if (error(); as error) {
+  <p class="error" role="alert">{{ error }}</p>
+}
+
+@if (adding()) {
+  <h2>Add a spouse</h2>
+  @if (candidates(); as candidates) {
+    <form [formGroup]="form" (ngSubmit)="add()" class="name-form">
+      <fieldset class="choices">
+        <legend>Which of your profiles is married to {{ name() }}?</legend>
+        @for (candidate of candidates; track candidate.id) {
+          <label>
+            <input type="radio" formControlName="spouseId" [value]="candidate.id" />
+            {{ fullName(candidate) }}
+          </label>
+        } @empty {
+          <p class="hint">You maintain no other profiles yet. Add the person first.</p>
+        }
+      </fieldset>
+      @if (candidatesTruncated()) {
+        <p class="hint">Only the first {{ candidates.length }} of your profiles are listed.</p>
+      }
+      @if (!person().maintainedByYou) {
+        <p class="hint">
+          You do not maintain {{ name() }}, so the marriage stays inactive until its maintainer
+          approves it.
+        </p>
+      }
+      <div class="actions">
+        <button type="submit" [disabled]="saving()">Add marriage</button>
+        <button type="button" class="secondary" (click)="adding.set(false)">Cancel</button>
+      </div>
+    </form>
+  }
+} @else if (person().placeholder !== 'Deleted') {
+  <p>
+    <button type="button" class="secondary" (click)="startAdding()">Add a spouse</button>
+  </p>
+}

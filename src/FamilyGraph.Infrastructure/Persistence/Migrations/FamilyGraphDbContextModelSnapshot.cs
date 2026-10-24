@@ -165,6 +165,59 @@ namespace FamilyGraph.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("FamilyGraph.Business.Relationships.Marriage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<int>("FirstApproval")
+                        .HasColumnType("integer")
+                        .HasColumnName("first_approval");
+
+                    b.Property<Guid>("FirstSpouseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("first_spouse_id");
+
+                    b.Property<bool>("IsFormer")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_former");
+
+                    b.Property<int>("SecondApproval")
+                        .HasColumnType("integer")
+                        .HasColumnName("second_approval");
+
+                    b.Property<Guid>("SecondSpouseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("second_spouse_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_marriages");
+
+                    b.HasIndex(new[] { "FirstSpouseId" }, "ix_marriages_first_spouse_active")
+                        .HasFilter("deleted_at IS NULL AND first_approval = 2 AND second_approval = 2");
+
+                    b.HasIndex(new[] { "SecondSpouseId" }, "ix_marriages_second_spouse_active")
+                        .HasFilter("deleted_at IS NULL AND first_approval = 2 AND second_approval = 2");
+
+                    b.HasIndex(new[] { "FirstSpouseId", "SecondSpouseId" }, "ux_marriages_spouses")
+                        .IsUnique()
+                        .HasFilter("deleted_at IS NULL");
+
+                    b.ToTable("marriages", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_marriages_first_approval", "first_approval IN (1, 2, 3)");
+
+                            t.HasCheckConstraint("ck_marriages_second_approval", "second_approval IN (1, 2, 3)");
+
+                            t.HasCheckConstraint("ck_marriages_spouse_order", "first_spouse_id < second_spouse_id");
+                        });
+                });
+
             modelBuilder.Entity("FamilyGraph.Business.Relationships.ParentChildLink", b =>
                 {
                     b.Property<Guid>("Id")
@@ -551,6 +604,23 @@ namespace FamilyGraph.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_profile_images_people_person_id");
+                });
+
+            modelBuilder.Entity("FamilyGraph.Business.Relationships.Marriage", b =>
+                {
+                    b.HasOne("FamilyGraph.Business.People.Person", null)
+                        .WithMany()
+                        .HasForeignKey("FirstSpouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_marriages_people_first_spouse_id");
+
+                    b.HasOne("FamilyGraph.Business.People.Person", null)
+                        .WithMany()
+                        .HasForeignKey("SecondSpouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_marriages_people_second_spouse_id");
                 });
 
             modelBuilder.Entity("FamilyGraph.Business.Relationships.ParentChildLink", b =>

@@ -14,7 +14,7 @@ Priorities:
 
 1. **People are not accounts.** A person may exist without an account.
 2. **Minimal data.** Creating a person initially requires only a name.
-3. **Direct facts are limited.** Users directly register parent–child relationships; other family relationships are derived.
+3. **Direct facts are limited.** Users directly register parent–child relationships and marriages; other family relationships are derived.
 4. **One maintainer per profile.** Each person profile has one responsible maintainer at a time.
 5. **Consent is per relationship endpoint.** A claimed person can disagree with a relationship involving their profile.
 6. **Privacy hides identity, not necessarily graph structure.** Public relationships may connect to `Private` or `Deleted` placeholders.
@@ -38,6 +38,7 @@ Before implementation:
 Included at product level:
 - People and accounts as separate concepts.
 - Parent–child relationships: biological or adoptive.
+- Marriages between two people, current or former (PRD 02).
 - Profile claims and manual claim appeals.
 - Relationship consent, disagreement, reactivation, and audit history.
 - Privacy settings and placeholders.

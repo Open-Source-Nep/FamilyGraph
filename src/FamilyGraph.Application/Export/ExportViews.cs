@@ -27,3 +27,12 @@ public sealed record ExportedLink(
     EndpointApproval ParentApproval,
     EndpointApproval ChildApproval,
     int? BirthOrder);
+
+/// <summary>A non-deleted marriage with both spouses' consent, active or not, current or former (D-031).</summary>
+public sealed record ExportedMarriage(
+    LinkId Id,
+    PersonId FirstSpouseId,
+    PersonId SecondSpouseId,
+    EndpointApproval FirstApproval,
+    EndpointApproval SecondApproval,
+    bool IsFormer);

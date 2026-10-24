@@ -1,5 +1,5 @@
 import { PersonLabel } from '../people/person';
-import { ParentChildType, relationWord } from '../relationships/relationship';
+import { MarriageType, ParentChildType, relationWord } from '../relationships/relationship';
 
 /**
  * A person as you may see them in the graph. `maintainedByYou` never names the maintaining
@@ -28,11 +28,20 @@ export interface GraphLink {
   type: ParentChildType;
 }
 
+/** An active marriage between two people of the same generation; `isFormer` when it ended (D-031). */
+export interface GraphMarriage {
+  id: string;
+  firstSpouseId: string;
+  secondSpouseId: string;
+  isFormer: boolean;
+}
+
 /** The centre and the people nearest to it, from `GET /api/people/{id}/graph` (D-023). */
 export interface LocalView {
   centreId: string;
   people: LocalViewPerson[];
   links: GraphLink[];
+  marriages: GraphMarriage[];
   isTruncated: boolean;
 }
 
@@ -43,14 +52,18 @@ export interface LocalView {
 export interface GraphOverview {
   people: GraphPerson[];
   links: GraphLink[];
+  marriages: GraphMarriage[];
   isTruncated: boolean;
 }
 
-/** How `person` relates to the previous person on the path, through `linkId` (PRD 08). */
+/**
+ * How `person` relates to the previous person on the path, through `linkId` (PRD 08): a spouse
+ * step has the type `Marriage` or `FormerMarriage` (D-031).
+ */
 export interface ConnectionStep {
   linkId: string;
-  relation: 'Parent' | 'Child';
-  type: ParentChildType;
+  relation: 'Parent' | 'Child' | 'Spouse';
+  type: ParentChildType | MarriageType;
   person: GraphPerson;
 }
 
@@ -70,13 +83,11 @@ export interface Connections {
 }
 
 /**
- * A step's wording, from the gender of the step's person where it is known: "mother", "son", or
- * "parent" and "child" otherwise (D-030). An adoptive step reads "adoptive …" or "adopted …" (AC-08.7).
+ * A step's wording, from the gender of the step's person where it is known: "mother", "son",
+ * "wife", or "parent", "child" and "spouse" otherwise (D-030, D-031). An adoptive step reads
+ * "adoptive …" or "adopted …" (AC-08.7), an ended marriage "former …".
  */
 export function stepLabel(step: Pick<ConnectionStep, 'relation' | 'type' | 'person'>): string {
-  return relationWord(
-    step.relation === 'Parent' ? 'parent' : 'child',
-    step.person.gender,
-    step.type,
-  );
+  const relation = ({ Parent: 'parent', Child: 'child', Spouse: 'spouse' } as const)[step.relation];
+  return relationWord(relation, step.person.gender, step.type);
 }

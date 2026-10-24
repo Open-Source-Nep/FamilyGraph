@@ -1,33 +1,42 @@
 import { Gender, PersonLabel } from '../people/person';
 
-/** The only directly registered relationship types (PRD 02). */
+/** The only parent–child types (PRD 02). */
 export type ParentChildType = 'Biological' | 'Adoptive';
 
+/** A marriage, current or ended (D-031). */
+export type MarriageType = 'Marriage' | 'FormerMarriage';
+
 /**
- * How a parent or child is named: "mother", "adopted son", or "parent" and "child" when the
- * gender is Other, not set or hidden (D-030). Adoption is always named (AC-08.7).
+ * How a parent, child or spouse is named: "mother", "adopted son", "former wife", or "parent",
+ * "child" and "spouse" when the gender is Other, not set or hidden (D-030, D-031). Adoption and a
+ * former marriage are always named (AC-08.7).
  */
 export function relationWord(
-  relation: 'parent' | 'child',
+  relation: 'parent' | 'child' | 'spouse',
   gender: Gender | null,
-  type: ParentChildType,
+  type: ParentChildType | MarriageType,
 ): string {
-  const words =
-    relation === 'parent'
-      ? { Male: 'father', Female: 'mother', Other: 'parent' }
-      : { Male: 'son', Female: 'daughter', Other: 'child' };
+  const words = {
+    parent: { Male: 'father', Female: 'mother', Other: 'parent' },
+    child: { Male: 'son', Female: 'daughter', Other: 'child' },
+    spouse: { Male: 'husband', Female: 'wife', Other: 'spouse' },
+  }[relation];
   const word = words[gender ?? 'Other'];
-  if (type !== 'Adoptive') {
-    return word;
+  switch (type) {
+    case 'Adoptive':
+      return relation === 'parent' ? `adoptive ${word}` : `adopted ${word}`;
+    case 'FormerMarriage':
+      return `former ${word}`;
+    default:
+      return word;
   }
-  return relation === 'parent' ? `adoptive ${word}` : `adopted ${word}`;
 }
 
-/** The wording in brackets after a relative's name; nothing for a plain "parent" or "child". */
+/** The wording in brackets after a relative's name; nothing for a plain "parent", "child" or "spouse". */
 export function relationHint(
-  relation: 'parent' | 'child',
+  relation: 'parent' | 'child' | 'spouse',
   gender: Gender | null,
-  type: ParentChildType,
+  type: ParentChildType | MarriageType,
 ): string | null {
   const word = relationWord(relation, gender, type);
   return word === relation ? null : word;
@@ -93,5 +102,48 @@ export interface LinkConsent {
 /** The inactive links of your profiles, from `GET /api/relationships/inactive`. */
 export interface LinkConsentList {
   links: LinkConsent[];
+  isTruncated: boolean;
+}
+
+/** A new marriage; the order of the two people does not matter. */
+export interface NewMarriage {
+  spouseId: string;
+  otherSpouseId: string;
+}
+
+/** The spouses are in ID order. `isActive` is false while the other maintainer has not approved. */
+export interface CreatedMarriage {
+  id: string;
+  firstSpouseId: string;
+  secondSpouseId: string;
+  isActive: boolean;
+}
+
+/** A spouse through an active marriage; `isFormer` when the marriage ended (D-031). */
+export interface Spouse extends PersonLabel {
+  marriageId: string;
+  id: string;
+  maintainedByYou: boolean;
+  isFormer: boolean;
+}
+
+/** A person's spouses, current ones first, from `GET /api/people/{id}/spouses`. */
+export interface SpouseList {
+  spouses: Spouse[];
+  isTruncated: boolean;
+}
+
+/** A marriage's consent on both sides, shown to the maintainers of its spouses (D-031). */
+export interface MarriageConsent {
+  id: string;
+  first: LinkEndpointConsent;
+  second: LinkEndpointConsent;
+  isFormer: boolean;
+  isActive: boolean;
+}
+
+/** The inactive marriages of your profiles, from `GET /api/marriages/inactive`. */
+export interface MarriageConsentList {
+  marriages: MarriageConsent[];
   isTruncated: boolean;
 }

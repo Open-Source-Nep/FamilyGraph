@@ -12,8 +12,8 @@ namespace FamilyGraph.Infrastructure.Relationships;
 
 /// <summary>
 /// Bounded graph reads as hand-written recursive CTEs (D-009, D-023). Each walk follows active links
-/// up to parents and down to children through the active-link indexes, and every query runs under
-/// the configured timeout.
+/// up to parents and down to children, and active marriages across to spouses in the same
+/// generation (D-031), through the active indexes, and every query runs under the configured timeout.
 /// </summary>
 internal sealed class EfGraphQueries(FamilyGraphDbContext context, GraphLimits limits) : IGraphQueries
 {
@@ -21,6 +21,11 @@ internal sealed class EfGraphQueries(FamilyGraphDbContext context, GraphLimits l
         "deleted_at", "link.deleted_at", StringComparison.Ordinal)
         .Replace("parent_approval", "link.parent_approval", StringComparison.Ordinal)
         .Replace("child_approval", "link.child_approval", StringComparison.Ordinal);
+
+    private static readonly string ActiveMarriage = MarriageConfiguration.ActiveFilter.Replace(
+        "deleted_at", "marriage.deleted_at", StringComparison.Ordinal)
+        .Replace("first_approval", "marriage.first_approval", StringComparison.Ordinal)
+        .Replace("second_approval", "marriage.second_approval", StringComparison.Ordinal);
 
     /// <summary>Parameters: <c>@centre</c>, <c>@max_distance</c>, <c>@generations</c>, <c>@row_limit</c>.</summary>
     private static readonly string LocalViewSql = $"""
@@ -37,6 +42,14 @@ internal sealed class EfGraphQueries(FamilyGraphDbContext context, GraphLimits l
                 SELECT link.child_id, -1
                 FROM parent_child_links AS link
                 WHERE link.parent_id = walk.person_id AND {Active}
+                UNION ALL
+                SELECT marriage.second_spouse_id, 0
+                FROM marriages AS marriage
+                WHERE marriage.first_spouse_id = walk.person_id AND {ActiveMarriage}
+                UNION ALL
+                SELECT marriage.first_spouse_id, 0
+                FROM marriages AS marriage
+                WHERE marriage.second_spouse_id = walk.person_id AND {ActiveMarriage}
             ) AS step
             WHERE walk.distance < @max_distance AND abs(walk.generation + step.offset_) <= @generations
         ),
@@ -61,6 +74,12 @@ internal sealed class EfGraphQueries(FamilyGraphDbContext context, GraphLimits l
             OR EXISTS (
                 SELECT 1 FROM parent_child_links AS link
                 WHERE link.child_id = shown.id AND link.parent_id <> ALL (@ids) AND {Active})
+            OR EXISTS (
+                SELECT 1 FROM marriages AS marriage
+                WHERE marriage.first_spouse_id = shown.id AND marriage.second_spouse_id <> ALL (@ids) AND {ActiveMarriage})
+            OR EXISTS (
+                SELECT 1 FROM marriages AS marriage
+                WHERE marriage.second_spouse_id = shown.id AND marriage.first_spouse_id <> ALL (@ids) AND {ActiveMarriage})
         """;
 
     /// <summary>Parameters: <c>@starts</c>, the people to start from, and <c>@row_limit</c>.</summary>
@@ -78,6 +97,14 @@ internal sealed class EfGraphQueries(FamilyGraphDbContext context, GraphLimits l
                 SELECT link.child_id
                 FROM parent_child_links AS link
                 WHERE link.parent_id = reached.person_id AND {Active}
+                UNION ALL
+                SELECT marriage.second_spouse_id
+                FROM marriages AS marriage
+                WHERE marriage.first_spouse_id = reached.person_id AND {ActiveMarriage}
+                UNION ALL
+                SELECT marriage.first_spouse_id
+                FROM marriages AS marriage
+                WHERE marriage.second_spouse_id = reached.person_id AND {ActiveMarriage}
             ) AS step
         )
         SELECT person_id AS "Value" FROM reached LIMIT @row_limit
@@ -91,6 +118,17 @@ internal sealed class EfGraphQueries(FamilyGraphDbContext context, GraphLimits l
         JOIN unnest(@ids) AS child (id) ON child.id = link.child_id
         WHERE {Active}
         ORDER BY link.id
+        """;
+
+    /// <summary>Parameter: <c>@ids</c>.</summary>
+    private static readonly string MarriagesBetweenSql = $"""
+        SELECT marriage.id AS "Id", marriage.first_spouse_id AS "FirstSpouseId",
+            marriage.second_spouse_id AS "SecondSpouseId", marriage.is_former AS "IsFormer"
+        FROM marriages AS marriage
+        JOIN unnest(@ids) AS first (id) ON first.id = marriage.first_spouse_id
+        JOIN unnest(@ids) AS second (id) ON second.id = marriage.second_spouse_id
+        WHERE {ActiveMarriage}
+        ORDER BY marriage.id
         """;
 
     /// <summary>
@@ -124,6 +162,7 @@ internal sealed class EfGraphQueries(FamilyGraphDbContext context, GraphLimits l
         return new LocalViewData(
             [.. shown.Select(row => new LocalViewPersonData(people[row.PersonId], row.Generation, withMore.Contains(row.PersonId)))],
             links,
+            await MarriagesBetweenAsync(ids, cancellationToken),
             rows.Count > shown.Count);
     }
 
@@ -140,7 +179,10 @@ internal sealed class EfGraphQueries(FamilyGraphDbContext context, GraphLimits l
         var reached = await ReachedAsync([personId.Value], peopleLimit + 1, cancellationToken);
 
         var examined = reached.Take(peopleLimit).ToArray();
-        return new LinkNeighbourhood(await LinksBetweenAsync(examined, cancellationToken), reached.Count == examined.Length);
+        return new LinkNeighbourhood(
+            await LinksBetweenAsync(examined, cancellationToken),
+            await MarriagesBetweenAsync(examined, cancellationToken),
+            reached.Count == examined.Length);
     }
 
     /// <summary>
@@ -161,6 +203,7 @@ internal sealed class EfGraphQueries(FamilyGraphDbContext context, GraphLimits l
         return new OverviewData(
             [.. shown.Where(people.ContainsKey).Select(id => people[id])],
             await LinksBetweenAsync(shown, cancellationToken),
+            await MarriagesBetweenAsync(shown, cancellationToken),
             reached.Count > shown.Length);
     }
 
@@ -202,6 +245,15 @@ internal sealed class EfGraphQueries(FamilyGraphDbContext context, GraphLimits l
             new LinkId(row.Id), new PersonId(row.ParentId), new PersonId(row.ChildId), ParentChildType.FromValue(row.Type)))];
     }
 
+    private async Task<IReadOnlyList<GraphMarriage>> MarriagesBetweenAsync(Guid[] ids, CancellationToken cancellationToken)
+    {
+        var rows = await RunAsync(token => context.Database.SqlQueryRaw<MarriageRow>(MarriagesBetweenSql,
+            new NpgsqlParameter<Guid[]>("ids", ids)).ToListAsync(token), cancellationToken);
+
+        return [.. rows.Select(row => new GraphMarriage(
+            new LinkId(row.Id), new PersonId(row.FirstSpouseId), new PersonId(row.SecondSpouseId), row.IsFormer))];
+    }
+
     /// <summary>
     /// Runs one query under the graph timeout (D-009). The timeout cancels the query, which also
     /// stops it on the server: a command timeout alone would not, because rows of a walk stream in
@@ -224,6 +276,8 @@ internal sealed class EfGraphQueries(FamilyGraphDbContext context, GraphLimits l
     private sealed record ViewRow(Guid PersonId, int Generation);
 
     private sealed record LinkRow(Guid Id, Guid ParentId, Guid ChildId, int Type);
+
+    private sealed record MarriageRow(Guid Id, Guid FirstSpouseId, Guid SecondSpouseId, bool IsFormer);
 
     private sealed record PersonRow(
         Guid Id,

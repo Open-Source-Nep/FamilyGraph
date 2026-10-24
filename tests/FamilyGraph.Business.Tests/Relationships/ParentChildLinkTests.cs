@@ -26,7 +26,7 @@ public class ParentChildLinkTests
         var parent = NewPerson("Hari", Alice);
         var child = NewPerson("Maya", Alice);
 
-        var link = ParentChildLink.Create(parent, child, type, Alice, NoParents, NoAncestors(parent));
+        var link = ParentChildLink.Create(parent, child, type, Alice, NoParents, NoAncestors(parent), married: false);
 
         Assert.Equal(parent.Id, link.ParentId);
         Assert.Equal(child.Id, link.ChildId);
@@ -40,7 +40,7 @@ public class ParentChildLinkTests
         var parent = NewPerson("Hari", Alice);
         var child = NewPerson("Maya", Alice);
 
-        var link = ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, NoAncestors(parent));
+        var link = ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, NoAncestors(parent), married: false);
 
         Assert.Equal(EndpointApproval.Approved, link.ParentApproval);
         Assert.Equal(EndpointApproval.Approved, link.ChildApproval);
@@ -54,7 +54,7 @@ public class ParentChildLinkTests
         var parent = NewPerson("Hari", Alice);
         var child = NewPerson("Maya", Bob);
 
-        var link = ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, NoAncestors(parent));
+        var link = ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, NoAncestors(parent), married: false);
 
         Assert.Equal(EndpointApproval.Approved, link.ParentApproval);
         Assert.Equal(EndpointApproval.Pending, link.ChildApproval);
@@ -68,7 +68,7 @@ public class ParentChildLinkTests
         var parent = NewPerson("Hari", Alice);
         var child = NewPerson("Maya", Bob);
 
-        var link = ParentChildLink.Create(parent, child, ParentChildType.Adoptive, Bob, NoParents, NoAncestors(parent));
+        var link = ParentChildLink.Create(parent, child, ParentChildType.Adoptive, Bob, NoParents, NoAncestors(parent), married: false);
 
         Assert.Equal(EndpointApproval.Pending, link.ParentApproval);
         Assert.Equal(EndpointApproval.Approved, link.ChildApproval);
@@ -82,7 +82,7 @@ public class ParentChildLinkTests
         var child = NewPerson("Maya", Bob);
 
         var ex = Assert.Throws<NotLinkEndpointMaintainerException>(
-            () => ParentChildLink.Create(parent, child, ParentChildType.Biological, Carol, NoParents, NoAncestors(parent)));
+            () => ParentChildLink.Create(parent, child, ParentChildType.Biological, Carol, NoParents, NoAncestors(parent), married: false));
 
         Assert.Equal("link.not_endpoint_maintainer", ex.Code);
         Assert.IsAssignableFrom<NotPermittedException>(ex);
@@ -105,7 +105,7 @@ public class ParentChildLinkTests
         foreach (var type in types)
         {
             var parent = NewPerson("Parent", Alice);
-            ParentChildLink.Create(parent, child, type, Alice, existingParents, NoAncestors(parent));
+            ParentChildLink.Create(parent, child, type, Alice, existingParents, NoAncestors(parent), married: false);
             existingParents.Add(parent.Id);
         }
 
@@ -123,7 +123,7 @@ public class ParentChildLinkTests
         var childParents = new HashSet<PersonId> { parent.Id };
 
         var ex = Assert.Throws<DuplicateLinkException>(
-            () => ParentChildLink.Create(parent, child, type, Alice, childParents, NoAncestors(parent)));
+            () => ParentChildLink.Create(parent, child, type, Alice, childParents, NoAncestors(parent), married: false));
 
         Assert.Equal("link.duplicate", ex.Code);
         Assert.IsAssignableFrom<ConflictException>(ex);
@@ -135,7 +135,7 @@ public class ParentChildLinkTests
         var person = NewPerson("Hari", Alice);
 
         var ex = Assert.Throws<SelfLinkException>(
-            () => ParentChildLink.Create(person, person, ParentChildType.Biological, Alice, NoParents, NoAncestors(person)));
+            () => ParentChildLink.Create(person, person, ParentChildType.Biological, Alice, NoParents, NoAncestors(person), married: false));
 
         Assert.Equal("link.self_link", ex.Code);
     }
@@ -150,7 +150,7 @@ public class ParentChildLinkTests
         var hariAncestors = new AncestorSnapshot(hari.Id, new HashSet<PersonId> { maya.Id }, isComplete: true);
 
         var ex = Assert.Throws<LinkCycleDetectedException>(
-            () => ParentChildLink.Create(hari, maya, ParentChildType.Biological, Alice, NoParents, hariAncestors));
+            () => ParentChildLink.Create(hari, maya, ParentChildType.Biological, Alice, NoParents, hariAncestors, married: false));
 
         Assert.Equal("link.cycle_detected", ex.Code);
     }
@@ -166,7 +166,7 @@ public class ParentChildLinkTests
         var cAncestors = new AncestorSnapshot(c.Id, new HashSet<PersonId> { b.Id, a.Id }, isComplete: true);
 
         Assert.Throws<LinkCycleDetectedException>(
-            () => ParentChildLink.Create(c, a, ParentChildType.Adoptive, Alice, NoParents, cAncestors));
+            () => ParentChildLink.Create(c, a, ParentChildType.Adoptive, Alice, NoParents, cAncestors, married: false));
     }
 
     [Fact]
@@ -178,7 +178,7 @@ public class ParentChildLinkTests
         var truncated = new AncestorSnapshot(parent.Id, new HashSet<PersonId> { PersonId.New() }, isComplete: false);
 
         var ex = Assert.Throws<LinkCycleUnverifiableException>(
-            () => ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, truncated));
+            () => ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, truncated, married: false));
 
         Assert.Equal("link.cycle_unverifiable", ex.Code);
         Assert.Contains("could not be verified as cycle-free", ex.Message);
@@ -193,7 +193,7 @@ public class ParentChildLinkTests
         var truncated = new AncestorSnapshot(parent.Id, new HashSet<PersonId> { child.Id }, isComplete: false);
 
         Assert.Throws<LinkCycleDetectedException>(
-            () => ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, truncated));
+            () => ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, truncated, married: false));
     }
 
     [Fact]
@@ -203,7 +203,7 @@ public class ParentChildLinkTests
         var child = NewPerson("Maya", Alice);
 
         Assert.Throws<ArgumentException>(
-            () => ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, NoAncestors(child)));
+            () => ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, NoAncestors(child), married: false));
     }
 
     [Fact]

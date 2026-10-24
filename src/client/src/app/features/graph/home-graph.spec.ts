@@ -42,6 +42,7 @@ describe('HomeGraph', () => {
           { id: 'l1', parentId: 'gita', childId: 'maya', type: 'Biological' },
           { id: 'l2', parentId: 'maya', childId: 'rina', type: 'Adoptive' },
         ],
+        marriages: [],
         isTruncated: false,
       });
     TestBed.configureTestingModule({

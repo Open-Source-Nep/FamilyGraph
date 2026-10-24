@@ -46,6 +46,7 @@ describe('GraphView', () => {
           { id: 'l1', parentId: 'gita', childId: 'maya', type: 'Biological' },
           { id: 'l2', parentId: 'maya', childId: 'rina', type: 'Adoptive' },
         ],
+        marriages: [],
         isTruncated: true,
       },
       gita: {
@@ -59,6 +60,7 @@ describe('GraphView', () => {
           { id: 'l1', parentId: 'gita', childId: 'maya', type: 'Biological' },
           { id: 'l3', parentId: 'sita', childId: 'gita', type: 'Biological' },
         ],
+        marriages: [],
         isTruncated: false,
       },
     };

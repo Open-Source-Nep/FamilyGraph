@@ -30,6 +30,7 @@ public sealed class GraphService(IPersonQueries people, IGraphQueries queries, G
             [.. view.People.Select(row =>
                 new LocalViewPerson(PrivacyProjection.Project(row.Person, viewer), row.Generation, row.HasMore))],
             view.Links,
+            view.Marriages,
             view.IsTruncated);
     }
 
@@ -45,7 +46,7 @@ public sealed class GraphService(IPersonQueries people, IGraphQueries queries, G
         var profiles = await people.ListMaintainedByAsync(viewerId, limits.OverviewPeople, cancellationToken);
         if (profiles.People.Count == 0)
         {
-            return new Overview([], [], false);
+            return new Overview([], [], [], false);
         }
 
         var overview = await queries.OverviewAsync(
@@ -53,6 +54,7 @@ public sealed class GraphService(IPersonQueries people, IGraphQueries queries, G
         return new Overview(
             [.. overview.People.Select(person => PrivacyProjection.Project(person, viewer))],
             overview.Links,
+            overview.Marriages,
             overview.IsTruncated || profiles.IsTruncated);
     }
 
@@ -70,7 +72,7 @@ public sealed class GraphService(IPersonQueries people, IGraphQueries queries, G
 
         var neighbourhood = await queries.LinksAroundAsync(fromId, limits.PathSearchPeople, cancellationToken);
         // One path past the listed ones tells whether more exist.
-        var paths = RelationshipPaths.Find(fromId, toId, neighbourhood.Links, limits.MorePaths + 2);
+        var paths = RelationshipPaths.Find(fromId, toId, neighbourhood.Links, neighbourhood.Marriages, limits.MorePaths + 2);
         var listed = paths.Take(limits.MorePaths + 1).ToList();
 
         var ids = listed.SelectMany(path => path.People).ToHashSet();

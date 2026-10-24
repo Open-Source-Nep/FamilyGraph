@@ -7,7 +7,7 @@ using Server.IntegrationTests.People;
 namespace Server.IntegrationTests.Graph;
 
 /// <summary>
-/// Graph queries over the in-memory people and links: a breadth-first walk of the active links with
+/// Graph queries over the in-memory people and links: a breadth-first walk of the active links and marriages with
 /// the same order and bounds as the database query (D-023). It can also time out like one.
 /// </summary>
 public sealed class InMemoryGraph(InMemoryPeople store) : IGraphQueries
@@ -53,13 +53,14 @@ public sealed class InMemoryGraph(InMemoryPeople store) : IGraphQueries
                 entry.Value.Generation,
                 Neighbours(entry.Key).Any(neighbour => !ids.Contains(neighbour.Person))))],
             [.. ActiveLinks().Where(link => ids.Contains(link.ParentId) && ids.Contains(link.ChildId))],
+            [.. ActiveMarriages().Where(marriage => ids.Contains(marriage.FirstSpouseId) && ids.Contains(marriage.SecondSpouseId))],
             ordered.Count > shown.Count));
     }
 
     public Task<LinkNeighbourhood> LinksAroundAsync(PersonId personId, int peopleLimit, CancellationToken cancellationToken)
     {
         ThrowIfTimingOut();
-        return Task.FromResult(new LinkNeighbourhood([.. ActiveLinks()], IsComplete: true));
+        return Task.FromResult(new LinkNeighbourhood([.. ActiveLinks()], [.. ActiveMarriages()], IsComplete: true));
     }
 
     public Task<OverviewData> OverviewAsync(
@@ -84,6 +85,7 @@ public sealed class InMemoryGraph(InMemoryPeople store) : IGraphQueries
         return Task.FromResult(new OverviewData(
             [.. shown.Select(id => Record(id, viewerId))],
             [.. ActiveLinks().Where(link => ids.Contains(link.ParentId) && ids.Contains(link.ChildId))],
+            [.. ActiveMarriages().Where(marriage => ids.Contains(marriage.FirstSpouseId) && ids.Contains(marriage.SecondSpouseId))],
             reached.Count > shown.Count));
     }
 
@@ -106,10 +108,17 @@ public sealed class InMemoryGraph(InMemoryPeople store) : IGraphQueries
     private IEnumerable<(PersonId Person, int Offset)> Neighbours(PersonId person) =>
         ActiveLinks()
             .Where(link => link.ChildId == person).Select(link => (link.ParentId, 1))
-            .Concat(ActiveLinks().Where(link => link.ParentId == person).Select(link => (link.ChildId, -1)));
+            .Concat(ActiveLinks().Where(link => link.ParentId == person).Select(link => (link.ChildId, -1)))
+            .Concat(ActiveMarriages().Where(marriage => marriage.FirstSpouseId == person).Select(marriage => (marriage.SecondSpouseId, 0)))
+            .Concat(ActiveMarriages().Where(marriage => marriage.SecondSpouseId == person).Select(marriage => (marriage.FirstSpouseId, 0)));
 
     private IEnumerable<GraphLink> ActiveLinks() =>
         store.Links.Values
             .Where(link => link.IsActive)
             .Select(link => new GraphLink(link.Id, link.ParentId, link.ChildId, link.Type));
+
+    private IEnumerable<GraphMarriage> ActiveMarriages() =>
+        store.Marriages.Values
+            .Where(marriage => marriage.IsActive)
+            .Select(marriage => new GraphMarriage(marriage.Id, marriage.FirstSpouseId, marriage.SecondSpouseId, marriage.IsFormer));
 }

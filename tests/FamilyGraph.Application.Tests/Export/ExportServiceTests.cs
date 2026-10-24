@@ -97,6 +97,9 @@ public class ExportServiceTests
 
         public IAsyncEnumerable<ExportedLink> LinksAsync(CancellationToken cancellationToken) => Data.Links.ToAsyncEnumerable();
 
+        public IAsyncEnumerable<ExportedMarriage> MarriagesAsync(CancellationToken cancellationToken) =>
+            AsyncEnumerable.Empty<ExportedMarriage>();
+
         public ValueTask DisposeAsync()
         {
             Disposed = true;

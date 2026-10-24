@@ -95,7 +95,7 @@ public class PersonDeletionTests
         child.Delete(Alice, actorIsAdministrator: false, Now);
 
         var ex = Assert.Throws<LinkToDeletedProfileException>(() =>
-            ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, NoAncestors(parent)));
+            ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, NoAncestors(parent), married: false));
 
         Assert.Equal("link.person_deleted", ex.Code);
     }
@@ -107,7 +107,7 @@ public class PersonDeletionTests
     {
         var parent = NewPerson("Hari", Alice);
         var child = NewPerson("Maya", Bob);
-        var link = ParentChildLink.Create(parent, child, ParentChildType.Adoptive, Alice, NoParents, NoAncestors(parent));
+        var link = ParentChildLink.Create(parent, child, ParentChildType.Adoptive, Alice, NoParents, NoAncestors(parent), married: false);
         link.Approve(child, Bob, NoAncestors(parent));
 
         parent.Delete(Alice, actorIsAdministrator: false, Now);
@@ -120,7 +120,7 @@ public class PersonDeletionTests
     {
         var parent = NewPerson("Hari", Alice);
         var child = NewPerson("Maya", Bob);
-        var link = ParentChildLink.Create(parent, child, ParentChildType.Biological, Bob, NoParents, NoAncestors(parent));
+        var link = ParentChildLink.Create(parent, child, ParentChildType.Biological, Bob, NoParents, NoAncestors(parent), married: false);
         child.Delete(Bob, actorIsAdministrator: false, Now);
 
         Assert.Throws<ProfileDeletedException>(() => link.Disagree(child, parent, Bob));
@@ -139,7 +139,7 @@ public class PersonDeletionTests
     {
         var parent = NewPerson("Hari", Alice);
         var child = NewPerson("Maya", Alice);
-        var link = ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, NoAncestors(parent));
+        var link = ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, NoAncestors(parent), married: false);
         child.Delete(Alice, actorIsAdministrator: false, Now);
 
         link.Delete(parent, child, Alice, Now);

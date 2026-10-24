@@ -6,7 +6,7 @@ namespace Server.Relationships;
 public static class RelationshipsServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers the relationship use cases. <c>Relationships:DirectRelativesLimit</c> caps each of
+    /// Registers the relationship and marriage use cases. <c>Relationships:DirectRelativesLimit</c> caps each of
     /// a person's parent and child lists, and <c>Relationships:InactiveLinksLimit</c> the list of
     /// inactive links (D-010).
     /// </summary>
@@ -17,6 +17,7 @@ public static class RelationshipsServiceCollectionExtensions
             Limit(configuration, "Relationships:InactiveLinksLimit", RelationshipLimits.DefaultInactiveLinksLimit)));
         services.TryAddSingleton(TimeProvider.System);
         services.AddScoped<RelationshipService>();
+        services.AddScoped<MarriageService>();
         return services;
     }
 

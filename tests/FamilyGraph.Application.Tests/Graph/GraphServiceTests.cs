@@ -225,6 +225,37 @@ public class GraphServiceTests
         Assert.Throws<ArgumentOutOfRangeException>(() => new GraphLimits(overviewPeople: GraphLimits.MaxOverviewPeople + 1));
     }
 
+    [Fact]
+    [Trait("AC", "AC-08.9")]
+    public async Task Views_overview_and_paths_walk_marriages_in_the_same_generation()
+    {
+        var you = AddPerson("Maya", Alice);
+        var husband = AddPerson("Ram", Alice);
+        var fatherInLaw = AddPerson("Dasharath", Alice);
+        AddLink(fatherInLaw, husband);
+        AddMarriage(you, husband);
+
+        var view = await Service().LocalViewAsync(you, As(Alice), Cancellation);
+        var overview = await Service().OverviewAsync(As(Alice), Cancellation);
+        var connections = await Service().FindConnectionsAsync(you, fatherInLaw, As(Alice), Cancellation);
+
+        Assert.Equal(
+            [("Maya", 0), ("Ram", 0), ("Dasharath", 1)],
+            view.People.Select(row => (row.Person.Name!.FirstName, row.Generation)));
+        Assert.Single(view.Marriages);
+        Assert.Single(overview.Marriages);
+        var path = Assert.Single(connections.Paths);
+        Assert.Equal([StepRelation.Spouse, StepRelation.Parent], path.Steps.Select(step => step.Relation));
+    }
+
+    private void AddMarriage(PersonId spouseId, PersonId otherSpouseId)
+    {
+        var spouse = _store.People[spouseId];
+        var marriage = Marriage.Create(spouse, _store.People[otherSpouseId], spouse.MaintainerId, alreadyMarried: false, directlyRelated: false);
+        marriage.TakeEvents();
+        _store.Marriages[marriage.Id] = marriage;
+    }
+
     private PersonId AddPerson(string firstName, AccountId maintainer)
     {
         var person = Person.Create(new PersonName(firstName), maintainer);
@@ -244,7 +275,7 @@ public class GraphServiceTests
             type ?? ParentChildType.Biological,
             parent.MaintainerId,
             new HashSet<PersonId>(),
-            new AncestorSnapshot(parentId, new HashSet<PersonId>(), isComplete: true));
+            new AncestorSnapshot(parentId, new HashSet<PersonId>(), isComplete: true), married: false);
         if (!link.IsActive)
         {
             link.Approve(child, child.MaintainerId, new AncestorSnapshot(parentId, new HashSet<PersonId>(), isComplete: true));

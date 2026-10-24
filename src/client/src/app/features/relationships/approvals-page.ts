@@ -3,12 +3,15 @@ import { RouterLink } from '@angular/router';
 
 import { fullName } from '../people/person';
 import { problemMessage } from '../people/problem';
+import { MarriagesService } from './marriages.service';
 import {
   EndpointApproval,
   LinkConsent,
   LinkConsentList,
   LinkEndpoint,
   LinkEndpointConsent,
+  MarriageConsent,
+  MarriageConsentList,
   relationWord,
 } from './relationship';
 import { RelationshipsService } from './relationships.service';
@@ -17,6 +20,13 @@ import { RelationshipsService } from './relationships.service';
 interface ConsentAction {
   label: string;
   endpoint: LinkEndpoint;
+  approve: boolean;
+}
+
+/** A consent change the signed-in user may make for one spouse of a marriage. */
+interface MarriageAction {
+  label: string;
+  spouseId: string;
   approve: boolean;
 }
 
@@ -32,10 +42,12 @@ interface ConsentAction {
 })
 export class ApprovalsPage {
   private readonly relationships = inject(RelationshipsService);
+  private readonly marriages = inject(MarriagesService);
 
   protected readonly fullName = fullName;
   protected readonly relationWord = relationWord;
   protected readonly list = signal<LinkConsentList | null>(null);
+  protected readonly marriageList = signal<MarriageConsentList | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly notice = signal<string | null>(null);
   protected readonly saving = signal(false);
@@ -131,12 +143,95 @@ export class ApprovalsPage {
     }
   }
 
+  /** Inactive marriages, those waiting for you first, as the server sorts them (D-031). */
+  protected marriageActions(marriage: MarriageConsent): MarriageAction[] {
+    const sides: [LinkEndpointConsent, LinkEndpointConsent][] = [
+      [marriage.first, marriage.second],
+      [marriage.second, marriage.first],
+    ];
+    return sides.flatMap(([own, other]) => {
+      if (!own.maintainedByYou || own.approval === 'Approved') {
+        return [];
+      }
+      const suffix = other.maintainedByYou ? ` for ${fullName(own)}` : '';
+      return own.approval === 'Pending'
+        ? [
+            { label: `Approve${suffix}`, spouseId: own.id, approve: true },
+            ...(other.maintainedByYou
+              ? []
+              : [{ label: 'Decline', spouseId: own.id, approve: false }]),
+          ]
+        : [{ label: `Restore approval${suffix}`, spouseId: own.id, approve: true }];
+    });
+  }
+
+  protected marriageDeletable(marriage: MarriageConsent): boolean {
+    return marriage.first.maintainedByYou && marriage.second.maintainedByYou;
+  }
+
+  /** Why a marriage with no action for you is inactive. */
+  protected marriageStatus(marriage: MarriageConsent): string {
+    const other = marriage.first.maintainedByYou ? marriage.second : marriage.first;
+    return other.approval === 'Disagreed'
+      ? `The maintainer of ${fullName(other)} declined or withdrew approval.`
+      : `Waiting for the maintainer of ${fullName(other)} to approve.`;
+  }
+
+  protected async actOnMarriage(marriage: MarriageConsent, action: MarriageAction): Promise<void> {
+    this.saving.set(true);
+    this.error.set(null);
+    this.notice.set(null);
+    try {
+      const updated = action.approve
+        ? await this.marriages.approve(marriage.id, action.spouseId)
+        : await this.marriages.disagree(marriage.id, action.spouseId);
+      const what = describeMarriage(updated);
+      this.notice.set(
+        updated.isActive
+          ? `The marriage of ${what} is now active.`
+          : action.approve
+            ? `You approved the marriage of ${what}. It becomes active when the other maintainer approves.`
+            : `You declined the marriage of ${what}. You can restore your approval later.`,
+      );
+      this.load();
+    } catch (error) {
+      this.error.set(problemMessage(error));
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  protected async deleteMarriage(marriage: MarriageConsent): Promise<void> {
+    this.saving.set(true);
+    this.error.set(null);
+    this.notice.set(null);
+    try {
+      await this.marriages.delete(marriage.id);
+      this.confirming.set(null);
+      this.notice.set(`You deleted the marriage of ${describeMarriage(marriage)}.`);
+      this.load();
+    } catch (error) {
+      this.error.set(problemMessage(error));
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
   private load(): void {
     this.relationships.listInactive().then(
       (list) => this.list.set(list),
       (error: unknown) => this.error.set(problemMessage(error)),
     );
+    this.marriages.listInactive().then(
+      (list) => this.marriageList.set(list),
+      (error: unknown) => this.error.set(problemMessage(error)),
+    );
   }
+}
+
+/** "Ram and Sita", for messages. */
+function describeMarriage(marriage: MarriageConsent): string {
+  return `${fullName(marriage.first)} and ${fullName(marriage.second)}`;
 }
 
 function hasOwn(link: LinkConsent, approval: EndpointApproval): boolean {

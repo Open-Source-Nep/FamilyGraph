@@ -9,14 +9,23 @@ using FamilyGraph.Business.Relationships;
 namespace FamilyGraph.Application.Tests.People;
 
 /// <summary>
-/// People and link stores, queries, audit log and unit of work over in-memory lists. Like the
+/// People, link and marriage stores, queries, audit log and unit of work over in-memory lists. Like the
 /// database, nothing added is visible until <see cref="SaveChangesAsync"/> runs.
 /// </summary>
 internal sealed class InMemoryPeople
-    : IPersonStore, IPersonQueries, IProfileImageStore, IParentChildLinkStore, IRelationshipQueries, IAuditLog, IUnitOfWork
+    : IPersonStore,
+        IPersonQueries,
+        IProfileImageStore,
+        IParentChildLinkStore,
+        IRelationshipQueries,
+        IMarriageStore,
+        IMarriageQueries,
+        IAuditLog,
+        IUnitOfWork
 {
     private readonly List<Person> _added = [];
     private readonly List<ParentChildLink> _addedLinks = [];
+    private readonly List<Marriage> _addedMarriages = [];
     private readonly List<ProfileImage> _addedImages = [];
     private readonly List<ProfileImage> _removedImages = [];
     private readonly List<(AuditEvent Event, DateTimeOffset OccurredAt)> _addedEvents = [];
@@ -24,6 +33,8 @@ internal sealed class InMemoryPeople
     public Dictionary<PersonId, Person> People { get; } = [];
 
     public Dictionary<LinkId, ParentChildLink> Links { get; } = [];
+
+    public Dictionary<LinkId, Marriage> Marriages { get; } = [];
 
     public Dictionary<ProfileImageId, ProfileImage> Images { get; } = [];
 
@@ -136,6 +147,56 @@ internal sealed class InMemoryPeople
         return Task.FromResult(new LinkConsentListData(inactive.Take(limit).ToList(), inactive.Count > limit));
     }
 
+    Task<Marriage?> IMarriageStore.FindAsync(LinkId id, CancellationToken cancellationToken) =>
+        Task.FromResult(Marriages.GetValueOrDefault(id));
+
+    public Task<bool> ExistsAsync(PersonId spouseId, PersonId otherSpouseId, CancellationToken cancellationToken) =>
+        Task.FromResult(Marriages.Values.Any(marriage => !marriage.IsDeleted
+            && ((marriage.FirstSpouseId == spouseId && marriage.SecondSpouseId == otherSpouseId)
+                || (marriage.FirstSpouseId == otherSpouseId && marriage.SecondSpouseId == spouseId))));
+
+    public Task<bool> AreParentAndChildAsync(PersonId personId, PersonId otherPersonId, CancellationToken cancellationToken) =>
+        Task.FromResult(NotDeletedLinks().Any(link =>
+            (link.ParentId == personId && link.ChildId == otherPersonId)
+            || (link.ParentId == otherPersonId && link.ChildId == personId)));
+
+    public void Add(Marriage marriage) => _addedMarriages.Add(marriage);
+
+    /// <summary>Current marriages first, then hidden people last, by ID, like the database query.</summary>
+    public Task<SpouseListData> ListSpousesAsync(PersonId personId, Viewer viewer, int limit, CancellationToken cancellationToken)
+    {
+        var spouses = Marriages.Values
+            .Where(marriage => marriage.IsActive && (marriage.FirstSpouseId == personId || marriage.SecondSpouseId == personId))
+            .Select(marriage => new SpouseData(marriage.Id, Record(marriage.OtherSpouseOf(personId), viewer), marriage.IsFormer))
+            .OrderBy(spouse => spouse.IsFormer)
+            .ThenBy(spouse => IsHidden(spouse.Person, viewer))
+            .ThenBy(spouse => IsHidden(spouse.Person, viewer) ? "" : spouse.Person.Name.FirstName, StringComparer.Ordinal)
+            .ThenBy(spouse => spouse.Person.Id.Value)
+            .ToList();
+        return Task.FromResult(new SpouseListData(spouses.Take(limit).ToList(), spouses.Count > limit));
+    }
+
+    public Task<MarriageConsentListData> ListInactiveMarriagesAsync(Viewer viewer, int limit, CancellationToken cancellationToken)
+    {
+        var viewerId = viewer.AccountId;
+        var inactive = Marriages.Values
+            .Where(marriage => !marriage.IsDeleted && !marriage.IsActive)
+            .Select(marriage => (Marriage: marriage, First: People[marriage.FirstSpouseId], Second: People[marriage.SecondSpouseId]))
+            .Where(row => Owns(row.First, viewerId) || Owns(row.Second, viewerId))
+            .OrderByDescending(row =>
+                (Owns(row.First, viewerId) && row.Marriage.FirstApproval == EndpointApproval.Pending)
+                || (Owns(row.Second, viewerId) && row.Marriage.SecondApproval == EndpointApproval.Pending))
+            .ThenBy(row => row.Marriage.Id.Value)
+            .Select(row => new MarriageConsentData(
+                row.Marriage.Id,
+                new LinkEndpointData(Record(row.First.Id, viewer), row.Marriage.FirstApproval),
+                new LinkEndpointData(Record(row.Second.Id, viewer), row.Marriage.SecondApproval),
+                row.Marriage.IsFormer,
+                IsActive: false))
+            .ToList();
+        return Task.FromResult(new MarriageConsentListData(inactive.Take(limit).ToList(), inactive.Count > limit));
+    }
+
     public void Add(IEnumerable<AuditEvent> auditEvents, DateTimeOffset occurredAt) =>
         _addedEvents.AddRange(auditEvents.Select(auditEvent => (auditEvent, occurredAt)));
 
@@ -149,6 +210,11 @@ internal sealed class InMemoryPeople
         foreach (var link in _addedLinks)
         {
             Links[link.Id] = link;
+        }
+
+        foreach (var marriage in _addedMarriages)
+        {
+            Marriages[marriage.Id] = marriage;
         }
 
         foreach (var image in _addedImages)
@@ -166,6 +232,7 @@ internal sealed class InMemoryPeople
         _removedImages.Clear();
         _added.Clear();
         _addedLinks.Clear();
+        _addedMarriages.Clear();
         _addedEvents.Clear();
         SaveCount++;
         return Task.CompletedTask;

@@ -43,7 +43,7 @@ internal sealed class AuditEventRecord
     public Guid ActorId { get; }
 
     /// <summary>
-    /// The link or person the event is about; a handover's events are about its person, and an
+    /// The link, marriage or person the event is about; a handover's events are about its person, and an
     /// export is about the exporting account.
     /// </summary>
     public Guid SubjectId { get; }
@@ -70,6 +70,8 @@ internal sealed class AuditEventRecord
         PersonEvent e => e.PersonId.Value,
         LinkEvent e => e.LinkId.Value,
         LinkBirthOrderChanged e => e.LinkId.Value,
+        MarriageEvent e => e.MarriageId.Value,
+        MarriageFormerChanged e => e.MarriageId.Value,
         HandoverEvent e => e.PersonId.Value,
         DataExported e => e.ActorId.Value,
         _ => throw new ArgumentException($"No audit subject is defined for {auditEvent.GetType().Name}.", nameof(auditEvent)),

@@ -25,18 +25,34 @@ public sealed class InMemoryExport(InMemoryAccountStore accounts, InMemoryPeople
                 .OrderBy(link => link.Id.Value)
                 .Select(link => new ExportedLink(
                     link.Id, link.ParentId, link.ChildId, link.Type, link.ParentApproval, link.ChildApproval, link.BirthOrder))
+                .ToList(),
+            people.Marriages.Values
+                .Where(marriage => !marriage.IsDeleted)
+                .OrderBy(marriage => marriage.Id.Value)
+                .Select(marriage => new ExportedMarriage(
+                    marriage.Id,
+                    marriage.FirstSpouseId,
+                    marriage.SecondSpouseId,
+                    marriage.FirstApproval,
+                    marriage.SecondApproval,
+                    marriage.IsFormer))
                 .ToList());
         return Task.FromResult(snapshot);
     }
 
     private sealed class Snapshot(
-        List<ExportedAccount> accounts, List<ExportedPerson> people, List<ExportedLink> links) : IExportSnapshot
+        List<ExportedAccount> accounts,
+        List<ExportedPerson> people,
+        List<ExportedLink> links,
+        List<ExportedMarriage> marriages) : IExportSnapshot
     {
         public IAsyncEnumerable<ExportedAccount> AccountsAsync(CancellationToken cancellationToken) => accounts.ToAsyncEnumerable();
 
         public IAsyncEnumerable<ExportedPerson> PeopleAsync(CancellationToken cancellationToken) => people.ToAsyncEnumerable();
 
         public IAsyncEnumerable<ExportedLink> LinksAsync(CancellationToken cancellationToken) => links.ToAsyncEnumerable();
+
+        public IAsyncEnumerable<ExportedMarriage> MarriagesAsync(CancellationToken cancellationToken) => marriages.ToAsyncEnumerable();
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }

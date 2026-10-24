@@ -21,11 +21,13 @@ Enable people to explore a large interconnected family graph without treating de
 - A view shows the centre person and a limited number of related people (about 10 by default, configurable per instance). People at the edge with further relatives show a "load more" control that expands the view around them.
 - The related people are the ones nearest to the centre person in any direction, closest first: parents and children, then siblings, grandparents and grandchildren, and so on, within a limited number of generations above and below.
 - Adoptive links are drawn differently from biological links (e.g. dashed) with a legend. The exact styling is a UI decision.
+- Active marriages are a step in any direction, like parents and children: local views, the overview and paths walk them. Spouses are in the same generation, drawn side by side with a distinct line, and a former marriage is labelled as former.
 
 ## Relationship explanations
 
 - The first release shows **no derived relationship labels** (such as "sibling" or "cousin"). An explanation shows the path between two people step by step, e.g. "Sita → parent: Maya → parent: Gita → child: Rina → child: You".
 - Where the gender of the step's person is known and visible (PRD 01), a step reads "mother" or "father" instead of "parent", and "daughter" or "son" instead of "child". It stays "parent" or "child" when the gender is Other, not set, or hidden behind a placeholder. Lists of parents and children use the same words.
+- A marriage step reads "husband" or "wife" where the spouse's gender is known and visible, "spouse" otherwise, with "former" before it once the marriage ended.
 - An adoptive step reads "adoptive parent" or "adopted child" instead of "parent" or "child", or "adoptive mother", "adopted son" and so on where the gender is known.
 - When two people are connected by more than one path, the shortest path is shown, with a note "There are more connections between these people" that lists up to a configurable number of further paths (default 5).
 
@@ -53,6 +55,7 @@ Enable people to explore a large interconnected family graph without treating de
 - `AC-08.6` An explanation between two people shows the shortest path and indicates when more paths exist, listing them on request.
 - `AC-08.7` An explanation marks each adoptive step as "adoptive parent" or "adopted child".
 - `AC-08.8` Where a person's gender is known and visible, they are named mother, father, daughter or son instead of parent or child; otherwise parent or child.
+- `AC-08.9` Views and paths walk active marriages as one step within a generation; a spouse is named husband, wife or spouse, and "former" when the marriage ended.
 
 ## Open details
 

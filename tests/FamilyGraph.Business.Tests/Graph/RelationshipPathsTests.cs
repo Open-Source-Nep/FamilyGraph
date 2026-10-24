@@ -67,7 +67,7 @@ public class RelationshipPathsTests
 
         Assert.Equal(
             [(StepRelation.Parent, ParentChildType.Biological), (StepRelation.Child, ParentChildType.Adoptive)],
-            path.Steps.Select(step => (step.Relation, step.Link.Type)));
+            path.Steps.Select(step => (step.Relation, ((GraphLink)step.Link).Type)));
         Assert.True(path.CrossesAdoption);
     }
 
@@ -112,6 +112,40 @@ public class RelationshipPathsTests
             forward.Select(path => path.Steps.Select(step => step.Link.Id).ToList()),
             backward.Select(path => path.Steps.Select(step => step.Link.Id).ToList()));
     }
+
+    [Fact]
+    [Trait("AC", "AC-08.9")]
+    public void A_marriage_is_one_step_between_spouses()
+    {
+        var husband = PersonId.New();
+        var fatherInLaw = PersonId.New();
+        var links = new[] { Link(_mother, _you), Link(fatherInLaw, husband) };
+        var marriages = new[] { Marriage(_you, husband, isFormer: true) };
+
+        var path = Assert.Single(RelationshipPaths.Find(_mother, fatherInLaw, links, marriages, maxPaths: 5));
+
+        Assert.Equal(
+            [(StepRelation.Child, _you), (StepRelation.Spouse, husband), (StepRelation.Parent, fatherInLaw)],
+            path.Steps.Select(step => (step.Relation, step.PersonId)));
+        Assert.True(Assert.IsType<GraphMarriage>(path.Steps[1].Link).IsFormer);
+        Assert.False(path.CrossesAdoption);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-08.9")]
+    public void Spouses_are_one_step_apart_while_a_shared_child_is_two()
+    {
+        var links = new[] { Link(_mother, _you), Link(_father, _you) };
+        var marriages = new[] { Marriage(_father, _mother) };
+
+        var paths = RelationshipPaths.Find(_mother, _father, links, marriages, maxPaths: 5);
+
+        Assert.Equal([1, 2], paths.Select(path => path.Steps.Count));
+        Assert.Equal(StepRelation.Spouse, paths[0].Steps[0].Relation);
+    }
+
+    private static GraphMarriage Marriage(PersonId spouse, PersonId otherSpouse, bool isFormer = false) =>
+        new(LinkId.New(), spouse, otherSpouse, isFormer);
 
     private static GraphLink Link(PersonId parent, PersonId child, ParentChildType? type = null) =>
         new(LinkId.New(), parent, child, type ?? ParentChildType.Biological);

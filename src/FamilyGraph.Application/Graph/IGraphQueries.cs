@@ -6,7 +6,8 @@ namespace FamilyGraph.Application.Graph;
 
 /// <summary>
 /// Bounded reads of the active graph (D-002, D-009). Every query takes its limits, walks only
-/// active links (PRD 03) and never loads the whole graph. A query that runs past
+/// active parent–child links and active marriages (PRD 03, D-031) and never loads the whole graph.
+/// A marriage is one step and keeps the generation. A query that runs past
 /// <see cref="GraphLimits.QueryTimeoutSeconds"/> throws <see cref="GraphQueryTimeoutException"/>.
 /// </summary>
 public interface IGraphQueries
@@ -20,7 +21,7 @@ public interface IGraphQueries
         PersonId centreId, AccountId viewerId, int generations, int peopleLimit, CancellationToken cancellationToken);
 
     /// <summary>
-    /// The active links between the first <paramref name="peopleLimit"/> people reached from
+    /// The active links and marriages between the first <paramref name="peopleLimit"/> people reached from
     /// <paramref name="personId"/> in breadth-first order, so every shortest path to a reached
     /// person lies inside them (D-023).
     /// </summary>
@@ -45,15 +46,22 @@ public interface IGraphQueries
 /// </summary>
 public sealed record LocalViewPersonData(PersonRecord Person, int Generation, bool HasMore);
 
-/// <summary>The people of a local view, nearest first, and the active links between them.</summary>
+/// <summary>The people of a local view, nearest first, and the active links and marriages between them.</summary>
 public sealed record LocalViewData(
-    IReadOnlyList<LocalViewPersonData> People, IReadOnlyList<GraphLink> Links, bool IsTruncated);
+    IReadOnlyList<LocalViewPersonData> People,
+    IReadOnlyList<GraphLink> Links,
+    IReadOnlyList<GraphMarriage> Marriages,
+    bool IsTruncated);
 
 /// <summary>
-/// The people reached from the starting people, nearest first, and the active links between them.
-/// <see cref="IsTruncated"/> says more people were in reach.
+/// The people reached from the starting people, nearest first, and the active links and marriages
+/// between them. <see cref="IsTruncated"/> says more people were in reach.
 /// </summary>
-public sealed record OverviewData(IReadOnlyList<PersonRecord> People, IReadOnlyList<GraphLink> Links, bool IsTruncated);
+public sealed record OverviewData(
+    IReadOnlyList<PersonRecord> People,
+    IReadOnlyList<GraphLink> Links,
+    IReadOnlyList<GraphMarriage> Marriages,
+    bool IsTruncated);
 
 /// <summary><see cref="IsComplete"/> is false when the search stopped at its people limit.</summary>
-public sealed record LinkNeighbourhood(IReadOnlyList<GraphLink> Links, bool IsComplete);
+public sealed record LinkNeighbourhood(IReadOnlyList<GraphLink> Links, IReadOnlyList<GraphMarriage> Marriages, bool IsComplete);

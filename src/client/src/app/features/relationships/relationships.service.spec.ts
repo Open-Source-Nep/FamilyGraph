@@ -106,4 +106,12 @@ describe('relationWord', () => {
     expect(relationHint('parent', null, 'Biological')).toBeNull();
     expect(relationHint('child', 'Male', 'Biological')).toBe('son');
   });
+
+  it('names spouses husband, wife or spouse, and former once the marriage ended (AC-08.9)', () => {
+    expect(relationWord('spouse', 'Male', 'Marriage')).toBe('husband');
+    expect(relationWord('spouse', 'Female', 'FormerMarriage')).toBe('former wife');
+    expect(relationWord('spouse', 'Other', 'Marriage')).toBe('spouse');
+    expect(relationHint('spouse', null, 'Marriage')).toBeNull();
+    expect(relationHint('spouse', null, 'FormerMarriage')).toBe('former spouse');
+  });
 });

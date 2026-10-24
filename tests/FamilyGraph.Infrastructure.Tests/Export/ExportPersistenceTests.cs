@@ -22,7 +22,7 @@ public class ExportPersistenceTests(PostgresFixture postgres)
     [Trait("AC", "AC-09.4")]
     [Trait("AC", "AC-09.6")]
     [Trait("AC", "AC-09.7")]
-    public async Task Export_reads_every_profile_the_non_deleted_links_and_only_maintaining_accounts()
+    public async Task Export_reads_every_profile_the_non_deleted_links_and_marriages_and_only_maintaining_accounts()
     {
         await using var services = await NewServicesAsync();
         var alice = await CreateAccountAsync(services, "alice@example.org");
@@ -35,8 +35,12 @@ public class ExportPersistenceTests(PostgresFixture postgres)
         var kept = TestData.NewLink(parent, child, alice);
         var removed = TestData.NewLink(deleted, child, alice);
         removed.Delete(deleted, child, alice, Now);
+        var marriage = Marriage.Create(parent, deleted, alice, alreadyMarried: false, directlyRelated: false);
+        marriage.SetFormer(parent, deleted, alice, isFormer: true);
+        var deletedMarriage = Marriage.Create(parent, child, alice, alreadyMarried: false, directlyRelated: false);
+        deletedMarriage.Delete(parent, child, alice, Now);
         deleted.Delete(alice, actorIsAdministrator: false, Now);
-        await SaveAsync(services, parent, child, deleted, kept, removed);
+        await SaveAsync(services, parent, child, deleted, kept, removed, marriage, deletedMarriage);
 
         await using var scope = services.CreateAsyncScope();
         await using var export = await scope.ServiceProvider.GetRequiredService<ExportService>()
@@ -44,6 +48,7 @@ public class ExportPersistenceTests(PostgresFixture postgres)
         var accounts = await export.AccountsAsync(Cancellation).ToListAsync(Cancellation);
         var people = await export.PeopleAsync(Cancellation).ToListAsync(Cancellation);
         var links = await export.LinksAsync(Cancellation).ToListAsync(Cancellation);
+        var marriages = await export.MarriagesAsync(Cancellation).ToListAsync(Cancellation);
 
         Assert.Equal([new ExportedAccount(alice, "alice@example.org", true)], accounts);
         Assert.DoesNotContain(accounts, account => account.Id == idle);
@@ -58,6 +63,10 @@ public class ExportPersistenceTests(PostgresFixture postgres)
         Assert.Equal(
             [new ExportedLink(kept.Id, parent.Id, child.Id, ParentChildType.Biological, EndpointApproval.Approved, EndpointApproval.Approved, null)],
             links);
+        Assert.Equal(
+            [new ExportedMarriage(
+                marriage.Id, marriage.FirstSpouseId, marriage.SecondSpouseId, EndpointApproval.Approved, EndpointApproval.Approved, true)],
+            marriages);
 
         await using var check = services.CreateAsyncScope();
         var record = await check.ServiceProvider.GetRequiredService<FamilyGraphDbContext>()

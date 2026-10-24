@@ -73,6 +73,21 @@ describe('family layout', () => {
     expect(familyLayout(nodes(ids), links, options)).toEqual(positions);
   });
 
+  it('puts spouses on one row next to each other (D-031)', () => {
+    // Ram's parents are shown and Sita's are not; they have no children together.
+    const positions = familyLayout(
+      nodes(['dasharath', 'ram', 'sita', 'lava']),
+      [link('dasharath', 'ram'), link('sita', 'lava')],
+      options,
+      [{ spouseId: 'ram', otherSpouseId: 'sita' }],
+    );
+    const [ram, sita] = [positions.get('ram')!, positions.get('sita')!];
+    // People settle off their rows, but spouses stay closer than a row apart.
+    expect(Math.abs(ram.y - sita.y)).toBeLessThan(options.height + options.rankSep);
+    expect(Math.abs(ram.x - sita.x)).toBeLessThan(width * 4);
+    expect(positions.get('lava')!.y).toBeGreaterThan(sita.y);
+  });
+
   it('places people with no links and ignores links to people not given', () => {
     const lone = familyLayout(nodes(['a', 'b']), [link('a', 'missing')], options);
     const [a, b] = [lone.get('a')!, lone.get('b')!];

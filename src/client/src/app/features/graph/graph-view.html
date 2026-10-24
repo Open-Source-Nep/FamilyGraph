@@ -80,6 +80,27 @@
                 }
               </div>
             }
+            @if (entry.spouses.length) {
+              <div>
+                Spouses:
+                @for (spouse of entry.spouses; track spouse.marriage.id; let last = $last) {
+                  <a [routerLink]="['/people', spouse.person.id]">{{ fullName(spouse.person) }}</a>
+                  @if (
+                    relationHint(
+                      'spouse',
+                      spouse.person.gender,
+                      spouse.marriage.isFormer ? 'FormerMarriage' : 'Marriage'
+                    );
+                    as hint
+                  ) {
+                    <span class="hint"> ({{ hint }})</span>
+                  }
+                  @if (!last) {
+                    <span>, </span>
+                  }
+                }
+              </div>
+            }
             @if (entry.children.length) {
               <div>
                 Children:

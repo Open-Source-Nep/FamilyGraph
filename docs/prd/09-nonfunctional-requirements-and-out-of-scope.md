@@ -11,7 +11,7 @@
 
 ## Data export
 
-An administrator can download the whole instance as one file that a later import can read back. It holds every profile (Private ones with their names; deleted ones as placeholders without any name), every relationship that has not been deleted with each side's consent and the birth order, and the email of each account that maintains a profile. It holds no profile images, audit history or deleted relationships. Other users cannot export. Each export is recorded in the audit history with the administrator and the time.
+An administrator can download the whole instance as one file that a later import can read back. It holds every profile (Private ones with their names; deleted ones as placeholders without any name), every relationship that has not been deleted with each side's consent and the birth order, every marriage that has not been deleted with each side's consent and whether it is former, and the email of each account that maintains a profile. It holds no profile images, audit history or deleted relationships. Other users cannot export. Each export is recorded in the audit history with the administrator and the time.
 
 ## Initial release exclusions
 

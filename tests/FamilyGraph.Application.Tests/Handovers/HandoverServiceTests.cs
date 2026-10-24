@@ -137,7 +137,7 @@ public class HandoverServiceTests
         var parent = AddPerson("Maya", Alice);
         var child = AddPerson("Asha", Carol);
         var link = ParentChildLink.Create(
-            parent, child, ParentChildType.Adoptive, Alice, new HashSet<PersonId>(), new AncestorSnapshot(parent.Id, new HashSet<PersonId>(), isComplete: true));
+            parent, child, ParentChildType.Adoptive, Alice, new HashSet<PersonId>(), new AncestorSnapshot(parent.Id, new HashSet<PersonId>(), isComplete: true), married: false);
         _people.Links[link.Id] = link;
         var created = await Service().OfferAsync(parent.Id, Alice, Cancellation);
 

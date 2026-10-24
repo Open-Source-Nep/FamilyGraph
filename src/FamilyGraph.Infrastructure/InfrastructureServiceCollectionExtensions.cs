@@ -54,6 +54,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IProfileImageStore, EfProfileImageStore>();
         services.AddScoped<IParentChildLinkStore, EfParentChildLinkStore>();
         services.AddScoped<IRelationshipQueries, EfRelationshipQueries>();
+        services.AddScoped<IMarriageStore, EfMarriageStore>();
+        services.AddScoped<IMarriageQueries, EfMarriageQueries>();
         services.AddScoped<IGraphQueries, EfGraphQueries>();
         services.AddScoped<IHandoverStore, EfHandoverStore>();
         services.AddScoped<IExportQueries, EfExportQueries>();

@@ -28,6 +28,8 @@ const layout: DagreLayoutOptions = {
   nodeSep: 24,
   rankSep: 56,
   padding: 24,
+  // The stand-ins for marriages weigh more, so spouses share a row (see treeLayout).
+  edgeWeight: (edge) => (edge.hasClass('layout-only') ? 8 : 1),
 };
 
 const dotSize = 12;
@@ -90,7 +92,8 @@ interface Hovered {
 /**
  * The tree diagram of the shown people (PRD 08, D-024): parents above children, laid out by
  * dagre and drawn by Cytoscape on a canvas. The home page's dots use the family layout instead,
- * which keeps children right below their parents. Adoptive links are dashed and people with relatives
+ * which keeps children right below their parents. Spouses share a row, joined by a double line
+ * that is dotted once the marriage ended (D-031). Adoptive links are dashed and people with relatives
  * not shown have a double border. Each person has their photo or a coloured initial avatar and hovering shows their
  * details. The dots mode (the home page) draws each person as a small coloured dot, with no legend
  * or details; hovering shows only their name. The canvas is not keyboard or screen reader accessible, so the page always
@@ -170,7 +173,11 @@ export class GraphDiagram {
         cy.style(this.style(dots));
         cy.add(this.elements(this.graph()));
       });
-      cy.layout(dots ? this.dotsLayout(this.graph()) : layout).run();
+      if (dots) {
+        cy.layout(this.dotsLayout(this.graph())).run();
+      } else {
+        this.treeLayout(cy);
+      }
       if (!dots) {
         this.showPhotos(cy, this.graph());
       }
@@ -212,12 +219,48 @@ export class GraphDiagram {
     }
   }
 
+  /**
+   * The tree diagram by dagre, which cannot lay out an edge within a row. Each marriage is
+   * replaced by a tiny stand-in child of both spouses, weighted so that they share a row, and the
+   * stand-ins are removed once the people are placed.
+   */
+  private treeLayout(cy: cytoscape.Core): void {
+    const standIns = cy.add(
+      cy
+        .edges('.marriage')
+        .map((marriage): ElementDefinition[] => {
+          const id = `layout-${marriage.id()}`;
+          return [
+            { group: 'nodes', data: { id }, classes: 'layout-only' },
+            {
+              group: 'edges',
+              data: { source: marriage.source().id(), target: id },
+              classes: 'layout-only',
+            },
+            {
+              group: 'edges',
+              data: { source: marriage.target().id(), target: id },
+              classes: 'layout-only',
+            },
+          ];
+        })
+        .flat(),
+    );
+    standIns.nodes().style({ width: 1, height: 1, label: '', 'background-image': 'none' });
+    cy.elements().not('edge.marriage').layout(layout).run();
+    standIns.remove();
+  }
+
   /** Families grouped under their parents rather than spread out evenly (D-024). */
   private dotsLayout(graph: ShownGraph): cytoscape.PresetLayoutOptions {
     const positions = familyLayout(
       graph.people.map((row) => ({ id: row.person.id, width: dotSize })),
       graph.links,
       { height: dotSize, nodeSep: 8, groupSep: 24, rankSep: 28 },
+      graph.marriages.map((marriage) => ({
+        spouseId: marriage.firstSpouseId,
+        otherSpouseId: marriage.secondSpouseId,
+      })),
     );
     return { name: 'preset', positions: Object.fromEntries(positions), padding: 16 };
   }
@@ -247,6 +290,17 @@ export class GraphDiagram {
           group: 'edges' as const,
           data: { id: link.id, source: link.parentId, target: link.childId },
           classes: link.type === 'Adoptive' ? 'adoptive' : '',
+        })),
+      ...graph.marriages
+        .filter((marriage) => ids.has(marriage.firstSpouseId) && ids.has(marriage.secondSpouseId))
+        .map((marriage) => ({
+          group: 'edges' as const,
+          data: {
+            id: marriage.id,
+            source: marriage.firstSpouseId,
+            target: marriage.secondSpouseId,
+          },
+          classes: marriage.isFormer ? 'marriage former' : 'marriage',
         })),
     ];
   }
@@ -336,6 +390,19 @@ export class GraphDiagram {
       {
         selector: 'edge.adoptive',
         style: { 'line-style': 'dashed', 'line-dash-pattern': dots ? [3, 3] : [6, 4] },
+      },
+      // Spouses are joined by a double line in the accent colour, dotted once the marriage ended.
+      {
+        selector: 'edge.marriage',
+        style: {
+          'line-color': accent,
+          'line-style': 'double',
+          width: dots ? 2 : 4,
+        },
+      },
+      {
+        selector: 'edge.marriage.former',
+        style: { 'line-style': 'dotted', width: dots ? 1 : 2 },
       },
     ];
   }

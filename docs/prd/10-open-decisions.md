@@ -15,6 +15,7 @@ This file is intentionally unresolved. Claude Code must not silently invent deci
 - **Decided (2026-10-21):** at most one parent–child link per ordered pair (parent, child), so the same pair cannot have both a biological and an adoptive link.
 - **Decided (2026-10-21):** no limit on the number of parents, of either type.
 - **Decided (2026-10-22):** a parent's children have a birth order for display only, set manually per parent by the parent's maintainer, with no consent and no birth dates. New children are unordered until placed. Rejected alternatives: an optional birth date on Person; letting the child's maintainer reorder; child-side approval of order changes. See PRD 02.
+- **Decided (2026-10-23, 2026-10-24):** marriages are a second direct relationship. Consent works as for parent–child links; an ended marriage is marked former and stays in the graph, marked or undone by either spouse's maintainer without consent; any number per person, one per pair; any genders; a marriage between a direct parent and child, or a parent–child link between spouses, is rejected (direct links only). See PRD 02.
 
 ## Claims and identity
 - **Decided (2026-10-21):** a maintainer is unavailable after 30 days without response (configurable) or when their account no longer exists. See PRD 04.
@@ -45,6 +46,7 @@ This file is intentionally unresolved. Claude Code must not silently invent deci
 - **Decided (2026-10-21):** no derived relationship labels in the first release; explanations show the path. Admin-defined label rules are planned for later. (2026-10-24: those rules may depend on the labelled person's gender, with a neutral fallback when it is not known.)
 - **Decided (2026-10-21):** unknown parents are ordinary profiles with the first name `UNKNOWN`; no special state.
 - **Decided (2026-10-22):** a local view shows the people nearest to the centre in any direction, closest first, rather than only ancestors and descendants. See PRD 08.
+- **Decided (2026-10-23):** active marriages are a full step in views, the overview and paths; spouses share a generation, with a distinct line, and former marriages are labelled. See PRD 08.
 - **Decided (2026-10-21):** adoptive steps read "adoptive parent"/"adopted child"; adoptive links are drawn differently with a legend.
 
 ## Data export

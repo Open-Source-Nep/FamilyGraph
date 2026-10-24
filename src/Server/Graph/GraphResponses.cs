@@ -48,36 +48,55 @@ public sealed record GraphLinkResponse(Guid Id, Guid ParentId, Guid ChildId, str
         new(link.Id.Value, link.ParentId.Value, link.ChildId.Value, link.Type.Name);
 }
 
+/// <summary>An active marriage between two people in the same generation; <see cref="IsFormer"/> when it ended (D-031).</summary>
+public sealed record GraphMarriageResponse(Guid Id, Guid FirstSpouseId, Guid SecondSpouseId, bool IsFormer)
+{
+    internal static GraphMarriageResponse From(GraphMarriage marriage) =>
+        new(marriage.Id.Value, marriage.FirstSpouseId.Value, marriage.SecondSpouseId.Value, marriage.IsFormer);
+}
+
 /// <summary>
-/// The centre and the people nearest to it, nearest first, with the active links between them.
-/// <see cref="IsTruncated"/> says more people were in reach (D-010, D-023).
+/// The centre and the people nearest to it, nearest first, with the active links and marriages
+/// between them. <see cref="IsTruncated"/> says more people were in reach (D-010, D-023, D-031).
 /// </summary>
 public sealed record LocalViewResponse(
-    Guid CentreId, IReadOnlyList<LocalViewPersonResponse> People, IReadOnlyList<GraphLinkResponse> Links, bool IsTruncated)
+    Guid CentreId,
+    IReadOnlyList<LocalViewPersonResponse> People,
+    IReadOnlyList<GraphLinkResponse> Links,
+    IReadOnlyList<GraphMarriageResponse> Marriages,
+    bool IsTruncated)
 {
     internal static LocalViewResponse From(LocalView view) => new(
         view.CentreId.Value,
         [.. view.People.Select(row => new LocalViewPersonResponse(GraphPersonResponse.From(row.Person), row.Generation, row.HasMore))],
         [.. view.Links.Select(GraphLinkResponse.From)],
+        [.. view.Marriages.Select(GraphMarriageResponse.From)],
         view.IsTruncated);
 }
 
 /// <summary>
-/// Everyone connected through active links to your profiles, nearest first, and the active links
-/// between them. Nobody is the centre. <see cref="IsTruncated"/> says more people were in reach (D-024).
+/// Everyone connected through active links and marriages to your profiles, nearest first, and the
+/// active links and marriages between them. Nobody is the centre. <see cref="IsTruncated"/> says
+/// more people were in reach (D-024, D-031).
 /// </summary>
 public sealed record GraphOverviewResponse(
-    IReadOnlyList<GraphPersonResponse> People, IReadOnlyList<GraphLinkResponse> Links, bool IsTruncated)
+    IReadOnlyList<GraphPersonResponse> People,
+    IReadOnlyList<GraphLinkResponse> Links,
+    IReadOnlyList<GraphMarriageResponse> Marriages,
+    bool IsTruncated)
 {
     internal static GraphOverviewResponse From(Overview overview) => new(
         [.. overview.People.Select(GraphPersonResponse.From)],
         [.. overview.Links.Select(GraphLinkResponse.From)],
+        [.. overview.Marriages.Select(GraphMarriageResponse.From)],
         overview.IsTruncated);
 }
 
 /// <summary>
-/// One step of a path: <see cref="Relation"/> is <c>Parent</c> or <c>Child</c>, how
-/// <see cref="Person"/> relates to the previous person, and <see cref="Type"/> the link's type (PRD 08).
+/// One step of a path: <see cref="Relation"/> is <c>Parent</c>, <c>Child</c> or <c>Spouse</c>, how
+/// <see cref="Person"/> relates to the previous person, and <see cref="Type"/> the link's type:
+/// <c>Biological</c> or <c>Adoptive</c> for a parent or child, <c>Marriage</c> or
+/// <c>FormerMarriage</c> for a spouse (PRD 08, D-031).
 /// </summary>
 public sealed record ConnectionStepResponse(Guid LinkId, string Relation, string Type, GraphPersonResponse Person);
 
@@ -94,7 +113,15 @@ public sealed record ConnectionsResponse(IReadOnlyList<ConnectionResponse> Paths
         [.. connections.Paths.Select(path => new ConnectionResponse(
             GraphPersonResponse.From(path.Start),
             [.. path.Steps.Select(step => new ConnectionStepResponse(
-                step.Link.Id.Value, step.Relation.Name, step.Link.Type.Name, GraphPersonResponse.From(step.Person)))]))],
+                step.Link.Id.Value, step.Relation.Name, TypeOf(step.Link), GraphPersonResponse.From(step.Person)))]))],
         connections.MorePathsExist,
         connections.SearchComplete);
+
+    private static string TypeOf(GraphEdge edge) => edge switch
+    {
+        GraphLink link => link.Type.Name,
+        GraphMarriage { IsFormer: true } => "FormerMarriage",
+        GraphMarriage => "Marriage",
+        _ => throw new ArgumentException("Unknown kind of graph edge.", nameof(edge)),
+    };
 }

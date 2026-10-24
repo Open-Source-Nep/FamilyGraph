@@ -21,7 +21,13 @@ describe('GraphService', () => {
   afterEach(() => http.verify());
 
   it('loads the local view around a person', async () => {
-    const view: LocalView = { centreId: 'p1', people: [], links: [], isTruncated: false };
+    const view: LocalView = {
+      centreId: 'p1',
+      people: [],
+      links: [],
+      marriages: [],
+      isTruncated: false,
+    };
     const loaded = service.localView('p1');
     http.expectOne({ method: 'GET', url: '/api/people/p1/graph' }).flush(view);
 
@@ -29,7 +35,7 @@ describe('GraphService', () => {
   });
 
   it('loads the overview of everyone connected to your profiles', async () => {
-    const overview: GraphOverview = { people: [], links: [], isTruncated: false };
+    const overview: GraphOverview = { people: [], links: [], marriages: [], isTruncated: false };
     const loaded = service.overview();
     http.expectOne({ method: 'GET', url: '/api/graph/overview' }).flush(overview);
 
@@ -60,6 +66,15 @@ describe('stepLabel', () => {
     );
     expect(stepLabel({ relation: 'Child', type: 'Adoptive', person: person(null) })).toBe(
       'adopted child',
+    );
+  });
+
+  it('names spouse steps, former ones as such (AC-08.9)', () => {
+    expect(stepLabel({ relation: 'Spouse', type: 'Marriage', person: person('Female') })).toBe(
+      'wife',
+    );
+    expect(stepLabel({ relation: 'Spouse', type: 'FormerMarriage', person: person(null) })).toBe(
+      'former spouse',
     );
   });
 
