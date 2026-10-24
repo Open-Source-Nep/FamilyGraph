@@ -42,7 +42,7 @@ This file is intentionally unresolved. Claude Code must not silently invent deci
 
 ## Graph exploration
 - **Decided (2026-10-21):** show the shortest path, with "There are more connections between these people" listing up to 5 more (configurable). See PRD 08.
-- **Decided (2026-10-21):** no derived relationship labels in the first release; explanations show the path. Admin-defined label rules are planned for later.
+- **Decided (2026-10-21):** no derived relationship labels in the first release; explanations show the path. Admin-defined label rules are planned for later. (2026-10-24: those rules may depend on the labelled person's gender, with a neutral fallback when it is not known.)
 - **Decided (2026-10-21):** unknown parents are ordinary profiles with the first name `UNKNOWN`; no special state.
 - **Decided (2026-10-22):** a local view shows the people nearest to the centre in any direction, closest first, rather than only ancestors and descendants. See PRD 08.
 - **Decided (2026-10-21):** adoptive steps read "adoptive parent"/"adopted child"; adoptive links are drawn differently with a legend.

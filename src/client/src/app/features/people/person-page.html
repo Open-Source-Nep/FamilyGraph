@@ -5,11 +5,12 @@
 
   @if (person(); as person) {
     @if (editing()) {
-      <h1>Edit name</h1>
+      <h1>Edit details</h1>
       <app-person-name-form
         [name]="editableName()"
+        [gender]="person.gender"
         [busy]="saving()"
-        (saved)="rename($event)"
+        (saved)="saveDetails($event)"
         (cancelled)="editing.set(false)"
       />
     } @else {
@@ -31,6 +32,10 @@
             <dt>Last name</dt>
             <dd>{{ person.lastName }}</dd>
           }
+          @if (person.gender) {
+            <dt>Gender</dt>
+            <dd>{{ person.gender }}</dd>
+          }
           @if (person.visibility === 'Private') {
             <dt>Visibility</dt>
             <dd>Private: others see only “Private”.</dd>
@@ -40,7 +45,7 @@
       @if (person.maintainedByYou) {
         <p class="hint">You maintain this profile.</p>
         <p class="actions">
-          <button type="button" (click)="editing.set(true)">Edit name</button>
+          <button type="button" (click)="editing.set(true)">Edit details</button>
           @if (person.visibility === 'Public') {
             <button
               type="button"

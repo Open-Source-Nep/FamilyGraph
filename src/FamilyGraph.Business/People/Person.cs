@@ -39,12 +39,18 @@ public sealed class Person : AuditedEntity
     /// <summary>The profile's current <see cref="ProfileImage"/>, or <see langword="null"/> if it has none.</summary>
     public ProfileImageId? ImageId { get; private set; }
 
-    /// <summary>Creates a profile. The creating account becomes its maintainer.</summary>
-    public static Person Create(PersonName name, AccountId creatorId)
+    /// <summary>The person's gender, or <see langword="null"/> if it is not set (D-030).</summary>
+    public Gender? Gender { get; private set; }
+
+    /// <summary>
+    /// Creates a profile. The creating account becomes its maintainer. Only the name is required;
+    /// the gender is optional (PRD 00, D-030).
+    /// </summary>
+    public static Person Create(PersonName name, AccountId creatorId, Gender? gender = null)
     {
         ArgumentNullException.ThrowIfNull(name);
 
-        var person = new Person(PersonId.New(), name, creatorId);
+        var person = new Person(PersonId.New(), name, creatorId) { Gender = gender };
         person.Record(new PersonCreated(person.Id, creatorId));
         return person;
     }
@@ -64,6 +70,22 @@ public sealed class Person : AuditedEntity
 
         Name = newName;
         Record(new PersonRenamed(Id, actorId));
+    }
+
+    /// <summary>
+    /// Sets, changes or clears the person's gender (D-030). Only the current maintainer may do this.
+    /// The event does not record the gender, which is personal data (D-015).
+    /// </summary>
+    public void SetGender(Gender? gender, AccountId actorId)
+    {
+        EnsureNotDeleted();
+        if (!IsMaintainedBy(actorId))
+        {
+            throw new NotProfileMaintainerException(Id);
+        }
+
+        Gender = gender;
+        Record(new PersonGenderChanged(Id, actorId));
     }
 
     /// <summary>
@@ -90,7 +112,7 @@ public sealed class Person : AuditedEntity
     }
 
     /// <summary>
-    /// Deletes the profile: its name and image are erased for good and it remains as a <c>Deleted</c>
+    /// Deletes the profile: its name, gender and image are erased for good and it remains as a <c>Deleted</c>
     /// placeholder (PRD 05). Its maintainer may do this, or an administrator for moderation; the
     /// event records which. Its links and their consent are unchanged, so active links stay
     /// traversable.
@@ -103,6 +125,7 @@ public sealed class Person : AuditedEntity
             : throw new NotProfileMaintainerException(Id);
 
         Name = PersonName.Erased;
+        Gender = null;
         ImageId = null;
         DeletedAt = deletedAt;
         Record(new PersonDeleted(Id, actorId, deleter));

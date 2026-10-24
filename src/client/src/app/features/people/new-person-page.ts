@@ -2,7 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { PeopleService } from './people.service';
-import { PersonName } from './person';
+import { PersonDetails } from './person';
 import { PersonNameForm } from './person-name-form';
 import { problemMessage } from './problem';
 
@@ -19,11 +19,11 @@ export class NewPersonPage {
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);
 
-  protected async create(name: PersonName): Promise<void> {
+  protected async create({ name, gender }: PersonDetails): Promise<void> {
     this.saving.set(true);
     this.error.set(null);
     try {
-      const person = await this.people.create(name);
+      const person = await this.people.create(name, gender);
       await this.router.navigate(['/people', person.id]);
     } catch (error) {
       this.error.set(problemMessage(error));

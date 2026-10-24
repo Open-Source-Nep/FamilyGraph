@@ -6,7 +6,7 @@ namespace FamilyGraph.Application.Privacy;
 /// The one component that decides what a viewer sees of a person, on every read path (D-010,
 /// D-025). A deleted profile is a <c>Deleted</c> placeholder for everyone, and a Private profile
 /// a <c>Private</c> placeholder for everyone but its maintainer and administrators (PRD 05). A placeholder
-/// has no name and no image (D-028). The placeholder keeps the person's ID, so active links through it
+/// has no name, gender or image (D-028, D-030). The placeholder keeps the person's ID, so active links through it
 /// stay traversable, and privacy never changes which links are returned.
 /// </summary>
 public static class PrivacyProjection
@@ -18,8 +18,8 @@ public static class PrivacyProjection
 
         var placeholder = PlaceholderFor(person, viewer);
         return placeholder is null
-            ? new PersonReference(person.Id, person.Name, null, person.Visibility, person.MaintainedByViewer, person.ImageId)
-            : new PersonReference(person.Id, null, placeholder, person.Visibility, maintainedByViewer: false, imageId: null);
+            ? new PersonReference(person.Id, person.Name, null, person.Visibility, person.MaintainedByViewer, person.ImageId, person.Gender)
+            : new PersonReference(person.Id, null, placeholder, person.Visibility, maintainedByViewer: false, imageId: null, gender: null);
     }
 
     private static PersonPlaceholder? PlaceholderFor(PersonRecord person, Viewer viewer) =>

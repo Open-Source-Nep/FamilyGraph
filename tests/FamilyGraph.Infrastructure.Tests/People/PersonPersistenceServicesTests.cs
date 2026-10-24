@@ -59,7 +59,7 @@ public class PersonPersistenceServicesTests(PostgresFixture postgres)
         await using (var scope = services.CreateAsyncScope())
         {
             var service = scope.ServiceProvider.GetRequiredService<PersonService>();
-            id = await service.CreateAsync(new PersonName("Maya"), maintainer, Cancellation);
+            id = await service.CreateAsync(new PersonName("Maya"), null, maintainer, Cancellation);
         }
 
         await using (var scope = services.CreateAsyncScope())
@@ -97,7 +97,7 @@ public class PersonPersistenceServicesTests(PostgresFixture postgres)
         await using (var scope = services.CreateAsyncScope())
         {
             id = await scope.ServiceProvider.GetRequiredService<PersonService>()
-                .CreateAsync(new PersonName("Maya", "Devi", "Rai"), maintainer, Cancellation);
+                .CreateAsync(new PersonName("Maya", "Devi", "Rai"), null, maintainer, Cancellation);
         }
 
         await using (var scope = services.CreateAsyncScope())
@@ -128,6 +128,46 @@ public class PersonPersistenceServicesTests(PostgresFixture postgres)
     }
 
     [Fact]
+    [Trait("AC", "AC-01.21")]
+    [Trait("AC", "AC-01.22")]
+    [Trait("AC", "AC-05.14")]
+    public async Task Gender_is_saved_read_back_by_every_query_and_erased_on_deletion()
+    {
+        await using var services = await NewServicesAsync();
+        var maintainer = TestData.NewAccount();
+
+        PersonId id;
+        await using (var scope = services.CreateAsyncScope())
+        {
+            var service = scope.ServiceProvider.GetRequiredService<PersonService>();
+            id = await service.CreateAsync(new PersonName("Maya"), Gender.Female, maintainer, Cancellation);
+            await service.SetGenderAsync(id, Gender.Other, maintainer, Cancellation);
+        }
+
+        await using (var scope = services.CreateAsyncScope())
+        {
+            var service = scope.ServiceProvider.GetRequiredService<PersonService>();
+            var context = scope.ServiceProvider.GetRequiredService<FamilyGraphDbContext>();
+            var record = await context.Set<AuditEventRecord>().SingleAsync(r => r.Type == nameof(PersonGenderChanged), Cancellation);
+
+            Assert.Equal(Gender.Other, (await service.GetAsync(id, As(maintainer), Cancellation)).Gender);
+            Assert.Equal(Gender.Other, Assert.Single((await service.ListMaintainedAsync(maintainer, Cancellation)).People).Gender);
+            Assert.DoesNotContain("gender", record.Data, StringComparison.OrdinalIgnoreCase);
+
+            await service.DeleteAsync(id, As(maintainer), Cancellation);
+        }
+
+        await using (var scope = services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<FamilyGraphDbContext>();
+            var gender = await context.Database.SqlQuery<int?>($"SELECT gender AS \"Value\" FROM people WHERE id = {id.Value}")
+                .SingleAsync(Cancellation);
+
+            Assert.Null(gender);
+        }
+    }
+
+    [Fact]
     [Trait("AC", "AC-01.8")]
     public async Task Rename_through_the_service_is_saved_with_its_audit_event()
     {
@@ -138,7 +178,7 @@ public class PersonPersistenceServicesTests(PostgresFixture postgres)
         await using (var scope = services.CreateAsyncScope())
         {
             id = await scope.ServiceProvider.GetRequiredService<PersonService>()
-                .CreateAsync(new PersonName("Maya"), maintainer, Cancellation);
+                .CreateAsync(new PersonName("Maya"), null, maintainer, Cancellation);
         }
 
         await using (var scope = services.CreateAsyncScope())

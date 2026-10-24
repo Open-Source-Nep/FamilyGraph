@@ -74,7 +74,8 @@ public sealed record ExportedAccountItem(Guid Id, string Email, bool EmailVerifi
 
 /// <summary>
 /// A profile. <see cref="Visibility"/> is <c>Public</c> or <c>Private</c>. A deleted profile has
-/// <see cref="DeletedAt"/> and no name parts.
+/// <see cref="DeletedAt"/> and no name parts. <see cref="Gender"/> is <c>Male</c>, <c>Female</c>,
+/// <c>Other</c>, or null when not set (D-030).
 /// </summary>
 public sealed record ExportedPersonItem(
     Guid Id,
@@ -83,7 +84,8 @@ public sealed record ExportedPersonItem(
     string? LastName,
     string Visibility,
     DateTimeOffset? DeletedAt,
-    Guid MaintainerId)
+    Guid MaintainerId,
+    string? Gender)
 {
     internal static ExportedPersonItem From(ExportedPerson person) => new(
         person.Id.Value,
@@ -92,7 +94,8 @@ public sealed record ExportedPersonItem(
         person.Name?.LastName,
         person.Visibility.Name,
         person.DeletedAt,
-        person.MaintainerId.Value);
+        person.MaintainerId.Value,
+        person.Gender?.Name);
 }
 
 /// <summary>

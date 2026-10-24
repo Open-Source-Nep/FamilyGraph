@@ -71,8 +71,8 @@
                 Parents:
                 @for (parent of entry.parents; track parent.link.id; let last = $last) {
                   <a [routerLink]="['/people', parent.person.id]">{{ fullName(parent.person) }}</a>
-                  @if (parent.link.type === 'Adoptive') {
-                    <span class="hint"> (adoptive parent)</span>
+                  @if (relationHint('parent', parent.person.gender, parent.link.type); as hint) {
+                    <span class="hint"> ({{ hint }})</span>
                   }
                   @if (!last) {
                     <span>, </span>
@@ -85,8 +85,8 @@
                 Children:
                 @for (child of entry.children; track child.link.id; let last = $last) {
                   <a [routerLink]="['/people', child.person.id]">{{ fullName(child.person) }}</a>
-                  @if (child.link.type === 'Adoptive') {
-                    <span class="hint"> (adopted child)</span>
+                  @if (relationHint('child', child.person.gender, child.link.type); as hint) {
+                    <span class="hint"> ({{ hint }})</span>
                   }
                   @if (!last) {
                     <span>, </span>

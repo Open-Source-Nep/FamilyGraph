@@ -1,7 +1,37 @@
-import { PersonLabel } from '../people/person';
+import { Gender, PersonLabel } from '../people/person';
 
 /** The only directly registered relationship types (PRD 02). */
 export type ParentChildType = 'Biological' | 'Adoptive';
+
+/**
+ * How a parent or child is named: "mother", "adopted son", or "parent" and "child" when the
+ * gender is Other, not set or hidden (D-030). Adoption is always named (AC-08.7).
+ */
+export function relationWord(
+  relation: 'parent' | 'child',
+  gender: Gender | null,
+  type: ParentChildType,
+): string {
+  const words =
+    relation === 'parent'
+      ? { Male: 'father', Female: 'mother', Other: 'parent' }
+      : { Male: 'son', Female: 'daughter', Other: 'child' };
+  const word = words[gender ?? 'Other'];
+  if (type !== 'Adoptive') {
+    return word;
+  }
+  return relation === 'parent' ? `adoptive ${word}` : `adopted ${word}`;
+}
+
+/** The wording in brackets after a relative's name; nothing for a plain "parent" or "child". */
+export function relationHint(
+  relation: 'parent' | 'child',
+  gender: Gender | null,
+  type: ParentChildType,
+): string | null {
+  const word = relationWord(relation, gender, type);
+  return word === relation ? null : word;
+}
 
 export interface NewLink {
   parentId: string;

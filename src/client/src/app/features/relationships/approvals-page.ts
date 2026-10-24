@@ -9,6 +9,7 @@ import {
   LinkConsentList,
   LinkEndpoint,
   LinkEndpointConsent,
+  relationWord,
 } from './relationship';
 import { RelationshipsService } from './relationships.service';
 
@@ -33,6 +34,7 @@ export class ApprovalsPage {
   private readonly relationships = inject(RelationshipsService);
 
   protected readonly fullName = fullName;
+  protected readonly relationWord = relationWord;
   protected readonly list = signal<LinkConsentList | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly notice = signal<string | null>(null);
@@ -143,8 +145,8 @@ function hasOwn(link: LinkConsent, approval: EndpointApproval): boolean {
   );
 }
 
-/** "Hari as adoptive parent of Maya", for messages and list items. */
+/** "Hari as adoptive father of Maya", for messages and list items. */
 function describe(link: LinkConsent): string {
-  const role = link.type === 'Adoptive' ? 'adoptive parent' : 'parent';
+  const role = relationWord('parent', link.parent.gender, link.type);
   return `${fullName(link.parent)} as ${role} of ${fullName(link.child)}`;
 }

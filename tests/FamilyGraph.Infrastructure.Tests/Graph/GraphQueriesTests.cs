@@ -213,6 +213,7 @@ public class GraphQueriesTests(PostgresFixture postgres)
     [Trait("AC", "AC-05.2")]
     [Trait("AC", "AC-05.3")]
     [Trait("AC", "AC-05.4")]
+    [Trait("AC", "AC-05.14")]
     public async Task Graph_reads_load_visibility_and_deletion_so_placeholders_stay_on_the_walk()
     {
         await using var services = await NewServicesAsync();
@@ -220,6 +221,8 @@ public class GraphQueriesTests(PostgresFixture postgres)
         var mother = TestData.NewPerson(Maintainer, "Sita");
         var you = TestData.NewPerson(Maintainer, "Maya");
         mother.SetVisibility(ProfileVisibility.Private, Maintainer);
+        mother.SetGender(Gender.Female, Maintainer);
+        you.SetGender(Gender.Female, Maintainer);
         var links = new[] { TestData.NewLink(grandmother, mother, Maintainer), TestData.NewLink(mother, you, Maintainer) };
         grandmother.Delete(Maintainer, actorIsAdministrator: false, DateTimeOffset.UtcNow);
         await SaveAsync(services, [grandmother, mother, you, .. links]);
@@ -234,8 +237,8 @@ public class GraphQueriesTests(PostgresFixture postgres)
         var connections = await service.FindConnectionsAsync(you.Id, grandmother.Id, viewer, Cancellation);
 
         Assert.Equal(
-            [("Maya", null), (null, PersonPlaceholder.Private), (null, PersonPlaceholder.Deleted)],
-            view.People.Select(row => (row.Person.Name?.FirstName, row.Person.Placeholder)));
+            [("Maya", null, Gender.Female), (null, PersonPlaceholder.Private, null), (null, PersonPlaceholder.Deleted, null)],
+            view.People.Select(row => (row.Person.Name?.FirstName, row.Person.Placeholder, row.Person.Gender)));
         Assert.Equal(
             [PersonPlaceholder.Private, PersonPlaceholder.Deleted],
             Assert.Single(connections.Paths).Steps.Select(step => step.Person.Placeholder));

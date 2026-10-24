@@ -14,10 +14,16 @@ import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { PeopleService } from '../people/people.service';
-import { Person, PersonName, PersonSummary, fullName } from '../people/person';
+import { Person, PersonDetails, PersonSummary, fullName } from '../people/person';
 import { PersonNameForm } from '../people/person-name-form';
 import { problemMessage } from '../people/problem';
-import { DirectRelatives, LinkEndpoint, ParentChildType, Relative } from './relationship';
+import {
+  DirectRelatives,
+  LinkEndpoint,
+  ParentChildType,
+  Relative,
+  relationHint,
+} from './relationship';
 import { RelationshipsService } from './relationships.service';
 
 type Side = 'parent' | 'child';
@@ -47,6 +53,7 @@ export class PersonRelatives {
   readonly person = input.required<Person>();
 
   protected readonly fullName = fullName;
+  protected readonly relationHint = relationHint;
   protected readonly relatives = signal<DirectRelatives | null>(null);
   protected readonly adding = signal(false);
   /** The profiles you maintain, other than this person, once the form has loaded them. */
@@ -127,15 +134,15 @@ export class PersonRelatives {
   }
 
   /** Creates a profile you maintain, then lists and selects it for linking (PRD 01). */
-  protected async createPerson(name: PersonName): Promise<void> {
+  protected async createPerson({ name, gender }: PersonDetails): Promise<void> {
     this.saving.set(true);
     this.personError.set(null);
     try {
-      const person = await this.people.create(name);
+      const person = await this.people.create(name, gender);
       // You maintain the new profile, so you see it by the name you gave it.
       this.candidates.update((list) => [
         ...(list ?? []),
-        { ...name, id: person.id, visibility: person.visibility },
+        { ...name, id: person.id, visibility: person.visibility, gender },
       ]);
       this.toggle(person.id, true);
       this.closeNewPerson();

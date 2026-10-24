@@ -15,6 +15,7 @@ const maya: Person = {
   placeholder: null,
   visibility: 'Public',
   imageId: null,
+  gender: null,
   maintainedByYou: true,
 };
 
@@ -29,6 +30,7 @@ const relatives: DirectRelatives = {
       placeholder: null,
       visibility: 'Public',
       imageId: null,
+      gender: null,
       type: 'Adoptive',
       maintainedByYou: true,
     },
@@ -41,6 +43,7 @@ const relatives: DirectRelatives = {
       placeholder: null,
       visibility: 'Public',
       imageId: null,
+      gender: 'Female',
       type: 'Biological',
       maintainedByYou: false,
     },
@@ -137,12 +140,15 @@ describe('PersonRelatives', () => {
       (input: HTMLInputElement) => input.parentElement?.textContent?.trim(),
     );
 
-  it('lists parents and marks adoptive ones', () => {
+  it('lists parents, naming adoptive ones and genders where known (AC-08.7, AC-08.8)', () => {
     const items = [...fixture.nativeElement.querySelectorAll('li')].map((li: HTMLElement) =>
       li.textContent?.replace(/\s+/g, ' ').trim(),
     );
 
-    expect(items).toEqual(['Hari Rai (adoptive parent) Delete link', 'Sita Withdraw approval']);
+    expect(items).toEqual([
+      'Hari Rai (adoptive parent) Delete link',
+      'Sita (mother) Withdraw approval',
+    ]);
     expect(text()).toContain('No children are linked.');
   });
 

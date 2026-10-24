@@ -7,8 +7,8 @@
       @for (parent of relatives.parents; track parent.id) {
         <li>
           <a [routerLink]="['/people', parent.id]">{{ fullName(parent) }}</a>
-          @if (parent.type === 'Adoptive') {
-            <span class="hint"> (adoptive parent)</span>
+          @if (relationHint('parent', parent.gender, parent.type); as hint) {
+            <span class="hint"> ({{ hint }})</span>
           }
           @if (removal(parent, 'parent'); as removal) {
             <ng-container
@@ -32,8 +32,8 @@
       @for (child of relatives.children; track child.id) {
         <li>
           <a [routerLink]="['/people', child.id]">{{ fullName(child) }}</a>
-          @if (child.type === 'Adoptive') {
-            <span class="hint"> (adopted child)</span>
+          @if (relationHint('child', child.gender, child.type); as hint) {
+            <span class="hint"> ({{ hint }})</span>
           }
           @if (removal(child, 'child'); as removal) {
             <ng-container

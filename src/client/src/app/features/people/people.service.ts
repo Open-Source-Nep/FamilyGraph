@@ -2,15 +2,16 @@ import { HttpClient } from '@angular/common/http';
 import { Service, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-import { Person, PersonName, ProfileList, Visibility } from './person';
+import { Gender, Person, PersonName, ProfileList, Visibility } from './person';
 
 /** Person profile requests. The server checks who may change a profile. */
 @Service()
 export class PeopleService {
   private readonly http = inject(HttpClient);
 
-  create(name: PersonName): Promise<Person> {
-    return firstValueFrom(this.http.post<Person>('/api/people', name));
+  /** Only the first name is required; the gender is optional (D-030). */
+  create(name: PersonName, gender: Gender | null = null): Promise<Person> {
+    return firstValueFrom(this.http.post<Person>('/api/people', { ...name, gender }));
   }
 
   get(id: string): Promise<Person> {
@@ -19,6 +20,13 @@ export class PeopleService {
 
   rename(id: string, name: PersonName): Promise<void> {
     return firstValueFrom(this.http.put<void>(`/api/people/${encodeURIComponent(id)}/name`, name));
+  }
+
+  /** Sets, changes or clears (null) the gender; only the profile's maintainer may (D-030). */
+  setGender(id: string, gender: Gender | null): Promise<void> {
+    return firstValueFrom(
+      this.http.put<void>(`/api/people/${encodeURIComponent(id)}/gender`, { gender }),
+    );
   }
 
   /** Only the profile's maintainer may change it (PRD 05). */

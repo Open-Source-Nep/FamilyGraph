@@ -9,6 +9,7 @@ const person = (id: string): GraphPerson => ({
   placeholder: null,
   visibility: 'Public',
   imageId: null,
+  gender: null,
   maintainedByYou: false,
 });
 const row = (id: string, generation: number, hasMore = false): LocalViewPerson => ({
