@@ -23,11 +23,19 @@ COPY FamilyGraph.Infrastructure/ FamilyGraph.Infrastructure/
 COPY Server/ Server/
 COPY --from=client /src/client/dist/client/browser/ Server/wwwroot/
 RUN dotnet publish Server/Server.csproj --configuration Release --no-restore --output /app
+# The EF Core migration bundle (D-011). It reads the same Database__* settings as the app; the host
+# setting here only lets the design-time host build, nothing connects.
+RUN dotnet tool install --global dotnet-ef --version 10.0.4
+RUN Database__Host=build /root/.dotnet/tools/dotnet-ef migrations bundle \
+    --project FamilyGraph.Infrastructure --startup-project Server \
+    --configuration Release --no-build --output /app/efbundle
 
-# 3. Runtime: ASP.NET Core only, as the image's non-root user.
+# 3. Runtime: ASP.NET Core only, as the image's non-root user. Run ./efbundle as a one-off step to
+#    migrate, or set FAMILYGRAPH_MIGRATE=true to run it before every start.
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 COPY --from=build /app ./
+COPY --chmod=755 Server/docker-entrypoint.sh ./
 USER $APP_UID
 EXPOSE 8080
-ENTRYPOINT ["dotnet", "Server.dll"]
+ENTRYPOINT ["./docker-entrypoint.sh"]
