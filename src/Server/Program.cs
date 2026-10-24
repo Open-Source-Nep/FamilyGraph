@@ -36,8 +36,14 @@ else
     // to HTTPS would leave the SPA's origin.
     app.UseHttpsRedirection();
 }
+// The production Client build is published into wwwroot (src/Server/Dockerfile). In development
+// wwwroot is empty and the SPA Proxy serves the Client instead.
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+// Client routes fall back to index.html. Paths under /api never do, so API errors stay API errors.
+app.MapFallbackToFile("{*path:nonfile:regex(^(?!api/).*$)}", "index.html");
 
 app.Run();

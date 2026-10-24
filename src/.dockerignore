@@ -1,0 +1,8 @@
+**/bin/
+**/obj/
+**/node_modules/
+client/dist/
+client/.angular/
+Server/wwwroot/
+**/appsettings.Development.json
+**/*.user
