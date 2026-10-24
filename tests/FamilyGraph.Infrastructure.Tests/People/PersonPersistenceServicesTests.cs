@@ -236,6 +236,43 @@ public class PersonPersistenceServicesTests(PostgresFixture postgres)
     }
 
     [Fact]
+    [Trait("AC", "AC-05.1")]
+    [Trait("AC", "AC-08.11")]
+    public async Task Search_matches_name_parts_ignoring_case_among_public_and_own_profiles_only()
+    {
+        await using var services = await NewServicesAsync();
+        var viewer = TestData.NewAccount();
+        var other = TestData.NewAccount();
+        var mayaRai = await SaveAsync(services, Person.Create(new PersonName("Maya", "Devi", "Rai"), other));
+        var ownPrivate = Person.Create(new PersonName("Asha", lastName: "Rai"), viewer);
+        ownPrivate.SetVisibility(ProfileVisibility.Private, viewer);
+        await SaveAsync(services, ownPrivate);
+        var othersPrivate = Person.Create(new PersonName("Bina", lastName: "Rai"), other);
+        othersPrivate.SetVisibility(ProfileVisibility.Private, other);
+        await SaveAsync(services, othersPrivate);
+        var deleted = Person.Create(new PersonName("Gita", lastName: "Rai"), viewer);
+        deleted.Delete(viewer, actorIsAdministrator: false, DateTimeOffset.UtcNow);
+        await SaveAsync(services, deleted);
+        await SaveAsync(services, Person.Create(new PersonName("50%_off"), other));
+
+        await using var scope = services.CreateAsyncScope();
+        var queries = scope.ServiceProvider.GetRequiredService<IPersonQueries>();
+        var rai = await queries.SearchAsync(["RAI"], viewer, limit: 10, Cancellation);
+        var both = await queries.SearchAsync(["devi", "ma"], viewer, limit: 10, Cancellation);
+        var cut = await queries.SearchAsync(["rai"], viewer, limit: 1, Cancellation);
+        var literal = await queries.SearchAsync(["%_"], viewer, limit: 10, Cancellation);
+        var wildcard = await queries.SearchAsync(["_"], viewer, limit: 10, Cancellation);
+
+        Assert.Equal([ownPrivate.Id, mayaRai.Id], rai.People.Select(person => person.Id));
+        Assert.Equal([true, false], rai.People.Select(person => person.MaintainedByViewer));
+        Assert.False(rai.IsTruncated);
+        Assert.Equal(mayaRai.Id, Assert.Single(both.People).Id);
+        Assert.True(cut.IsTruncated);
+        Assert.Equal("50%_off", Assert.Single(literal.People).Name.FirstName);
+        Assert.Single(wildcard.People);
+    }
+
+    [Fact]
     [Trait("AC", "AC-01.18")]
     [Trait("AC", "AC-05.13")]
     public async Task Images_are_stored_replaced_and_erased_with_the_profile()

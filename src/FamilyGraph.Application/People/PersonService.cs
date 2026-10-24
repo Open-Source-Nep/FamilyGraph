@@ -5,8 +5,8 @@ using FamilyGraph.Business.People;
 namespace FamilyGraph.Application.People;
 
 /// <summary>
-/// Creates, renames, sets the gender, visibility and image of, deletes and reads person profiles (PRD 01,
-/// PRD 05, #12, #18, #74, #80).
+/// Creates, renames, sets the gender, visibility and image of, deletes, reads and searches person profiles (PRD 01,
+/// PRD 05, #12, #18, #74, #80, #85).
 /// The creating account becomes the maintainer, and only the maintainer can rename or change the
 /// visibility; <see cref="Person"/> enforces both. A profile is never matched or merged by name.
 /// </summary>
@@ -122,6 +122,31 @@ public sealed class PersonService(
 
     public Task<ProfileList> ListMaintainedAsync(AccountId maintainerId, CancellationToken cancellationToken) =>
         queries.ListMaintainedByAsync(maintainerId, limits.MaintainedListLimit, cancellationToken);
+
+    /// <summary>
+    /// Finds people by name to link to (D-032): every word of <paramref name="text"/> must appear in
+    /// the first, middle or last name. Only Public profiles and the viewer's own are searched, so a
+    /// Private profile is never found by its hidden name (PRD 05). Results are never identity
+    /// matches (PRD 06). Blank text finds nobody.
+    /// </summary>
+    public async Task<PersonSearchResult> SearchAsync(string? text, Viewer viewer, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(viewer);
+
+        var terms = (text ?? "").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (terms.Length == 0)
+        {
+            return new PersonSearchResult([], IsTruncated: false);
+        }
+
+        var matches = await queries.SearchAsync(terms, viewer.AccountId, limits.SearchLimit, cancellationToken);
+        // The query already leaves hidden people out; the projection keeps it that way if it ever did not.
+        var people = matches.People
+            .Select(person => PrivacyProjection.Project(person, viewer))
+            .Where(person => person.Placeholder is null)
+            .ToList();
+        return new PersonSearchResult(people, matches.IsTruncated);
+    }
 
     private async Task RemoveImageRowAsync(ProfileImageId? imageId, CancellationToken cancellationToken)
     {

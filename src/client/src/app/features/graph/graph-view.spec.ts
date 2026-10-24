@@ -4,7 +4,8 @@ import { provideRouter } from '@angular/router';
 
 import { PeopleService } from '../people/people.service';
 import { GraphPerson, LocalView } from './graph';
-import { GraphDiagram } from './graph-diagram';
+import { AddRelatives, AddRelativesResult } from './add-relatives';
+import { AddRelation, AddRelativeRequest, GraphDiagram } from './graph-diagram';
 import { GraphView } from './graph-view';
 import { GraphService } from './graph.service';
 import { ShownGraph } from './shown-graph';
@@ -14,7 +15,16 @@ import { ShownGraph } from './shown-graph';
 class StubDiagram {
   readonly graph = input.required<ShownGraph>();
   readonly selectedId = input<string | null>(null);
+  readonly addMenu = input(false);
   readonly selected = output<string>();
+  readonly addRelative = output<AddRelativeRequest>();
+}
+
+@Component({ selector: 'app-add-relatives', template: '' })
+class StubAddRelatives {
+  readonly person = input.required<GraphPerson>();
+  readonly relation = input.required<AddRelation>();
+  readonly closed = output<AddRelativesResult>();
 }
 
 const person = (id: string, firstName: string): GraphPerson => ({
@@ -78,8 +88,8 @@ describe('GraphView', () => {
       ],
     });
     TestBed.overrideComponent(GraphView, {
-      remove: { imports: [GraphDiagram] },
-      add: { imports: [StubDiagram] },
+      remove: { imports: [GraphDiagram, AddRelatives] },
+      add: { imports: [StubDiagram, StubAddRelatives] },
     });
   });
 
@@ -130,5 +140,37 @@ describe('GraphView', () => {
 
     expect(diagram().selectedId()).toBe('gita');
     expect(fixture.nativeElement.querySelector('.selected').textContent).toContain('Gita Rai');
+  });
+
+  it('adds relatives from the diagram menu and shows the new links (AC-08.10)', async () => {
+    await show();
+    expect(diagram().addMenu()).toBe(true);
+    const rina = person('rina', 'Rina');
+
+    diagram().addRelative.emit({ person: rina, relation: 'child' });
+    await fixture.whenStable();
+    const dialog = () =>
+      fixture.debugElement.query((el) => el.name === 'app-add-relatives')?.componentInstance as
+        StubAddRelatives | undefined;
+    expect(dialog()?.relation()).toBe('child');
+    expect(dialog()?.person()).toBe(rina);
+
+    views['rina'] = {
+      centreId: 'rina',
+      people: [
+        { person: rina, generation: 0, hasMore: false },
+        { person: person('kiran', 'Kiran'), generation: -1, hasMore: false },
+      ],
+      links: [{ id: 'l4', parentId: 'rina', childId: 'kiran', type: 'Biological' }],
+      marriages: [],
+      isTruncated: false,
+    };
+    dialog()!.closed.emit({ changed: true, message: 'Linked 1 person to Rina Rai.' });
+    await fixture.whenStable();
+
+    expect(dialog()).toBeUndefined();
+    expect(text()).toContain('Linked 1 person to Rina Rai.');
+    expect(text()).toContain('Kiran Rai');
+    expect(text()).toContain('2 generations below');
   });
 });

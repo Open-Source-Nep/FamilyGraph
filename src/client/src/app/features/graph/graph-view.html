@@ -17,8 +17,17 @@
     <app-graph-diagram
       [graph]="shown"
       [selectedId]="selectedId()"
+      [addMenu]="true"
       (selected)="selectedId.set($event)"
+      (addRelative)="startAdding($event)"
     />
+    @if (adding(); as adding) {
+      <app-add-relatives
+        [person]="adding.person"
+        [relation]="adding.relation"
+        (closed)="finishAdding($event)"
+      />
+    }
 
     @if (selected(); as selected) {
       <div class="selected" aria-live="polite">
@@ -43,6 +52,7 @@
     } @else {
       <p class="hint">
         Hover over someone for their details, select them in the diagram, or use the list below.
+        Right-click someone, or press and hold, to add their parents, children or spouse.
       </p>
     }
 

@@ -1,0 +1,13 @@
+.search {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-height: 14rem;
+  overflow-y: auto;
+}

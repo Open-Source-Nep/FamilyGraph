@@ -1,3 +1,4 @@
+using FamilyGraph.Application.Privacy;
 using FamilyGraph.Business.People;
 
 namespace FamilyGraph.Application.People;
@@ -14,3 +15,9 @@ public sealed record ProfileList(IReadOnlyList<PersonSummary> People, bool IsTru
 
 /// <summary>An image's bytes and format, to serve as they are (D-028).</summary>
 public sealed record ImageContent(ProfileImageId Id, ImageFormat Format, byte[] Content);
+
+/// <summary>Search matches before privacy is applied, cut at their limit (D-010, D-032).</summary>
+public sealed record PersonMatches(IReadOnlyList<PersonRecord> People, bool IsTruncated);
+
+/// <summary>Search results as the viewer may see them. <see cref="IsTruncated"/> says to refine the search (D-010).</summary>
+public sealed record PersonSearchResult(IReadOnlyList<PersonReference> People, bool IsTruncated);

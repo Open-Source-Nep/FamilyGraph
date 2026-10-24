@@ -17,4 +17,13 @@ public interface IPersonQueries
     /// <paramref name="limit"/> of them.
     /// </summary>
     Task<ProfileList> ListMaintainedByAsync(AccountId maintainerId, int limit, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The non-deleted profiles whose first, middle or last name contains every one of
+    /// <paramref name="terms"/> (ignoring case), among the Public ones and those the viewer
+    /// maintains, sorted by name, at most <paramref name="limit"/> of them (D-032). A Private profile
+    /// someone else maintains is never matched, so its hidden name cannot be searched for (PRD 05).
+    /// </summary>
+    Task<PersonMatches> SearchAsync(
+        IReadOnlyList<string> terms, AccountId viewerId, int limit, CancellationToken cancellationToken);
 }
