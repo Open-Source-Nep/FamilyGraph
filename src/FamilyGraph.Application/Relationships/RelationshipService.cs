@@ -17,6 +17,7 @@ public sealed class RelationshipService(
     IPersonStore people,
     IPersonQueries personQueries,
     IParentChildLinkStore links,
+    IMarriageStore marriages,
     IRelationshipQueries queries,
     IAuditLog audit,
     IUnitOfWork unitOfWork,
@@ -34,8 +35,9 @@ public sealed class RelationshipService(
         var child = await people.FindAsync(childId, cancellationToken) ?? throw new PersonNotFoundException();
         var childParents = await links.ParentsOfAsync(childId, cancellationToken);
         var parentAncestors = await links.AncestorsOfAsync(parentId, cancellationToken);
+        var married = parentId != childId && await marriages.ExistsAsync(parentId, childId, cancellationToken);
 
-        var link = ParentChildLink.Create(parent, child, type, actorId, childParents, parentAncestors);
+        var link = ParentChildLink.Create(parent, child, type, actorId, childParents, parentAncestors, married);
         links.Add(link);
         await SaveAsync(link, cancellationToken);
 

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Define the only relationship type users may register directly in the initial release.
+Define the relationships users may register directly in the initial release: parent–child links and marriages.
 
 ## Supported types
 
@@ -13,7 +13,7 @@ Do not add guardianship, step-parent, foster-parent, or other parent categories 
 
 ## Requirements
 
-- Users directly register parent–child relationships only.
+- Users directly register parent–child relationships and marriages (see below), nothing else.
 - Siblings, grandparents, cousins, and other family relationships are derived from the active parent–child graph.
 - A person may have multiple parent relationships.
 - Adoption is metadata on the parent–child relationship, not a separate person or account type.
@@ -38,6 +38,15 @@ Do not add guardianship, step-parent, foster-parent, or other parent categories 
 - A newly linked child is unordered until the parent's maintainer places it. Views list ordered children first, then unordered ones by name.
 - Pending and inactive links keep their position, but only active links are shown.
 
+## Marriages (agreed 2026-10-23 and 2026-10-24)
+
+- A marriage joins two people as spouses, so that the graph can be navigated between them. It is the only direct relationship besides parent–child links.
+- Consent works as for parent–child links (PRD 03): each spouse's side has its own approval, the creator's sides start approved and a side maintained by another account starts pending, each side's maintainer approves, disagrees or restores approval, an account that maintains both spouses deletes the marriage instead, and marriages waiting on consent appear on the Approvals page.
+- A person may have any number of marriages, but a pair of people only one. Nobody can be married to themselves.
+- Any genders may marry. A spouse is named "husband" or "wife" where their gender is known and visible, "spouse" otherwise (PRD 08).
+- A marriage that ended (divorce or death) is marked **former**. It is not deleted: it stays in the graph and in paths, labelled as former. The maintainer of either spouse may mark it former or current again, with no consent needed. Every change is audited (PRD 07). No date or reason is stored.
+- A marriage between a person and their own parent or child is rejected, and so is a parent–child link between spouses. Only direct links are checked, of any consent state that is not deleted.
+
 ## Acceptance criteria
 
 - `AC-02.1` A user can create biological and adoptive parent–child relationships.
@@ -50,6 +59,12 @@ Do not add guardianship, step-parent, foster-parent, or other parent categories 
 - `AC-02.8` A parent's maintainer can place each of that parent's children in birth order, or make a child unordered again.
 - `AC-02.9` Only the parent's maintainer can change the order, and changing it never changes consent or link activity.
 - `AC-02.10` A newly linked child is unordered until placed.
+- `AC-02.11` A maintainer of at least one spouse can create a marriage. The creator's sides start approved and a side maintained by another account starts pending.
+- `AC-02.12` Marriage consent follows PRD 03: each side's maintainer approves, disagrees or restores approval; disagreement makes the marriage inactive at once; an account that maintains both spouses deletes it instead.
+- `AC-02.13` A person can have any number of marriages, a pair only one, and nobody can marry themselves.
+- `AC-02.14` Either spouse's maintainer can mark a marriage former or current again, without consent, and each change is audited.
+- `AC-02.15` A former marriage stays in the graph and in paths, labelled as former.
+- `AC-02.16` A marriage between a direct parent and child is rejected, and so is a parent–child link between spouses.
 
 ## Open details
 

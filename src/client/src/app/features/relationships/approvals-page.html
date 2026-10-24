@@ -1,8 +1,8 @@
 <section class="panel">
   <h1>Link approvals</h1>
   <p class="hint">
-    Parent and child links of the profiles you maintain that are not active. A link is active only
-    when the maintainers of both people approve it.
+    Parent and child links and marriages of the profiles you maintain that are not active. A link or
+    marriage is active only when the maintainers of both people approve it.
   </p>
 
   @if (notice(); as notice) {
@@ -13,8 +13,8 @@
   }
 
   @if (list(); as list) {
-    @if (list.links.length === 0) {
-      <p>Nothing is waiting. All links of your profiles are active.</p>
+    @if (list.links.length === 0 && marriageList()?.marriages?.length === 0) {
+      <p>Nothing is waiting. All links and marriages of your profiles are active.</p>
     }
     @for (section of sections(); track section.title) {
       <h2>{{ section.title }}</h2>
@@ -61,6 +61,58 @@
     }
     @if (list.isTruncated) {
       <p class="hint">Only the first {{ list.links.length }} links are shown.</p>
+    }
+  }
+
+  @if (marriageList(); as marriageList) {
+    @if (marriageList.marriages.length > 0) {
+      <h2>Marriages</h2>
+      <ul class="links">
+        @for (marriage of marriageList.marriages; track marriage.id) {
+          <li>
+            <a [routerLink]="['/people', marriage.first.id]">{{ fullName(marriage.first) }}</a>
+            married to
+            <a [routerLink]="['/people', marriage.second.id]">{{ fullName(marriage.second) }}</a>
+            @if (marriage.isFormer) {
+              <span class="hint"> (former)</span>
+            }
+            @if (marriageActions(marriage).length > 0 || marriageDeletable(marriage)) {
+              <div class="actions">
+                @for (action of marriageActions(marriage); track action.label) {
+                  <button
+                    type="button"
+                    [class.secondary]="!action.approve"
+                    [disabled]="saving()"
+                    (click)="actOnMarriage(marriage, action)"
+                  >
+                    {{ action.label }}
+                  </button>
+                }
+                @if (marriageDeletable(marriage)) {
+                  @if (confirming() === marriage.id) {
+                    <span>Delete this marriage? This cannot be undone.</span>
+                    <button type="button" [disabled]="saving()" (click)="deleteMarriage(marriage)">
+                      Delete
+                    </button>
+                    <button type="button" class="secondary" (click)="confirming.set(null)">
+                      Keep
+                    </button>
+                  } @else {
+                    <button type="button" class="secondary" (click)="confirming.set(marriage.id)">
+                      Delete marriage
+                    </button>
+                  }
+                }
+              </div>
+            } @else {
+              <div class="hint">{{ marriageStatus(marriage) }}</div>
+            }
+          </li>
+        }
+      </ul>
+      @if (marriageList.isTruncated) {
+        <p class="hint">Only the first {{ marriageList.marriages.length }} marriages are shown.</p>
+      }
     }
   }
 </section>

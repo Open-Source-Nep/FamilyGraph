@@ -30,6 +30,7 @@ public class RelationshipServiceTests
             _store,
             _store,
             _store,
+            _store,
             new FixedTimeProvider(Now),
             new RelationshipLimits(directRelativesLimit, inactiveLinksLimit));
 
@@ -342,7 +343,7 @@ public class RelationshipServiceTests
             ParentChildType.Biological,
             Alice,
             new HashSet<PersonId>(),
-            new AncestorSnapshot(maya, new HashSet<PersonId>(), isComplete: true));
+            new AncestorSnapshot(maya, new HashSet<PersonId>(), isComplete: true), married: false);
         looping.TakeEvents();
         _store.Links[looping.Id] = looping;
 

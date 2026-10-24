@@ -7,8 +7,8 @@ namespace FamilyGraph.Application.Export;
 
 /// <summary>
 /// An administrator's export of the whole instance for a later import (D-029): every profile,
-/// private ones with their names, every non-deleted link with both endpoints' consent, and the
-/// emails of the accounts that maintain them. No images, audit history or deleted links.
+/// private ones with their names, every non-deleted link and marriage with both sides' consent, and the
+/// emails of the accounts that maintain them. No images, audit history or deleted links and marriages.
 /// </summary>
 public sealed class ExportService(IExportQueries queries, IAuditLog audit, IUnitOfWork unitOfWork, TimeProvider time)
 {
@@ -51,6 +51,9 @@ public sealed class DataExport(DateTimeOffset exportedAt, IExportSnapshot snapsh
 
     public IAsyncEnumerable<ExportedLink> LinksAsync(CancellationToken cancellationToken) =>
         snapshot.LinksAsync(cancellationToken);
+
+    public IAsyncEnumerable<ExportedMarriage> MarriagesAsync(CancellationToken cancellationToken) =>
+        snapshot.MarriagesAsync(cancellationToken);
 
     public ValueTask DisposeAsync() => snapshot.DisposeAsync();
 }

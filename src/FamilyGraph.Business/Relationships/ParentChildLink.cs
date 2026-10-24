@@ -61,13 +61,15 @@ public sealed class ParentChildLink : AuditedEntity
     /// </summary>
     /// <param name="childParents">The child's current parents through non-deleted links.</param>
     /// <param name="parentAncestors">The ancestors of <paramref name="parent"/> through non-deleted links.</param>
+    /// <param name="married">Whether the two people have a non-deleted marriage, which rules the link out (D-031).</param>
     public static ParentChildLink Create(
         Person parent,
         Person child,
         ParentChildType type,
         AccountId creatorId,
         IReadOnlySet<PersonId> childParents,
-        AncestorSnapshot parentAncestors)
+        AncestorSnapshot parentAncestors,
+        bool married)
     {
         ArgumentNullException.ThrowIfNull(parent);
         ArgumentNullException.ThrowIfNull(child);
@@ -92,6 +94,11 @@ public sealed class ParentChildLink : AuditedEntity
         }
 
         LinkCycleCheck.EnsureNoCycle(parent.Id, child.Id, parentAncestors);
+
+        if (married)
+        {
+            throw new LinkBetweenSpousesException();
+        }
 
         var link = new ParentChildLink(
             LinkId.New(),
@@ -304,6 +311,10 @@ public sealed class BirthOrderUnchangedException()
 
 public sealed class LinkDeletedException()
     : ConflictException("link.deleted", "This link has been deleted.");
+
+/// <summary>Spouses cannot also be parent and child (D-031).</summary>
+public sealed class LinkBetweenSpousesException()
+    : DomainException("link.spouses", "These two people are married in the graph, so one cannot be the other's parent.");
 
 /// <summary>No new link may be created with a deleted profile (PRD 05, AC-05.12).</summary>
 public sealed class LinkToDeletedProfileException()

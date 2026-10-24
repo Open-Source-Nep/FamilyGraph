@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Define when a parent–child relationship is active, inactive, restored, or removed.
+Define when a parent–child relationship is active, inactive, restored, or removed. The same rules apply to marriages (PRD 02), with the spouses as the two endpoints.
 
 ## Core rules
 

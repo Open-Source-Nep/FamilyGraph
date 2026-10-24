@@ -21,7 +21,7 @@ public class ParentChildLinkBirthOrderTests
     {
         var parent = NewPerson("Hari", Alice);
         var child = NewPerson("Maya", Bob);
-        var link = ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, NoAncestors(parent));
+        var link = ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, NoAncestors(parent), married: false);
         return (parent, child, link);
     }
 
@@ -115,7 +115,7 @@ public class ParentChildLinkBirthOrderTests
     {
         var parent = NewPerson("Hari", Alice);
         var child = NewPerson("Maya", Alice);
-        var link = ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, NoAncestors(parent));
+        var link = ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, NoAncestors(parent), married: false);
         link.Delete(parent, child, Alice, DateTimeOffset.UnixEpoch);
 
         var ex = Assert.Throws<LinkDeletedException>(() => link.SetBirthOrder(parent, Alice, 1));

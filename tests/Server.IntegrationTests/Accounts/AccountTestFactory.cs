@@ -58,6 +58,8 @@ public sealed class AccountTestFactory : WebApplicationFactory<Program>
             services.AddSingleton<IProfileImageStore>(People);
             services.AddSingleton<IParentChildLinkStore>(People);
             services.AddSingleton<IRelationshipQueries>(People);
+            services.AddSingleton<IMarriageStore>(People);
+            services.AddSingleton<IMarriageQueries>(People);
             services.AddSingleton<IAuditLog>(People);
             services.AddSingleton<IUnitOfWork>(People);
             services.AddSingleton<IGraphQueries>(Graph);

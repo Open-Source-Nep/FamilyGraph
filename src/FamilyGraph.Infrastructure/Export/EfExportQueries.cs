@@ -11,7 +11,7 @@ namespace FamilyGraph.Infrastructure.Export;
 
 /// <summary>
 /// The snapshot is a read-only repeatable-read transaction, which PostgreSQL serves from one
-/// snapshot for all its statements, so the three sections agree with each other (D-029).
+/// snapshot for all its statements, so the sections agree with each other (D-029).
 /// </summary>
 internal sealed class EfExportQueries(FamilyGraphDbContext context) : IExportQueries
 {
@@ -61,6 +61,20 @@ internal sealed class EfExportQueries(FamilyGraphDbContext context) : IExportQue
                 .OrderBy(link => link.Id)
                 .Select(link => new ExportedLink(
                     link.Id, link.ParentId, link.ChildId, link.Type, link.ParentApproval, link.ChildApproval, link.BirthOrder)),
+                cancellationToken);
+
+        public IAsyncEnumerable<ExportedMarriage> MarriagesAsync(CancellationToken cancellationToken) =>
+            Stream(context.Set<Marriage>()
+                .AsNoTracking()
+                .Where(marriage => marriage.DeletedAt == null)
+                .OrderBy(marriage => marriage.Id)
+                .Select(marriage => new ExportedMarriage(
+                    marriage.Id,
+                    marriage.FirstSpouseId,
+                    marriage.SecondSpouseId,
+                    marriage.FirstApproval,
+                    marriage.SecondApproval,
+                    marriage.IsFormer)),
                 cancellationToken);
 
         private static async IAsyncEnumerable<T> Stream<T>(

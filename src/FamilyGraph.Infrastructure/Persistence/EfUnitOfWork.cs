@@ -28,6 +28,14 @@ internal sealed class EfUnitOfWork(FamilyGraphDbContext context) : IUnitOfWork
         catch (DbUpdateException e) when (e.InnerException is PostgresException
         {
             SqlState: PostgresErrorCodes.UniqueViolation,
+            ConstraintName: MarriageConfiguration.UniquePairIndex,
+        })
+        {
+            throw new DuplicateMarriageException();
+        }
+        catch (DbUpdateException e) when (e.InnerException is PostgresException
+        {
+            SqlState: PostgresErrorCodes.UniqueViolation,
             ConstraintName: ProfileHandoverConfiguration.UniqueOpenPerPersonIndex,
         })
         {

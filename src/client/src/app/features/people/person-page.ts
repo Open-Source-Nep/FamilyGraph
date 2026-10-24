@@ -5,6 +5,7 @@ import { AuthService } from '../../core/auth/auth.service';
 
 import { PersonHandover } from '../handovers/person-handover';
 import { PersonRelatives } from '../relationships/person-relatives';
+import { PersonSpouses } from '../relationships/person-spouses';
 import { PeopleService } from './people.service';
 import { Person, PersonDetails, PersonName, Visibility, fullName } from './person';
 import { PersonNameForm } from './person-name-form';
@@ -19,7 +20,14 @@ import { problemMessage } from './problem';
  */
 @Component({
   selector: 'app-person-page',
-  imports: [PersonHandover, PersonNameForm, PersonPhoto, PersonRelatives, RouterLink],
+  imports: [
+    PersonHandover,
+    PersonNameForm,
+    PersonPhoto,
+    PersonRelatives,
+    PersonSpouses,
+    RouterLink,
+  ],
   templateUrl: './person-page.html',
 })
 export class PersonPage {

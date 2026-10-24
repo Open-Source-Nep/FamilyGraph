@@ -93,7 +93,7 @@ public class ProfileHandoverTests
         var parent = NewPerson("Maya", Alice);
         var child = NewPerson("Asha", Carol);
         var link = ParentChildLink.Create(
-            parent, child, ParentChildType.Biological, Alice, new HashSet<PersonId>(), new AncestorSnapshot(parent.Id, new HashSet<PersonId>(), isComplete: true));
+            parent, child, ParentChildType.Biological, Alice, new HashSet<PersonId>(), new AncestorSnapshot(parent.Id, new HashSet<PersonId>(), isComplete: true), married: false);
         link.TakeEvents();
         var handover = Offer(parent, Alice);
 

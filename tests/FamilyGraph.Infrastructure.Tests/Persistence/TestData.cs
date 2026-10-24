@@ -17,5 +17,5 @@ internal static class TestData
             ParentChildType.Biological,
             creator,
             new HashSet<PersonId>(),
-            new AncestorSnapshot(parent.Id, new HashSet<PersonId>(), isComplete: true));
+            new AncestorSnapshot(parent.Id, new HashSet<PersonId>(), isComplete: true), married: false);
 }

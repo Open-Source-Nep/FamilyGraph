@@ -6,7 +6,7 @@ namespace Server.Export;
 
 /// <summary>
 /// Writes the export file (D-029): one JSON object with <c>format</c>, <c>version</c> and
-/// <c>exportedAt</c>, then the <c>accounts</c>, <c>people</c> and <c>links</c> arrays, each in ID
+/// <c>exportedAt</c>, then the <c>accounts</c>, <c>people</c>, <c>links</c> and <c>marriages</c> arrays, each in ID
 /// order. Items are written to the response pipe as they are read and flushed every
 /// <see cref="FlushThreshold"/> bytes, so the file is never held in memory. A change to the
 /// layout that an import must know about raises <see cref="Version"/>.
@@ -35,6 +35,8 @@ internal static class ExportFile
         await WriteArrayAsync(writer, body, "accounts", export.AccountsAsync(cancellationToken), ExportedAccountItem.From, cancellationToken);
         await WriteArrayAsync(writer, body, "people", export.PeopleAsync(cancellationToken), ExportedPersonItem.From, cancellationToken);
         await WriteArrayAsync(writer, body, "links", export.LinksAsync(cancellationToken), ExportedLinkItem.From, cancellationToken);
+        await WriteArrayAsync(
+            writer, body, "marriages", export.MarriagesAsync(cancellationToken), ExportedMarriageItem.From, cancellationToken);
 
         writer.WriteEndObject();
         writer.Flush();
@@ -119,4 +121,25 @@ public sealed record ExportedLinkItem(
         link.ParentApproval.Name,
         link.ChildApproval.Name,
         link.BirthOrder);
+}
+
+/// <summary>
+/// A marriage (D-031). The spouses are in ID order; each approval is <c>Pending</c>, <c>Approved</c>
+/// or <c>Disagreed</c>. <see cref="IsFormer"/> marks a marriage that ended.
+/// </summary>
+public sealed record ExportedMarriageItem(
+    Guid Id,
+    Guid FirstSpouseId,
+    Guid SecondSpouseId,
+    string FirstApproval,
+    string SecondApproval,
+    bool IsFormer)
+{
+    internal static ExportedMarriageItem From(ExportedMarriage marriage) => new(
+        marriage.Id.Value,
+        marriage.FirstSpouseId.Value,
+        marriage.SecondSpouseId.Value,
+        marriage.FirstApproval.Name,
+        marriage.SecondApproval.Name,
+        marriage.IsFormer);
 }

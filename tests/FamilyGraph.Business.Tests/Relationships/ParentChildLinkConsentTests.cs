@@ -21,7 +21,7 @@ public class ParentChildLinkConsentTests
     {
         var parent = NewPerson("Hari", Alice);
         var child = NewPerson("Maya", Bob);
-        var link = ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, NoAncestors(parent));
+        var link = ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, NoAncestors(parent), married: false);
         link.Approve(child, Bob, NoAncestors(parent));
         return (parent, child, link);
     }
@@ -32,7 +32,7 @@ public class ParentChildLinkConsentTests
     {
         var parent = NewPerson("Hari", Alice);
         var child = NewPerson("Maya", Bob);
-        var link = ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, NoAncestors(parent));
+        var link = ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, NoAncestors(parent), married: false);
 
         link.Approve(child, Bob, NoAncestors(parent));
 
@@ -67,7 +67,7 @@ public class ParentChildLinkConsentTests
     {
         var parent = NewPerson("Hari", Alice);
         var child = NewPerson("Maya", Bob);
-        var link = ParentChildLink.Create(parent, child, ParentChildType.Adoptive, Alice, NoParents, NoAncestors(parent));
+        var link = ParentChildLink.Create(parent, child, ParentChildType.Adoptive, Alice, NoParents, NoAncestors(parent), married: false);
 
         link.Disagree(child, parent, Bob);
 
@@ -156,7 +156,7 @@ public class ParentChildLinkConsentTests
     {
         var parent = NewPerson("Hari", Alice);
         var child = NewPerson("Maya", Alice);
-        var link = ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, NoAncestors(parent));
+        var link = ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, NoAncestors(parent), married: false);
 
         var ex = Assert.Throws<SoleMaintainerMustDeleteException>(() => link.Disagree(child, parent, Alice));
 

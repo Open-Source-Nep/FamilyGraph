@@ -1,4 +1,4 @@
-import { GraphLink, GraphPerson, LocalView, LocalViewPerson } from './graph';
+import { GraphLink, GraphMarriage, GraphPerson, LocalView, LocalViewPerson } from './graph';
 import { byGeneration, expand, fromView, generationLabel } from './shown-graph';
 
 const person = (id: string): GraphPerson => ({
@@ -23,10 +23,16 @@ const link = (parentId: string, childId: string, type: GraphLink['type'] = 'Biol
   childId,
   type,
 });
-const view = (centreId: string, people: LocalViewPerson[], links: GraphLink[]): LocalView => ({
+const view = (
+  centreId: string,
+  people: LocalViewPerson[],
+  links: GraphLink[],
+  marriages: GraphMarriage[] = [],
+): LocalView => ({
   centreId,
   people,
   links,
+  marriages,
   isTruncated: false,
 });
 
@@ -83,6 +89,25 @@ describe('shown graph', () => {
     const maya = groups[1].people[0];
     expect(maya.parents.map((p) => p.person.id)).toEqual(['gita']);
     expect(maya.children.map((c) => [c.person.id, c.link.type])).toEqual([['rina', 'Adoptive']]);
+  });
+
+  it('merges marriages and lists spouses beside each person (AC-08.9, AC-09.2)', () => {
+    const marriage: GraphMarriage = {
+      id: 'm1',
+      firstSpouseId: 'maya',
+      secondSpouseId: 'ram',
+      isFormer: true,
+    };
+    const withSpouse = view('maya', [row('maya', 0), row('ram', 0)], [], [marriage]);
+
+    const { graph } = expand(fromView(first), withSpouse);
+    const again = expand(graph, withSpouse).graph;
+
+    expect(again.marriages).toEqual([marriage]);
+    const maya = byGeneration(again)
+      .find((g) => g.generation === 0)!
+      .people.find((entry) => entry.row.person.id === 'maya')!;
+    expect(maya.spouses.map((s) => [s.person.id, s.marriage.isFormer])).toEqual([['ram', true]]);
   });
 
   it('names generations relative to the centre', () => {

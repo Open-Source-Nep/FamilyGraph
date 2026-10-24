@@ -22,7 +22,7 @@ public class ParentChildLinkRemovalTests
     {
         var parent = NewPerson("Hari", Alice);
         var child = NewPerson("Maya", Alice);
-        var link = ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, NoAncestors(parent));
+        var link = ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, NoAncestors(parent), married: false);
         return (parent, child, link);
     }
 
@@ -31,7 +31,7 @@ public class ParentChildLinkRemovalTests
     {
         var parent = NewPerson("Hari", Alice);
         var child = NewPerson("Maya", Bob);
-        var link = ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, NoAncestors(parent));
+        var link = ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, NoAncestors(parent), married: false);
         link.Approve(child, Bob, NoAncestors(parent));
         return (parent, child, link);
     }

@@ -24,4 +24,7 @@ public interface IExportSnapshot : IAsyncDisposable
 
     /// <summary>Every non-deleted link.</summary>
     IAsyncEnumerable<ExportedLink> LinksAsync(CancellationToken cancellationToken);
+
+    /// <summary>Every non-deleted marriage (D-031).</summary>
+    IAsyncEnumerable<ExportedMarriage> MarriagesAsync(CancellationToken cancellationToken);
 }

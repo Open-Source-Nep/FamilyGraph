@@ -52,7 +52,7 @@ public class AuditEventTests
         var parent = NewPerson("Hari", Alice);
         var child = NewPerson("Maya", Bob);
 
-        var link = ParentChildLink.Create(parent, child, ParentChildType.Adoptive, Alice, NoParents, NoAncestors(parent));
+        var link = ParentChildLink.Create(parent, child, ParentChildType.Adoptive, Alice, NoParents, NoAncestors(parent), married: false);
         link.Approve(child, Bob, NoAncestors(parent));
         link.Disagree(child, parent, Bob);
         link.Approve(child, Bob, NoAncestors(parent));
@@ -73,7 +73,7 @@ public class AuditEventTests
     {
         var parent = NewPerson("Hari", Alice);
         var child = NewPerson("Maya", Bob);
-        var link = ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, NoAncestors(parent));
+        var link = ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, NoAncestors(parent), married: false);
         link.TakeEvents();
 
         link.Disagree(child, parent, Bob);
@@ -87,11 +87,11 @@ public class AuditEventTests
     {
         var parent = NewPerson("Hari", Alice);
         var child = NewPerson("Maya", Alice);
-        var deleted = ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, NoAncestors(parent));
+        var deleted = ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, NoAncestors(parent), married: false);
         deleted.TakeEvents();
 
         var otherChild = NewPerson("Sita", Bob);
-        var withdrawn = ParentChildLink.Create(parent, otherChild, ParentChildType.Biological, Alice, NoParents, NoAncestors(parent));
+        var withdrawn = ParentChildLink.Create(parent, otherChild, ParentChildType.Biological, Alice, NoParents, NoAncestors(parent), married: false);
         withdrawn.Approve(otherChild, Bob, NoAncestors(parent));
         withdrawn.TakeEvents();
 
@@ -108,7 +108,7 @@ public class AuditEventTests
     {
         var parent = NewPerson("Hari", Alice);
         var child = NewPerson("Maya", Bob);
-        var link = ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, NoAncestors(parent));
+        var link = ParentChildLink.Create(parent, child, ParentChildType.Biological, Alice, NoParents, NoAncestors(parent), married: false);
         link.Approve(child, Bob, NoAncestors(parent));
         link.Disagree(child, parent, Bob);
 

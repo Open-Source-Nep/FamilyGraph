@@ -9,6 +9,12 @@ export interface LayoutLink {
   childId: string;
 }
 
+/** A marriage: its two people share a row where their parents and children allow (D-031). */
+export interface LayoutMarriage {
+  spouseId: string;
+  otherSpouseId: string;
+}
+
 export interface LayoutOptions {
   /** Height of a person on screen. */
   height: number;
@@ -35,7 +41,8 @@ const passes = 5;
  * lets people settle off their rows to where the lines are shortest and cross least.
  *
  * A person's starting row is below all their parents and one above their highest child, so
- * partners share a row even when only one of them has ancestors shown. The order within a row
+ * partners share a row even when only one of them has ancestors shown. Spouses are partners too,
+ * and move to the same row when that keeps everyone below their parents. The order within a row
  * follows the parents' order, and positions alternate between centring children under their
  * parents and parents over their children.
  */
@@ -43,6 +50,7 @@ export function familyLayout(
   nodes: LayoutNode[],
   links: LayoutLink[],
   options: LayoutOptions,
+  marriages: LayoutMarriage[] = [],
 ): Map<string, Point> {
   const index = new Map(nodes.map((node, i) => [node.id, i]));
   const width = new Map(nodes.map((node) => [node.id, node.width]));
@@ -55,22 +63,29 @@ export function familyLayout(
     }
   }
 
-  const rank = ranks(nodes, parents, children);
+  const spouses = marriages.filter(
+    (marriage) =>
+      index.has(marriage.spouseId) &&
+      index.has(marriage.otherSpouseId) &&
+      marriage.spouseId !== marriage.otherSpouseId,
+  );
+  const rank = ranks(nodes, parents, children, spouses);
   const rows = new Map<number, string[]>();
   for (const node of nodes) {
     rows.set(rank.get(node.id)!, [...(rows.get(rank.get(node.id)!) ?? []), node.id]);
   }
   const rowRanks = [...rows.keys()].sort((a, b) => a - b);
 
-  // Partners share a child; only partners on the same row are kept next to each other.
+  // Partners are married or share a child; only partners on the same row are kept next to each other.
   const partners = new Map<string, Set<string>>(nodes.map((node) => [node.id, new Set()]));
-  for (const ids of parents.values()) {
-    for (const a of ids) {
-      for (const b of ids) {
-        if (a !== b && rank.get(a) === rank.get(b)) {
-          partners.get(a)!.add(b);
-        }
-      }
+  const pairs = [
+    ...[...parents.values()].flatMap((ids) => ids.flatMap((a) => ids.map((b) => [a, b]))),
+    ...spouses.map((marriage) => [marriage.spouseId, marriage.otherSpouseId]),
+  ];
+  for (const [a, b] of pairs) {
+    if (a !== b && rank.get(a) === rank.get(b)) {
+      partners.get(a)!.add(b);
+      partners.get(b)!.add(a);
     }
   }
 
@@ -228,11 +243,16 @@ function increasing(values: number[]): number[] {
   return blocks.flatMap((block) => Array<number>(block.count).fill(block.sum / block.count));
 }
 
-/** Each person's row: below all their parents, and as close above their children as that allows. */
+/**
+ * Each person's row: below all their parents, and as close above their children as that allows.
+ * Then the higher of two spouses moves down to the other's row, taking their descendants down
+ * with them where needed, so every child stays below its parents.
+ */
 function ranks(
   nodes: LayoutNode[],
   parents: Map<string, string[]>,
   children: Map<string, string[]>,
+  spouses: LayoutMarriage[],
 ): Map<string, number> {
   const rank = new Map<string, number>();
   const waiting = new Map(nodes.map((node) => [node.id, parents.get(node.id)!.length]));
@@ -262,6 +282,23 @@ function ranks(
     const own = children.get(node.id)!;
     if (own.length) {
       rank.set(node.id, Math.min(...own.map((child) => rank.get(child)!)) - 1);
+    }
+  }
+  // Moving someone down never puts them above a parent; their children follow if they must.
+  const moveDown = (id: string, to: number, depth: number): void => {
+    if (rank.get(id)! >= to || depth > nodes.length) {
+      return;
+    }
+    rank.set(id, to);
+    for (const child of children.get(id)!) {
+      moveDown(child, to + 1, depth + 1);
+    }
+  };
+  // A few rounds let a chain of marriages settle.
+  for (let round = 0; round < 3; round++) {
+    for (const { spouseId, otherSpouseId } of spouses) {
+      moveDown(spouseId, rank.get(otherSpouseId)!, 0);
+      moveDown(otherSpouseId, rank.get(spouseId)!, 0);
     }
   }
   return rank;

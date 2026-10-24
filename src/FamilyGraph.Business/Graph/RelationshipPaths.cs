@@ -3,9 +3,9 @@ using FamilyGraph.Business.People;
 namespace FamilyGraph.Business.Graph;
 
 /// <summary>
-/// Finds how two people are connected through a bounded set of active links (PRD 08, D-023). Pure:
-/// Application loads the links around the first person within the search limit (D-009), and this
-/// service never looks beyond them.
+/// Finds how two people are connected through a bounded set of active links and marriages (PRD 08,
+/// D-023, D-031). Pure: Application loads the links around the first person within the search limit
+/// (D-009), and this service never looks beyond them.
 /// </summary>
 public static class RelationshipPaths
 {
@@ -14,11 +14,18 @@ public static class RelationshipPaths
     /// shortest first (Yen's k-shortest simple paths over unweighted links). Paths of equal length
     /// are ordered by the IDs of their links, so the result does not depend on the order of
     /// <paramref name="links"/>. A link set with a cycle is tolerated: no path repeats a person.
+    /// A marriage is one step, like a parent–child link (D-031).
     /// </summary>
     public static IReadOnlyList<RelationshipPath> Find(
-        PersonId from, PersonId to, IEnumerable<GraphLink> links, int maxPaths)
+        PersonId from, PersonId to, IEnumerable<GraphLink> links, int maxPaths) =>
+        Find(from, to, links, [], maxPaths);
+
+    /// <inheritdoc cref="Find(PersonId, PersonId, IEnumerable{GraphLink}, int)"/>
+    public static IReadOnlyList<RelationshipPath> Find(
+        PersonId from, PersonId to, IEnumerable<GraphLink> links, IEnumerable<GraphMarriage> marriages, int maxPaths)
     {
         ArgumentNullException.ThrowIfNull(links);
+        ArgumentNullException.ThrowIfNull(marriages);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxPaths);
 
         if (from == to)
@@ -26,8 +33,8 @@ public static class RelationshipPaths
             return [new RelationshipPath(from, [])];
         }
 
-        var graph = new Neighbours(links);
-        var shortest = graph.ShortestPath(from, to, new HashSet<PersonId>(), new HashSet<GraphLink>());
+        var graph = new Neighbours(links, marriages);
+        var shortest = graph.ShortestPath(from, to, new HashSet<PersonId>(), new HashSet<GraphEdge>());
         if (shortest is null)
         {
             return [];
@@ -79,17 +86,26 @@ public static class RelationshipPaths
 
     private static string Key(List<PathStep> path) => string.Join(',', path.Select(step => step.Link.Id.Value.ToString("N")));
 
-    /// <summary>Each person's links in a fixed order: to parents first, then to children, each by link ID.</summary>
+    /// <summary>
+    /// Each person's links in a fixed order: to parents first, then to children, then to spouses,
+    /// each by link ID.
+    /// </summary>
     private sealed class Neighbours
     {
         private readonly Dictionary<PersonId, List<PathStep>> _steps = [];
 
-        public Neighbours(IEnumerable<GraphLink> links)
+        public Neighbours(IEnumerable<GraphLink> links, IEnumerable<GraphMarriage> marriages)
         {
             foreach (var link in links.DistinctBy(link => link.Id))
             {
                 StepsFrom(link.ChildId).Add(new PathStep(link, StepRelation.Parent, link.ParentId));
                 StepsFrom(link.ParentId).Add(new PathStep(link, StepRelation.Child, link.ChildId));
+            }
+
+            foreach (var marriage in marriages.DistinctBy(marriage => marriage.Id))
+            {
+                StepsFrom(marriage.FirstSpouseId).Add(new PathStep(marriage, StepRelation.Spouse, marriage.SecondSpouseId));
+                StepsFrom(marriage.SecondSpouseId).Add(new PathStep(marriage, StepRelation.Spouse, marriage.FirstSpouseId));
             }
 
             foreach (var steps in _steps.Values)
@@ -102,7 +118,7 @@ public static class RelationshipPaths
 
         /// <summary>Breadth-first search that never enters <paramref name="blockedPeople"/> or follows <paramref name="blockedLinks"/>.</summary>
         public List<PathStep>? ShortestPath(
-            PersonId from, PersonId to, IReadOnlySet<PersonId> blockedPeople, IReadOnlySet<GraphLink> blockedLinks)
+            PersonId from, PersonId to, IReadOnlySet<PersonId> blockedPeople, IReadOnlySet<GraphEdge> blockedLinks)
         {
             var reachedBy = new Dictionary<PersonId, PathStep?> { [from] = null };
             var queue = new Queue<PersonId>([from]);
@@ -134,7 +150,12 @@ public static class RelationshipPaths
             while (reachedBy[person] is { } step)
             {
                 steps.Add(step);
-                person = step.Link.ParentId == step.PersonId ? step.Link.ChildId : step.Link.ParentId;
+                person = step.Link switch
+                {
+                    GraphLink link => link.ParentId == step.PersonId ? link.ChildId : link.ParentId,
+                    GraphMarriage marriage => marriage.FirstSpouseId == step.PersonId ? marriage.SecondSpouseId : marriage.FirstSpouseId,
+                    _ => throw new InvalidOperationException("Unknown kind of graph edge."),
+                };
             }
 
             steps.Reverse();
