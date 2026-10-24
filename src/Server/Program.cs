@@ -1,5 +1,6 @@
 using FamilyGraph.Infrastructure;
 using Server.Accounts;
+using Server.Client;
 using Server.Errors;
 using Server.Export;
 using Server.Graph;
@@ -40,12 +41,13 @@ else
 }
 // The production Client build is published into wwwroot (src/Server/Dockerfile). In development
 // wwwroot is empty and the SPA Proxy serves the Client instead.
+var clientFiles = ClientFiles.StaticFileOptions();
 app.UseDefaultFiles();
-app.UseStaticFiles();
+app.UseStaticFiles(clientFiles);
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 // Client routes fall back to index.html. Paths under /api never do, so API errors stay API errors.
-app.MapFallbackToFile("{*path:nonfile:regex(^(?!api/).*$)}", "index.html");
+app.MapFallbackToFile("{*path:nonfile:regex(^(?!api/).*$)}", "index.html", clientFiles);
 
 app.Run();
