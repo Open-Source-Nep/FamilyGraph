@@ -42,6 +42,7 @@ Define person profiles, account separation, and profile-maintainer authority.
 - Only the profile's maintainer may add, replace or remove it. Changes are audited without the image.
 - The browser crops the image to a square, shrinks it and re-encodes it before upload, which drops embedded metadata such as the location where a photo was taken. The server accepts only JPEG, PNG or WebP images of at most 1 MiB.
 - The image shows on the person page and in the graph page's diagram, in place of the initials. The home overview stays dots.
+- Clicking the photo on the person page opens it enlarged, with a button to close it (agreed 2026-10-25).
 
 ## Voluntary handover
 
@@ -106,6 +107,7 @@ Define person profiles, account separation, and profile-maintainer authority.
 - `AC-01.32` A birth date is a year, a year and month or a full date in BS or AD, a date that does not exist is rejected, and only the maintainer can set it or its switch, audited without the date.
 - `AC-01.33` The People page shows each profile you maintain with its photo or initials, name and description.
 - `AC-01.34` The People page's search box shows only the profiles whose name parts or description contain every typed word.
+- `AC-01.35` Clicking the photo on the person page opens it enlarged until the viewer closes it with its Close button, Escape or a click outside it.
 - `AC-01.29` Adding a person can optionally link chosen parents and children; each link follows the usual consent rules, and links that are not active are reported.
 
 ## Open details

@@ -8,7 +8,50 @@
   height: 10rem;
   border-radius: 50%;
   object-fit: cover;
+}
+
+.photo-button {
+  display: block;
+  padding: 0;
   margin-bottom: 0.75rem;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  cursor: zoom-in;
+}
+
+.photo-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.photo-dialog {
+  padding: 0;
+  border: none;
+  border-radius: 0.5rem;
+  background: #fff;
+}
+
+.photo-dialog::backdrop {
+  background: rgb(0 0 0 / 0.75);
+}
+
+.photo-frame {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  padding: 0.75rem;
+}
+
+/* The stored photo is 512 px square (D-028); smaller screens scale it down. */
+.enlarged {
+  display: block;
+  width: min(32rem, calc(100vw - 4rem), calc(100vh - 8rem));
+  height: auto;
+  aspect-ratio: 1;
+  border-radius: 0.25rem;
+  object-fit: cover;
 }
 
 /* The file input stays focusable and reachable by screen readers, behind its label. */

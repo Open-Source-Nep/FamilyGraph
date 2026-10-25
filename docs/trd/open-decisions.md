@@ -654,7 +654,7 @@ For each major decision, record:
 
 ### D-040: Administrators approving pending sides on behalf of maintainers
 
-- **Status:** proposed (2026-10-25). Issue #105. Agreed with the user on 2026-10-25 (PRD 03): an administrator approves only a pending side, on behalf of whoever maintains it, with no "unavailable" check; declining and restoring stay with the maintainer; administrators find these on the Approvals page, in a section listing every link and marriage waiting for another maintainer. The rest is proposed with the PR.
+- **Status:** agreed (2026-10-25). Issue #105, PR #106. Agreed with the user on 2026-10-25 (PRD 03): an administrator approves only a pending side, on behalf of whoever maintains it, with no "unavailable" check; declining and restoring stay with the maintainer; administrators find these on the Approvals page, in a section listing every link and marriage waiting for another maintainer. The rest is proposed with the PR.
 - **Context:** A link or marriage made with someone else's profile stays inactive until that maintainer approves (PRD 03), and an absent maintainer leaves it stuck. PRD 03 said administrators never override consent (AC-03.5); merges already let an administrator stand in for an unavailable maintainer of an unclaimed profile (PRD 06). Claims (#25) are not built, so no profile is claimed yet.
 - **Options considered:** a flag on `Approve`, or its own method; reusing `LinkEndpointApproved` with the administrator as actor, or its own event; one instance-wide list, or a filter on the inactive-links query.
 - **Trade-offs:** Its own method leaves the maintainer check of `Approve` untouched and keeps the pending-only rule in one place. Its own event, with the maintainer's ID, lets history tell an administrator's approval from the maintainer's (AC-03.8) without looking up account roles afterwards. A separate query leaves the viewer's own list (D-021) as it is; the new one is bounded by `Relationships:InactiveLinksLimit` like it.
@@ -665,3 +665,13 @@ For each major decision, record:
   - **Server:** `GET /api/relationships/pending`, `POST /api/relationships/{id}/approve-as-administrator` (`{ "endpoint" }`), `GET /api/marriages/pending` and `POST /api/marriages/{id}/approve-as-administrator` (`{ "spouseId" }`), answering like the existing consent endpoints.
   - **Client:** the Approvals page loads the two lists for administrators and shows **Waiting for other maintainers**, with "Approve for <name> as administrator" on each pending side someone else maintains.
 - **Consequences:** #25 must refuse administrator approval for claimed profiles. Maintainers are not told; there are no notifications yet.
+
+### D-041: Enlarging the profile photo
+
+- **Status:** proposed (2026-10-25). Issue #107. Asked by the user on 2026-10-25 (PRD 01): clicking the photo on the person page opens it enlarged, with a button to close it. The rest is proposed with the PR.
+- **Context:** The person page shows the photo as a 10rem circle, though the stored photo is a 512 px square (D-028).
+- **Options considered:** a native modal `<dialog>`, or a hand-made overlay; a new route, or an overlay on the page.
+- **Trade-offs:** `showModal()` gives the backdrop, Escape, a focus trap and focus return without a dependency or extra code, as the graph dialogs already use it (D-034). A route would reload the page for a picture.
+- **Decision:**
+  - **Client:** in `PersonPhoto` the photo is a button ("Enlarge photo of <name>") that opens a modal dialog with the same image square, up to 32rem and scaled to fit the screen. Its Close button, Escape or a click on the backdrop close it.
+- **Consequences:** No server change, endpoint or dependency. The graph page's avatars do not enlarge.
