@@ -9,28 +9,15 @@
     <p class="error" role="alert">{{ error }}</p>
   }
 
-  @if (creatingPerson()) {
-    <h3>Add a new person</h3>
-    <p class="hint">Only a first name is needed. You will maintain this profile.</p>
-    <app-person-name-form
-      submitLabel="Add person"
-      [busy]="saving()"
-      (saved)="createPerson($event)"
-      (cancelled)="creatingPerson.set(false)"
-    />
-  }
-  <!-- Hidden, not removed, while adding a new person, so the list and search are kept. -->
-  <div class="name-form" [hidden]="creatingPerson()">
+  <div class="name-form">
     <app-person-picker
       [excludeId]="person().id"
       [searchesEveryone]="searchesEveryone()"
       [single]="single()"
       [legend]="single() ? 'Person' : 'People'"
       [hint]="hint()"
-      [offersNewPerson]="true"
       [(selected)]="selected"
       (selectedChange)="selectionChanged($event)"
-      (newPersonRequested)="creatingPerson.set(true)"
     />
     @if (selected().length > 0) {
       <p>Selected: {{ selectedNames() }}</p>

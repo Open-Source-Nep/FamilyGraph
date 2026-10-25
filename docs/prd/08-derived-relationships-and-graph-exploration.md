@@ -32,6 +32,7 @@ Enable people to explore a large interconnected family graph without treating de
 - For a person someone else maintains, the list holds only your own profiles, because the creator must maintain one of the two people (PRD 03).
 - As on the person page, you can tick several parents or children and choose Biological or Adoptive (Biological by default); a spouse is one person. **Add a new person** creates a profile you maintain (a first name is required, gender optional) and ticks it.
 - **Linking spouses too (agreed 2026-10-25):** adding children to a person lists each of that person's spouses through an active marriage, "Also add them as children of", and adding parents lists each picked parent's spouses, "Also add as parents". A current spouse starts ticked and a former spouse unticked. The extra links have the type you picked. A deleted spouse is never listed, nor one where you maintain neither person of the link. The person page's form does the same. Nothing is linked automatically: a box left unticked links nothing.
+- **One people picker (agreed 2026-10-25):** every place that picks people uses the same list: this dialog, the person page's forms for parents and children and for a spouse, and the Add a person page. Each row shows the person's photo (or initials), name, "(yours)" for your profiles, and description, so people with the same name can be told apart. Each offers **Add a new person**, which also takes the optional details of PRD 01. The person page's forms follow the rules above: for a person you maintain the list starts with your connections and searches every Public profile; otherwise it holds only your own profiles.
 - Each link or marriage is created on its own under the usual rules: a side maintained by someone else starts pending and stays out of the graph until they approve (PRD 03), and cycles, duplicates and marriages between a parent and child are rejected (PRD 02).
 
 ## Relationship explanations
@@ -74,6 +75,7 @@ Enable people to explore a large interconnected family graph without treating de
 - `AC-08.14` The graph page's menu offers Delete profile only on a person you maintain, or on anyone not deleted when you are an administrator; after a confirmation dialog, the profile is deleted as on the person page and shows as `Deleted`.
 - `AC-08.15` Adding children to a person offers each of their spouses as the other parent, and adding a parent offers that parent's spouses as parents; current spouses are ticked and former ones unticked, and the extra links have the chosen type and the usual consent.
 - `AC-08.16` A spouse is never offered when deleted, or when you maintain neither person of the link.
+- `AC-08.17` Every people picker (graph dialog, the person page's parent, child and spouse forms, and the Add a person page) shows each person's photo or initials and description, and offers "Add a new person".
 
 ## Open details
 

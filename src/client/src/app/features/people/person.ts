@@ -54,11 +54,13 @@ export interface Person extends PersonLabel {
   birthDateShown: boolean;
 }
 
-/** One of your profiles, which you always see by name. */
+/** One of your profiles, which you always see by name, with its image and description (D-038). */
 export interface PersonSummary extends PersonName {
   id: string;
   visibility: Visibility;
   gender: Gender | null;
+  imageId: string | null;
+  description: string | null;
 }
 
 /** `isTruncated` says the list stopped at the server's limit. */

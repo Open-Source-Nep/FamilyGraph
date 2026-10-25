@@ -26,6 +26,7 @@ const person = (id: string): GraphPerson => ({
   imageId: null,
   gender: null,
   maintainedByYou: false,
+  description: null,
 });
 
 describe('HomeGraph', () => {

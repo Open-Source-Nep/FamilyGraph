@@ -49,6 +49,7 @@ const person = (id: string, firstName: string): GraphPerson => ({
   imageId: null,
   gender: null,
   maintainedByYou: false,
+  description: null,
 });
 
 describe('GraphView', () => {

@@ -10,9 +10,7 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { PeopleService } from '../people/people.service';
-import { PersonDetails, fullName } from '../people/person';
-import { PersonNameForm } from '../people/person-name-form';
+import { fullName } from '../people/person';
 import { problemMessage } from '../people/problem';
 import { MarriagesService } from '../relationships/marriages.service';
 import { Candidate, PersonPicker } from '../relationships/person-picker';
@@ -40,18 +38,17 @@ export interface AddRelativesResult {
  * starts with your connections: your own profiles and the people you can see by name who are
  * linked to them. Typing also searches every Public profile, so separate families can be joined.
  * On a profile someone else maintains, you can only pick your own profiles, because you must
- * maintain one of the two people (PRD 03). "Add a new person" creates a profile you maintain and
- * selects it, as on the person page (#66). Parents and children can also be linked to spouses
+ * maintain one of the two people (PRD 03). The shared picker's "Add a new person" creates a profile
+ * you maintain and selects it (#66, D-038). Parents and children can also be linked to spouses
  * (D-036). The server checks consent, cycles and duplicates; a side maintained by someone else
  * waits for their approval.
  */
 @Component({
   selector: 'app-add-relatives',
-  imports: [PersonNameForm, PersonPicker, SpouseLinkChoices],
+  imports: [PersonPicker, SpouseLinkChoices],
   templateUrl: './add-relatives.html',
 })
 export class AddRelatives {
-  private readonly people = inject(PeopleService);
   private readonly relationships = inject(RelationshipsService);
   private readonly marriages = inject(MarriagesService);
 
@@ -72,7 +69,6 @@ export class AddRelatives {
   /** The people to add, in the order they were picked, kept while the list is filtered. */
   protected readonly selected = signal<Candidate[]>([]);
   protected readonly type = signal<ParentChildType>('Biological');
-  protected readonly creatingPerson = signal(false);
   protected readonly selectionMissing = signal(false);
   protected readonly outcomes = signal<AddOutcome[]>([]);
   protected readonly saving = signal(false);
@@ -93,7 +89,6 @@ export class AddRelatives {
   );
 
   private readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('dialog');
-  private readonly picker = viewChild(PersonPicker);
   private readonly spouseChoices = viewChild(SpouseLinkChoices);
   private changed = false;
   private finished = false;
@@ -120,21 +115,6 @@ export class AddRelatives {
     return this.selected()
       .map((candidate) => candidate.name)
       .join(', ');
-  }
-
-  /** Creates a profile you maintain, then lists and selects it (PRD 01). */
-  protected async createPerson(details: PersonDetails): Promise<void> {
-    this.saving.set(true);
-    this.error.set(null);
-    try {
-      const person = await this.people.create(details);
-      this.picker()?.addCreated({ id: person.id, ...details.name });
-      this.creatingPerson.set(false);
-    } catch (error) {
-      this.error.set(problemMessage(error));
-    } finally {
-      this.saving.set(false);
-    }
   }
 
   /**

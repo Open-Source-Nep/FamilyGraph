@@ -40,6 +40,8 @@ describe('UsersPage', () => {
             lastName: null,
             visibility: 'Private',
             gender: null,
+            imageId: null,
+            description: null,
           },
           {
             id: 'p2',
@@ -48,6 +50,8 @@ describe('UsersPage', () => {
             lastName: null,
             visibility: 'Public',
             gender: null,
+            imageId: null,
+            description: null,
           },
         ],
         isTruncated: false,

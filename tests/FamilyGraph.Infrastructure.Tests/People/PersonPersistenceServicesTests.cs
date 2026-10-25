@@ -286,6 +286,29 @@ public class PersonPersistenceServicesTests(PostgresFixture postgres)
     }
 
     [Fact]
+    [Trait("AC", "AC-01.33")]
+    public async Task Maintained_list_carries_the_description_and_current_image()
+    {
+        await using var services = await NewServicesAsync();
+        var maintainer = TestData.NewAccount();
+        var person = await SaveAsync(services, Person.Create(new PersonName("Maya"), maintainer, description: "Teacher"));
+        ProfileImageId image;
+        await using (var setup = services.CreateAsyncScope())
+        {
+            image = await setup.ServiceProvider.GetRequiredService<PersonService>()
+                .SetImageAsync(person.Id, [0xFF, 0xD8, 0xFF, 0xE0, 0x01], maintainer, Cancellation);
+        }
+
+        await using var scope = services.CreateAsyncScope();
+        var queries = scope.ServiceProvider.GetRequiredService<IPersonQueries>();
+        var list = await queries.ListMaintainedByAsync(maintainer, limit: 10, Cancellation);
+
+        var maya = Assert.Single(list.People);
+        Assert.Equal("Teacher", maya.Description);
+        Assert.Equal(image, maya.ImageId);
+    }
+
+    [Fact]
     [Trait("AC", "AC-05.1")]
     [Trait("AC", "AC-08.11")]
     public async Task Search_matches_name_parts_ignoring_case_among_public_and_own_profiles_only()

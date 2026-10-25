@@ -72,7 +72,7 @@ public sealed class InMemoryPeople
         var maintained = People.Values
             .Where(person => person.IsMaintainedBy(maintainerId) && !person.IsDeleted)
             .OrderBy(person => person.Name.FirstName, StringComparer.Ordinal)
-            .Select(person => new PersonSummary(person.Id, person.Name, person.Visibility, person.Gender))
+            .Select(person => new PersonSummary(person.Id, person.Name, person.Visibility, person.Gender, person.ImageId, person.Description))
             .ToList();
         return Task.FromResult(new ProfileList(maintained.Take(limit).ToList(), maintained.Count > limit));
     }

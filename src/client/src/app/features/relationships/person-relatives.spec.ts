@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
+import { GraphService } from '../graph/graph.service';
 import { PeopleService } from '../people/people.service';
 import { Person, PersonDetails, PersonName } from '../people/person';
 import { MarriagesService } from './marriages.service';
@@ -66,9 +67,11 @@ describe('PersonRelatives', () => {
   let rejected: Set<string>;
   let newPeople: PersonName[];
   let spouses: Record<string, Spouse[]>;
+  let overviews: number;
 
   beforeEach(async () => {
     spouses = {};
+    overviews = 0;
     created = [];
     disagreed = [];
     deleted = [];
@@ -107,13 +110,27 @@ describe('PersonRelatives', () => {
           },
         },
         {
+          provide: GraphService,
+          useValue: {
+            overview: () => {
+              overviews++;
+              return Promise.resolve({
+                people: [{ ...relatives.parents[1], description: 'Teacher' }],
+                links: [],
+                marriages: [],
+                isTruncated: false,
+              });
+            },
+          },
+        },
+        {
           provide: PeopleService,
           useValue: {
             listMaintained: () =>
               Promise.resolve({
                 people: [
                   maya,
-                  { id: 'p4', firstName: 'Asha', middleName: null, lastName: null },
+                  { id: 'p4', firstName: 'Asha', middleName: null, lastName: null, imageId: 'i4' },
                   { id: 'p5', firstName: 'Bina', middleName: null, lastName: 'Rai' },
                 ],
                 isTruncated: false,
@@ -140,6 +157,9 @@ describe('PersonRelatives', () => {
 
   const openForm = async () => {
     button('Add parents or children').click();
+    // The picker loads from two stubbed requests, outside Angular's view of pending work.
+    await fixture.whenStable();
+    await new Promise((resolve) => setTimeout(resolve));
     await fixture.whenStable();
   };
 
@@ -149,8 +169,8 @@ describe('PersonRelatives', () => {
   };
 
   const checkboxLabels = () =>
-    [...fixture.nativeElement.querySelectorAll('input[type=checkbox]')].map(
-      (input: HTMLInputElement) => input.parentElement?.textContent?.trim(),
+    [...fixture.nativeElement.querySelectorAll('.options .person-text')].map((label: HTMLElement) =>
+      label.textContent?.replace(/\s+/g, ' ').trim(),
     );
 
   it('lists parents, naming adoptive ones and genders where known (AC-08.7, AC-08.8)', () => {
@@ -165,10 +185,24 @@ describe('PersonRelatives', () => {
     expect(text()).toContain('No children are linked.');
   });
 
-  it('offers only your other profiles', async () => {
+  it('offers your other profiles and the people linked to them, with photos and descriptions (AC-08.17)', async () => {
     await openForm();
 
-    expect(checkboxLabels()).toEqual(['Asha', 'Bina Rai']);
+    expect(checkboxLabels()).toEqual(['Asha (yours)', 'Bina Rai (yours)', 'Sita Teacher']);
+    const avatars = [...fixture.nativeElement.querySelectorAll('.options .avatar')].map(
+      (avatar: HTMLElement) =>
+        avatar.querySelector('img')?.getAttribute('src') ?? avatar.textContent?.trim(),
+    );
+    expect(avatars).toEqual(['/api/people/p4/image?v=i4', 'BR', 'S']);
+  });
+
+  it('offers only your profiles on a profile someone else maintains (AC-08.12)', async () => {
+    fixture.componentRef.setInput('person', { ...maya, id: 'p9', maintainedByYou: false });
+    await fixture.whenStable();
+    await openForm();
+
+    expect(overviews).toBe(0);
+    expect(checkboxLabels()).toEqual(['Maya (yours)', 'Asha (yours)', 'Bina Rai (yours)']);
   });
 
   it('creates an adoptive child link', async () => {
@@ -190,7 +224,7 @@ describe('PersonRelatives', () => {
     await fixture.whenStable();
 
     expect(created).toEqual([]);
-    expect(text()).toContain('Choose at least one profile.');
+    expect(text()).toContain('Choose at least one person.');
   });
 
   it('says when the new link waits for approval', async () => {
@@ -256,7 +290,12 @@ describe('PersonRelatives', () => {
 
     expect(newPeople).toEqual([{ firstName: 'Kiran', middleName: null, lastName: null }]);
     expect(dialog.open).toBe(false);
-    expect(checkboxLabels()).toEqual(['Asha', 'Bina Rai', 'Kiran']);
+    expect(checkboxLabels()).toEqual([
+      'Asha (yours)',
+      'Bina Rai (yours)',
+      'Sita Teacher',
+      'Kiran (yours)',
+    ]);
 
     button('Add link').click();
     await fixture.whenStable();

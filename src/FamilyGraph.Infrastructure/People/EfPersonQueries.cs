@@ -35,7 +35,7 @@ internal sealed class EfPersonQueries(FamilyGraphDbContext context) : IPersonQue
             .ThenBy(person => person.Name.MiddleName)
             .ThenBy(person => person.Name.LastName)
             .ThenBy(person => person.Id)
-            .Select(person => new PersonSummary(person.Id, person.Name, person.Visibility, person.Gender))
+            .Select(person => new PersonSummary(person.Id, person.Name, person.Visibility, person.Gender, person.ImageId, person.Description))
             .Take(limit + 1)
             .ToListAsync(cancellationToken);
 

@@ -15,6 +15,7 @@ const person = (id: string, firstName: string): GraphPerson => ({
   imageId: null,
   gender: null,
   maintainedByYou: false,
+  description: null,
 });
 const sita = person('sita', 'Sita');
 const maya = person('maya', 'Maya');

@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
+import { GraphService } from '../graph/graph.service';
 import { PeopleService } from '../people/people.service';
 import { Person } from '../people/person';
 import { MarriagesService } from './marriages.service';
@@ -84,8 +85,16 @@ describe('PersonSpouses', () => {
           },
         },
         {
+          provide: GraphService,
+          useValue: {
+            overview: () =>
+              Promise.resolve({ people: [], links: [], marriages: [], isTruncated: false }),
+          },
+        },
+        {
           provide: PeopleService,
           useValue: {
+            create: () => Promise.resolve({ ...ram, id: 'p8', firstName: 'Kamala', gender: null }),
             listMaintained: () =>
               Promise.resolve({
                 people: [ram, { id: 'p4', firstName: 'Lila', middleName: null, lastName: null }],
@@ -135,10 +144,17 @@ describe('PersonSpouses', () => {
     expect(text()).toContain('no longer active');
   });
 
-  it('marries one of your other profiles to this person (AC-02.11)', async () => {
+  const openForm = async () => {
     buttons('Add a spouse')[0].click();
+    // The picker loads from two stubbed requests, outside Angular's view of pending work.
     await fixture.whenStable();
-    expect(text()).not.toContain('Ram Ram');
+    await new Promise((resolve) => setTimeout(resolve));
+    await fixture.whenStable();
+  };
+
+  it('marries one of your other profiles to this person (AC-02.11)', async () => {
+    await openForm();
+    expect(text()).not.toContain('Ram (yours)');
     (fixture.nativeElement.querySelector('input[type=radio]') as HTMLInputElement).click();
     await fixture.whenStable();
     buttons('Add marriage')[0].click();
@@ -146,5 +162,27 @@ describe('PersonSpouses', () => {
 
     expect(created).toEqual([{ spouseId: 'p4', otherSpouseId: 'p1' }]);
     expect(text()).toContain('not active yet');
+  });
+
+  it('adds a new person as the spouse with the shared picker (AC-08.17)', async () => {
+    await openForm();
+    buttons('Add a new person')[0].click();
+    await fixture.whenStable();
+    const dialog = fixture.nativeElement.querySelector('dialog') as HTMLDialogElement;
+    const firstName = dialog.querySelector('input[formControlName=firstName]') as HTMLInputElement;
+    firstName.value = 'Kamala';
+    firstName.dispatchEvent(new Event('input'));
+    (dialog.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    expect(dialog.open).toBe(false);
+    const checked = fixture.nativeElement.querySelector(
+      'input[type=radio]:checked',
+    ) as HTMLInputElement;
+    expect(checked.value).toBe('p8');
+    buttons('Add marriage')[0].click();
+    await fixture.whenStable();
+
+    expect(created).toEqual([{ spouseId: 'p8', otherSpouseId: 'p1' }]);
   });
 });

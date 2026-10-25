@@ -1,30 +1,29 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
-import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
-import { PeopleService } from '../people/people.service';
-import { Person, PersonSummary, fullName } from '../people/person';
+import { Person, fullName } from '../people/person';
 import { problemMessage } from '../people/problem';
 import { MarriagesService } from './marriages.service';
+import { Candidate, PersonPicker } from './person-picker';
 import { Spouse, SpouseList, relationHint } from './relationship';
 
 /** How you can remove a marriage: withdraw your side's approval, or delete it when you maintain both. */
 type Removal = { kind: 'withdraw'; spouseId: string } | { kind: 'delete' };
 
 /**
- * A person's spouses through active marriages, current ones first (D-031), and a form to marry one
- * of your own profiles to them. Where you maintain either spouse you can mark the marriage former
+ * A person's spouses through active marriages, current ones first (D-031), and a form to pick their
+ * spouse with the shared picker, which can also add a new person (D-038). When you maintain the
+ * person the spouse can be anyone you can see; otherwise only one of your own profiles (PRD 03). Where you maintain either spouse you can mark the marriage former
  * or current again; where you maintain one you can withdraw your approval, and where you maintain
  * both you can delete it (PRD 03).
  */
 @Component({
   selector: 'app-person-spouses',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [PersonPicker, RouterLink],
   templateUrl: './person-spouses.html',
 })
 export class PersonSpouses {
   private readonly marriages = inject(MarriagesService);
-  private readonly people = inject(PeopleService);
 
   readonly person = input.required<Person>();
 
@@ -32,20 +31,20 @@ export class PersonSpouses {
   protected readonly relationHint = relationHint;
   protected readonly spouses = signal<SpouseList | null>(null);
   protected readonly adding = signal(false);
-  /** The profiles you maintain, other than this person, once the form has loaded them. */
-  protected readonly candidates = signal<PersonSummary[] | null>(null);
-  protected readonly candidatesTruncated = signal(false);
+  /** The spouse to add, at most one. */
+  protected readonly selected = signal<Candidate[]>([]);
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly notice = signal<string | null>(null);
   /** The marriage whose withdrawal or deletion waits for confirmation. */
   protected readonly confirming = signal<string | null>(null);
   protected readonly name = computed(() => fullName(this.person()));
-  private readonly personId = computed(() => this.person().id);
-
-  protected readonly form = new FormGroup({
-    spouseId: new FormControl<string>('', { nonNullable: true }),
-  });
+  protected readonly personId = computed(() => this.person().id);
+  protected readonly hint = computed(() =>
+    this.person().maintainedByYou
+      ? 'Your profiles and the people linked to them are listed first. Type a name to search everyone with a public profile.'
+      : `You do not maintain ${this.name()}, so you can only pick your own profiles. The marriage stays inactive until its maintainer approves it.`,
+  );
 
   constructor() {
     effect(() => {
@@ -105,28 +104,24 @@ export class PersonSpouses {
     });
   }
 
-  protected async startAdding(): Promise<void> {
+  protected startAdding(): void {
     this.adding.set(true);
     this.notice.set(null);
     this.error.set(null);
-    this.form.reset();
-    try {
-      const list = await this.people.listMaintained();
-      this.candidates.set(list.people.filter((person) => person.id !== this.personId()));
-      this.candidatesTruncated.set(list.isTruncated);
-    } catch (error) {
-      this.error.set(problemMessage(error));
-    }
+    this.selected.set([]);
   }
 
   protected async add(): Promise<void> {
-    const { spouseId } = this.form.getRawValue();
-    if (!spouseId) {
-      this.error.set('Choose one of your profiles.');
+    const [spouse] = this.selected();
+    if (!spouse) {
+      this.error.set('Choose the spouse.');
       return;
     }
     await this.act(async () => {
-      const marriage = await this.marriages.create({ spouseId, otherSpouseId: this.personId() });
+      const marriage = await this.marriages.create({
+        spouseId: spouse.id,
+        otherSpouseId: this.personId(),
+      });
       this.adding.set(false);
       if (!marriage.isActive) {
         this.notice.set(

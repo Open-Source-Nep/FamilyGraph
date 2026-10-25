@@ -65,34 +65,20 @@
 
 @if (adding()) {
   <h2>Add a spouse</h2>
-  @if (candidates(); as candidates) {
-    <form [formGroup]="form" (ngSubmit)="add()" class="name-form">
-      <fieldset class="choices">
-        <legend>Which of your profiles is married to {{ name() }}?</legend>
-        @for (candidate of candidates; track candidate.id) {
-          <label>
-            <input type="radio" formControlName="spouseId" [value]="candidate.id" />
-            {{ fullName(candidate) }}
-          </label>
-        } @empty {
-          <p class="hint">You maintain no other profiles yet. Add the person first.</p>
-        }
-      </fieldset>
-      @if (candidatesTruncated()) {
-        <p class="hint">Only the first {{ candidates.length }} of your profiles are listed.</p>
-      }
-      @if (!person().maintainedByYou) {
-        <p class="hint">
-          You do not maintain {{ name() }}, so the marriage stays inactive until its maintainer
-          approves it.
-        </p>
-      }
-      <div class="actions">
-        <button type="submit" [disabled]="saving()">Add marriage</button>
-        <button type="button" class="secondary" (click)="adding.set(false)">Cancel</button>
-      </div>
-    </form>
-  }
+  <div class="name-form">
+    <app-person-picker
+      legend="Spouse"
+      [excludeId]="personId()"
+      [searchesEveryone]="person().maintainedByYou"
+      [single]="true"
+      [hint]="hint()"
+      [(selected)]="selected"
+    />
+    <div class="actions">
+      <button type="button" [disabled]="saving()" (click)="add()">Add marriage</button>
+      <button type="button" class="secondary" (click)="adding.set(false)">Cancel</button>
+    </div>
+  </div>
 } @else if (person().placeholder !== 'Deleted') {
   <p>
     <button type="button" class="secondary" (click)="startAdding()">Add a spouse</button>

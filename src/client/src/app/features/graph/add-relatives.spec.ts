@@ -140,7 +140,7 @@ describe('AddRelatives', () => {
   const element = () => fixture.nativeElement as HTMLElement;
   const text = () => element().textContent ?? '';
   const optionLabels = () =>
-    [...element().querySelectorAll('.options label')].map((label) =>
+    [...element().querySelectorAll('.options label .person-text')].map((label) =>
       label.textContent?.replace(/\s+/g, ' ').trim(),
     );
   const button = (label: string) =>

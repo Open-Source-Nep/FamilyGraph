@@ -15,6 +15,7 @@ const gita: GraphPerson = {
   imageId: null,
   gender: null,
   maintainedByYou: true,
+  description: null,
 };
 
 describe('DeletePerson', () => {
