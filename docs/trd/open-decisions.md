@@ -690,3 +690,20 @@ For each major decision, record:
   - **Server:** `GET /api/people?q=&offset=` answers `{ people, hasMore }` with person responses; 400 for a negative offset or a query over 302 characters.
   - **Client:** the People page has My profiles and All people tabs (`?tab=all` keeps the choice in the URL). All people loads the first page, Show more asks for the next with the loaded count as the offset, and the search box asks the server again after a short pause. Rows are the D-038 `.person-rows` with "(yours)" and "(private)".
 - **Consequences:** D-010 lists stay unpaginated except this one. A much larger instance may want a cursor or a name index later; the picker search (D-032) is unchanged.
+
+### D-043: Bansawali view
+
+- **Status:** proposed (2026-10-25). Product rules agreed with the user on 2026-10-25 (PRD 08, Bansawali); the technical design is proposed with the PR.
+- **Context:** A Bansawali is the traditional Nepali lineage record: the chain of descendants through sons, who usually share a surname. Users want it next to the graph views. The graph already has active parent–child links with Biological/Adoptive types, genders (D-030), marriages (D-031), birth order (D-016, D-039) and the privacy projection (D-025).
+- **Options considered:** whose children continue the line (sons only, sons with a toggle for all, all children); adopted sons (continue, shown with the line stopped, left out); gender Other or not set (followed, treated like daughters, left out); surname (display only, filter, flag mismatches); spouses (all with former marked, current only, none); a Private son's line for other viewers (stops, continues); location (own page with browser print, own page only, a tab on the graph page).
+- **Trade-offs:** Sons by default matches the written record and stays compact; the toggle keeps every line reachable. Stopping at adopted sons, at unknown genders and at Private placeholders keeps the default view strict without hiding structure for good, since the toggle shows it. Surnames are free text with varying spellings, so they never filter. Browser print gives a PDF without a new dependency.
+- **Decision (agreed rules):**
+  - A view derived from active links only; no new stored data.
+  - The line continues through sons by default; a toggle follows every child.
+  - Daughters and children whose gender is Other, not set or hidden appear under their parent, with their descendants only under the toggle.
+  - Adopted sons appear under their adoptive father, marked as adopted, with their descendants only under the toggle.
+  - The surname is display only: the title uses the ancestor's last name.
+  - Every active marriage appears beside the person, ended ones marked "former"; spouses never continue the line.
+  - Access and placeholders as on the graph page. The line decision uses the projected gender, so a Private person seen by others counts as not set and leaks nothing; a Deleted profile has no gender.
+  - Its own page `/people/:id/bansawali`, linked from the person page and the graph page's menu, bounded by the graph limits with "load more", and a Print button with a print layout.
+- **Consequences:** No schema change is expected. The bounded query and endpoint shape are to be proposed with the PR.
