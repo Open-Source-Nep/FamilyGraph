@@ -21,6 +21,20 @@
         AD
       </label>
     </div>
+    <div class="choices known">
+      <span>Known:</span>
+      @for (choice of knownChoices; track choice.value) {
+        <label>
+          <input
+            type="radio"
+            name="birth-known"
+            [checked]="known() === choice.value"
+            (change)="setKnown(choice.value)"
+          />
+          {{ choice.label }}
+        </label>
+      }
+    </div>
     <div class="date-parts">
       <label>
         Year
@@ -33,20 +47,22 @@
           (input)="setYear($any($event.target).value)"
         />
       </label>
-      <label>
-        Month
-        <select (change)="setMonth($any($event.target).value)">
-          <option value="" [selected]="month() === null">Not known</option>
-          @for (name of months(); track $index) {
-            <option [value]="$index + 1" [selected]="month() === $index + 1">{{ name }}</option>
-          }
-        </select>
-      </label>
-      @if (month() !== null) {
+      @if (known() !== 'year') {
+        <label>
+          Month
+          <select (change)="setMonth($any($event.target).value)">
+            <option value="" [selected]="month() === null">Choose</option>
+            @for (name of months(); track $index) {
+              <option [value]="$index + 1" [selected]="month() === $index + 1">{{ name }}</option>
+            }
+          </select>
+        </label>
+      }
+      @if (known() === 'day') {
         <label>
           Day
           <select (change)="setDay($any($event.target).value)">
-            <option value="" [selected]="day() === null">Not known</option>
+            <option value="" [selected]="day() === null">Choose</option>
             @for (value of days(); track value) {
               <option [value]="value" [selected]="day() === value">{{ value }}</option>
             }
@@ -54,7 +70,9 @@
         </label>
       }
     </div>
-    @if (invalid()) {
+    @if (missing(); as parts) {
+      <p class="error">Choose the {{ parts }}, or change what is known.</p>
+    } @else if (invalid()) {
       <p class="error" role="alert">That date does not exist.</p>
     }
     <div class="actions">
@@ -71,6 +89,8 @@
         [showScriptToggle]="false"
         [showCalendarToggle]="false"
         [calendar]="calendar() === 'Bs' ? 'bs' : 'ad'"
+        [calendars]="['bs', 'ad']"
+        [pick]="known()"
         [value]="picked()"
         [max]="today"
         (dateSelect)="pick($event)"

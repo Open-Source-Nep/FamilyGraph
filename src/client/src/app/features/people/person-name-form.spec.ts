@@ -105,6 +105,15 @@ describe('PersonNameForm', () => {
     select.dispatchEvent(new Event('change'));
   };
 
+  const known = (label: string) => {
+    const radio = Array.from(
+      fixture.nativeElement.querySelectorAll('.known label') as NodeListOf<HTMLLabelElement>,
+    )
+      .find((element) => element.textContent?.trim() === label)!
+      .querySelector('input') as HTMLInputElement;
+    radio.dispatchEvent(new Event('change'));
+  };
+
   const year = (value: string) => {
     const field = fixture.nativeElement.querySelector('.date-parts input') as HTMLInputElement;
     field.value = value;
@@ -115,6 +124,8 @@ describe('PersonNameForm', () => {
     type('firstName', 'Maya');
     type('description', '  Teacher,\n lives in Pokhara ');
     button('Add birth date')!.click();
+    await fixture.whenStable();
+    known('Year and month');
     await fixture.whenStable();
     year('2009');
     choose('Month', '1');
@@ -161,6 +172,64 @@ describe('PersonNameForm', () => {
 
     expect(saved).toEqual([]);
     expect(fixture.nativeElement.textContent).toContain('That date does not exist.');
+  });
+
+  it('saves only the year when only the year is known (AC-01.36)', async () => {
+    type('firstName', 'Maya');
+    button('Add birth date')!.click();
+    await fixture.whenStable();
+    known('Year only');
+    await fixture.whenStable();
+    year('1990');
+    await submit();
+
+    expect(fixture.nativeElement.querySelector('.date-parts select')).toBeNull();
+    expect(saved[0].birthDate).toEqual({ calendar: 'Bs', year: 1990, month: null, day: null });
+  });
+
+  it('does not save until the known parts are chosen (AC-01.36)', async () => {
+    type('firstName', 'Maya');
+    button('Add birth date')!.click();
+    await fixture.whenStable();
+    year('2040');
+    await fixture.whenStable();
+    await submit();
+
+    expect(saved).toEqual([]);
+    expect(fixture.nativeElement.textContent).toContain(
+      'Choose the month and day, or change what is known.',
+    );
+  });
+
+  it('starts at the known level of the given date (AC-01.36)', async () => {
+    fixture.componentRef.setInput('birthDate', { calendar: 'Ad', year: 1952, month: 3, day: null });
+    await fixture.whenStable();
+
+    const checked = fixture.nativeElement.querySelector('.known input:checked') as HTMLInputElement;
+    expect(checked.parentElement!.textContent?.trim()).toBe('Year and month');
+    expect(fixture.nativeElement.querySelectorAll('.date-parts select').length).toBe(1);
+  });
+
+  it('picks a year on the calendar when only the year is known (AC-01.36)', async () => {
+    type('firstName', 'Maya');
+    button('Add birth date')!.click();
+    await fixture.whenStable();
+    known('Year only');
+    await fixture.whenStable();
+    button('Pick on the calendar')!.click();
+    await fixture.whenStable();
+    const cells = Array.from(
+      fixture.nativeElement.querySelectorAll('.osn-cal__period') as NodeListOf<HTMLButtonElement>,
+    ).filter((cell) => !cell.disabled);
+    cells[0].click();
+    await fixture.whenStable();
+    await submit();
+
+    const date = saved[0].birthDate!;
+    expect(date.month).toBeNull();
+    expect(date.day).toBeNull();
+    expect(Number.isInteger(date.year)).toBe(true);
+    expect(cells[0].textContent).toContain(String(date.year));
   });
 
   it('starts from the given birth date and can remove it', async () => {

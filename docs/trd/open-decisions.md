@@ -60,7 +60,8 @@ The technical decision log, plus any unresolved choices. Do not treat recommenda
 - Children in birth order in the graphs (D-039 below).
 - Administrators approving pending sides on behalf of maintainers (D-040 below).
 - Enlarging the profile photo (D-041 below).
-- All people on the People page, paged (D-042 below, proposed).
+- All people on the People page, paged (D-042 below).
+- Picking a birth year or month on the calendar (D-043 below, proposed).
 - **Name length (agreed 2026-10-21):** Business puts no length cap on name parts. Any storage or input limit is set later by persistence (#9) and API validation (D-010).
 
 ## Discussion topics (all agreed)
@@ -680,7 +681,7 @@ For each major decision, record:
 
 ### D-042: All people on the People page, paged
 
-- **Status:** proposed (2026-10-25). Issue #22. Agreed with the user on 2026-10-25 (PRD 08, PRD 05): the People page gets an All people tab next to My profiles, listing everyone you may see by name A to Z, 50 at a time with Show more, with a search box; administrators also see Private profiles, marked "(private)"; nobody sees deleted profiles. The rest is proposed with the PR.
+- **Status:** agreed (2026-10-25). Issue #22, PR #109. Agreed with the user on 2026-10-25 (PRD 08, PRD 05): the People page gets an All people tab next to My profiles, listing everyone you may see by name A to Z, 50 at a time with Show more, with a search box; administrators also see Private profiles, marked "(private)"; nobody sees deleted profiles. The rest is proposed with the PR.
 - **Context:** The People page listed only the profiles you maintain, and the person search of D-032 returns the top 20 Public matches for pickers. #22 asks for a bounded, paginated search as an entry point into the graph, and an instance can hold more than 10,000 people (PRD 09). D-010 left lists unpaginated until a real list needed it.
 - **Options considered:** search only with the top 20 (D-032); everything up to a limit; paging by offset or by a cursor on the name; one endpoint for search and browsing, or a second one.
 - **Trade-offs:** Paging is what lets the list hold everyone at any size; this is the first list that needs it, so D-010 is amended for it alone. An offset is simpler than a cursor over three nullable name parts; a profile created or deleted between pages can shift a row by one, which the Client absorbs by skipping IDs it already has. A second endpoint leaves the picker search (names only, top 20) unchanged, while browsing also matches descriptions as the My profiles box does (PRD 01).
@@ -690,3 +691,13 @@ For each major decision, record:
   - **Server:** `GET /api/people?q=&offset=` answers `{ people, hasMore }` with person responses; 400 for a negative offset or a query over 302 characters.
   - **Client:** the People page has My profiles and All people tabs (`?tab=all` keeps the choice in the URL). All people loads the first page, Show more asks for the next with the loaded count as the offset, and the search box asks the server again after a short pause. Rows are the D-038 `.person-rows` with "(yours)" and "(private)".
 - **Consequences:** D-010 lists stay unpaginated except this one. A much larger instance may want a cursor or a name index later; the picker search (D-032) is unchanged.
+
+### D-043: Picking a birth year or month on the calendar
+
+- **Status:** proposed (2026-10-25). Issue #110. Agreed with the user on 2026-10-25 (PRD 01): upgrade `@opensourcenepal/nepali-calendar-angular` and its core from 1.2.0 to 1.3.0, whose calendar can pick a whole year or month; the birth date field first asks what is known (Year only, Year and month, Full date), and the calendar opens at that level. The rest is proposed with the PR.
+- **Context:** D-037 allows a year, a year and month, or a full date, but its calendar picked only full dates, so partial dates were typed and "Not known" in the Month and Day selects meant a partial date.
+- **Options considered:** a "what is known" choice that drives the boxes and the calendar; three calendar buttons (year, month, day); the calendar level following which boxes are filled.
+- **Trade-offs:** One choice says plainly that a partial date is fine and keeps the boxes and the calendar in step. The typed boxes stay for dates the calendar does not reach (before BS 1970 or AD 1914).
+- **Decision:**
+  - **Client:** `BirthDateInput` has `known` (`year`, `month`, `day`; a new date starts at Full date, a stored one at its own level) with radio buttons after BS/AD. It shows the Month select unless only the year is known and the Day select only for a full date, each starting at "Choose"; while a known part is missing it says "Choose the month and day, or change what is known." and the form does not save. The calendar gets `[pick]="known()"` and `[calendars]="['bs', 'ad']"`; a picked year or month arrives as its first day, of which only the known parts are kept, in the calendar the date is entered in.
+- **Consequences:** No server change, endpoint or new dependency; D-037's dependency moves to `^1.3.0`. Nepal Sambat, new in 1.3.0, is not offered.
