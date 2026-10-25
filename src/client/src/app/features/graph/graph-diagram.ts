@@ -11,6 +11,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { Router } from '@angular/router';
 import cytoscape, { Core, ElementDefinition } from 'cytoscape';
 import dagre, { DagreLayoutOptions } from 'cytoscape-dagre';
 
@@ -107,8 +108,8 @@ interface Hovered {
  * not shown have a double border. Each person has their photo or a coloured initial avatar and hovering shows their
  * details. The dots mode (the home page) draws each person as a small coloured dot, with no legend
  * or details; hovering shows only their name. With `addMenu`, right-clicking or pressing and
- * holding a person opens a menu to add their parents, children or spouse (D-032), and to delete the
- * profile when you maintain it or are an administrator (D-034); a deleted person has no menu,
+ * holding a person opens a menu to add their parents, children or spouse (D-032), to open their
+ * Bansawali (D-043), and to delete the profile when you maintain it or are an administrator (D-034); a deleted person has no menu,
  * because nobody can be linked to them and they cannot be deleted again. The canvas is not keyboard or screen
  * reader accessible, so the page always offers the same people as links or text next to it, and
  * the person page the same ways to add relatives and delete the profile (AC-09.2).
@@ -121,6 +122,7 @@ interface Hovered {
 export class GraphDiagram {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly photos = inject(PhotoLoader);
+  private readonly router = inject(Router);
 
   readonly graph = input.required<ShownGraph>();
   readonly selectedId = input<string | null>(null);
@@ -266,6 +268,15 @@ export class GraphDiagram {
     this.menu.set(null);
     if (menu) {
       this.deletePerson.emit(menu.row.person);
+    }
+  }
+
+  /** Opens the person's Bansawali (D-043). */
+  protected showBansawali(): void {
+    const menu = this.menu();
+    this.menu.set(null);
+    if (menu) {
+      void this.router.navigate(['/people', menu.row.person.id, 'bansawali']);
     }
   }
 

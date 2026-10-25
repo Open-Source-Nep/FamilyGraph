@@ -248,6 +248,136 @@ public class GraphServiceTests
         Assert.Equal([StepRelation.Spouse, StepRelation.Parent], path.Steps.Select(step => step.Relation));
     }
 
+    [Fact]
+    [Trait("AC", "AC-08.21")]
+    [Trait("AC", "AC-08.22")]
+    public async Task Bansawali_follows_biological_sons_and_lists_the_other_children_without_their_descendants()
+    {
+        var family = AddFamily();
+
+        var bansawali = await Service().BansawaliAsync(family.Hari, BansawaliLine.Sons, As(Alice), Cancellation);
+
+        Assert.Equal(family.Hari, bansawali.RootId);
+        Assert.Equal(BansawaliLine.Sons, bansawali.Line);
+        Assert.Equal(
+            [("Hari", 0, true), ("Krishna", 1, false), ("Ram", 1, true), ("Rina", 1, false), ("Sita", 1, false), ("Shyam", 2, true)],
+            bansawali.People
+                .Select(row => (row.Person.Name!.FirstName, row.Generation, row.Continues))
+                .OrderBy(row => row.Generation).ThenBy(row => row.FirstName));
+        Assert.Equal(5, bansawali.Links.Count);
+        Assert.Equal(ParentChildType.Adoptive, bansawali.Links.Single(link => link.ChildId == family.Krishna).Type);
+        Assert.All(bansawali.People, row => Assert.False(row.HasMore));
+        Assert.False(bansawali.IsTruncated);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-08.21")]
+    public async Task Bansawali_of_all_children_follows_every_line()
+    {
+        var family = AddFamily();
+
+        var bansawali = await Service().BansawaliAsync(family.Hari, BansawaliLine.AllChildren, As(Alice), Cancellation);
+
+        Assert.Equal(
+            ["Hari", "Krishna", "Ram", "Rina", "Sita", "Gita", "Mohan", "Shyam", "Tara"],
+            bansawali.People.OrderBy(row => row.Generation).ThenBy(row => row.Person.Name!.FirstName).Select(row => row.Person.Name!.FirstName));
+        Assert.All(bansawali.People, row => Assert.True(row.Continues));
+    }
+
+    [Fact]
+    [Trait("AC", "AC-08.24")]
+    [Trait("AC", "AC-05.2")]
+    public async Task Bansawali_stops_at_a_private_son_for_others_but_not_for_his_maintainer()
+    {
+        var hari = AddPerson("Hari", Bob, Gender.Male);
+        var ram = AddPerson("Ram", Bob, Gender.Male);
+        var shyam = AddPerson("Shyam", Bob, Gender.Male);
+        AddLink(hari, ram);
+        AddLink(ram, shyam);
+        _store.People[ram].SetVisibility(ProfileVisibility.Private, Bob);
+
+        var forOthers = await Service().BansawaliAsync(hari, BansawaliLine.Sons, As(Alice), Cancellation);
+        var forMaintainer = await Service().BansawaliAsync(hari, BansawaliLine.Sons, As(Bob), Cancellation);
+        var withToggle = await Service().BansawaliAsync(hari, BansawaliLine.AllChildren, As(Alice), Cancellation);
+
+        Assert.Equal(
+            [(hari, null, true), (ram, PersonPlaceholder.Private, false)],
+            forOthers.People.Select(row => (row.Person.Id, row.Person.Placeholder, row.Continues)));
+        Assert.Null(forOthers.People[1].Person.Gender);
+        Assert.Equal([hari, ram, shyam], forMaintainer.People.Select(row => row.Person.Id));
+        Assert.Equal([hari, ram, shyam], withToggle.People.Select(row => row.Person.Id));
+    }
+
+    [Fact]
+    [Trait("AC", "AC-08.23")]
+    public async Task Bansawali_lists_the_marriages_of_its_people_and_their_spouses()
+    {
+        var hari = AddPerson("Hari", Alice, Gender.Male);
+        var ram = AddPerson("Ram", Alice, Gender.Male);
+        var gita = AddPerson("Gita", Alice, Gender.Female);
+        var maya = AddPerson("Maya", Alice, Gender.Female);
+        var mayaChild = AddPerson("Asha", Alice, Gender.Female);
+        AddLink(hari, ram);
+        AddLink(maya, mayaChild);
+        AddMarriage(hari, gita);
+        AddMarriage(ram, maya);
+        _store.Marriages.Values
+            .Single(marriage => marriage.FirstSpouseId == maya || marriage.SecondSpouseId == maya)
+            .SetFormer(_store.People[ram], _store.People[maya], Alice, isFormer: true);
+
+        var bansawali = await Service().BansawaliAsync(hari, BansawaliLine.Sons, As(Alice), Cancellation);
+
+        Assert.Equal([hari, ram], bansawali.People.Select(row => row.Person.Id));
+        Assert.Equal(["Gita", "Maya"], bansawali.Spouses.Select(spouse => spouse.Name!.FirstName).Order());
+        Assert.Equal(2, bansawali.Marriages.Count);
+        Assert.True(bansawali.Marriages.Single(marriage => marriage.SecondSpouseId == maya || marriage.FirstSpouseId == maya).IsFormer);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-08.21")]
+    public async Task Bansawali_leaves_out_a_generation_past_the_limit_and_marks_whose_children_were_cut_off()
+    {
+        var family = AddFamily();
+
+        var bansawali = await Service(new GraphLimits(bansawaliPeople: 5))
+            .BansawaliAsync(family.Hari, BansawaliLine.AllChildren, As(Alice), Cancellation);
+
+        Assert.True(bansawali.IsTruncated);
+        Assert.All(bansawali.People, row => Assert.True(row.Generation < 2));
+        Assert.Equal(
+            ["Krishna", "Ram", "Rina", "Sita"],
+            bansawali.People.Where(row => row.HasMore).Select(row => row.Person.Name!.FirstName).Order());
+    }
+
+    [Fact]
+    public async Task Bansawali_of_an_unknown_person_is_not_found()
+    {
+        await Assert.ThrowsAsync<PersonNotFoundException>(
+            () => Service().BansawaliAsync(PersonId.New(), BansawaliLine.Sons, As(Alice), Cancellation));
+    }
+
+    /// <summary>
+    /// Hari's children: Ram (son), Sita (daughter, mother of Gita), Krishna (adopted son, father of
+    /// Mohan) and Rina (gender not set, mother of Tara). Ram is the father of Shyam.
+    /// </summary>
+    private (PersonId Hari, PersonId Krishna) AddFamily()
+    {
+        var hari = AddPerson("Hari", Alice, Gender.Male);
+        var ram = AddPerson("Ram", Alice, Gender.Male);
+        var sita = AddPerson("Sita", Alice, Gender.Female);
+        var krishna = AddPerson("Krishna", Alice, Gender.Male);
+        var rina = AddPerson("Rina", Alice);
+        AddLink(hari, ram);
+        AddLink(hari, sita);
+        AddLink(hari, krishna, ParentChildType.Adoptive);
+        AddLink(hari, rina);
+        AddLink(ram, AddPerson("Shyam", Alice, Gender.Male));
+        AddLink(sita, AddPerson("Gita", Alice, Gender.Female));
+        AddLink(krishna, AddPerson("Mohan", Alice, Gender.Male));
+        AddLink(rina, AddPerson("Tara", Alice));
+        return (hari, krishna);
+    }
+
     private void AddMarriage(PersonId spouseId, PersonId otherSpouseId)
     {
         var spouse = _store.People[spouseId];
@@ -256,9 +386,10 @@ public class GraphServiceTests
         _store.Marriages[marriage.Id] = marriage;
     }
 
-    private PersonId AddPerson(string firstName, AccountId maintainer)
+    private PersonId AddPerson(string firstName, AccountId maintainer, Gender? gender = null)
     {
         var person = Person.Create(new PersonName(firstName), maintainer);
+        person.SetGender(gender, maintainer);
         person.TakeEvents();
         _store.People[person.Id] = person;
         return person.Id;

@@ -35,6 +35,22 @@ public interface IGraphQueries
     Task<OverviewData> OverviewAsync(
         IReadOnlyCollection<PersonId> startIds, AccountId viewerId, int peopleLimit, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// The active links from any of <paramref name="parentIds"/> to their children, at most
+    /// <paramref name="limit"/>, by parent, then birth order, then link (D-043).
+    /// <see cref="ChildLinks.IsTruncated"/> says more were found.
+    /// </summary>
+    Task<ChildLinks> ChildLinksAsync(IReadOnlyCollection<PersonId> parentIds, int limit, CancellationToken cancellationToken);
+
+    /// <summary>Those of <paramref name="parentIds"/> who have an active link to a child (D-043).</summary>
+    Task<IReadOnlySet<PersonId>> WithChildrenAsync(IReadOnlyCollection<PersonId> parentIds, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The active marriages of any of <paramref name="personIds"/>, at most <paramref name="limit"/>
+    /// (D-043). <see cref="MarriagesOf.IsTruncated"/> says more were found.
+    /// </summary>
+    Task<MarriagesOf> MarriagesOfAsync(IReadOnlyCollection<PersonId> personIds, int limit, CancellationToken cancellationToken);
+
     /// <summary>The given people, for privacy projection. Unknown IDs are left out.</summary>
     Task<IReadOnlyList<PersonRecord>> PeopleAsync(
         IReadOnlyCollection<PersonId> ids, AccountId viewerId, CancellationToken cancellationToken);
@@ -65,3 +81,9 @@ public sealed record OverviewData(
 
 /// <summary><see cref="IsComplete"/> is false when the search stopped at its people limit.</summary>
 public sealed record LinkNeighbourhood(IReadOnlyList<GraphLink> Links, IReadOnlyList<GraphMarriage> Marriages, bool IsComplete);
+
+/// <summary>Active links to children; <see cref="IsTruncated"/> says more were found than the limit.</summary>
+public sealed record ChildLinks(IReadOnlyList<GraphLink> Links, bool IsTruncated);
+
+/// <summary>Active marriages; <see cref="IsTruncated"/> says more were found than the limit.</summary>
+public sealed record MarriagesOf(IReadOnlyList<GraphMarriage> Marriages, bool IsTruncated);

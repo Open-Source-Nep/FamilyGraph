@@ -134,3 +134,36 @@ public sealed record ConnectionsResponse(IReadOnlyList<ConnectionResponse> Paths
         _ => throw new ArgumentException("Unknown kind of graph edge.", nameof(edge)),
     };
 }
+
+/// <summary>
+/// A person in a Bansawali: <see cref="Generation"/> below the ancestor (0 for the ancestor),
+/// whether the line <see cref="Continues"/> through them, and <see cref="HasMore"/> when their
+/// children were cut off by the limit, which their own Bansawali loads (D-043).
+/// </summary>
+public sealed record BansawaliPersonResponse(GraphPersonResponse Person, int Generation, bool Continues, bool HasMore);
+
+/// <summary>
+/// A Bansawali (PRD 08, D-043): the ancestor first, then each generation. <see cref="Links"/>
+/// place each descendant under one parent; <see cref="Spouses"/> are the people outside the line
+/// in <see cref="Marriages"/>. <see cref="Line"/> is <c>Sons</c> or <c>AllChildren</c>.
+/// <see cref="IsTruncated"/> says a limit was reached.
+/// </summary>
+public sealed record BansawaliResponse(
+    Guid RootId,
+    string Line,
+    IReadOnlyList<BansawaliPersonResponse> People,
+    IReadOnlyList<GraphLinkResponse> Links,
+    IReadOnlyList<GraphPersonResponse> Spouses,
+    IReadOnlyList<GraphMarriageResponse> Marriages,
+    bool IsTruncated)
+{
+    internal static BansawaliResponse From(Bansawali bansawali) => new(
+        bansawali.RootId.Value,
+        bansawali.Line.Name,
+        [.. bansawali.People.Select(row => new BansawaliPersonResponse(
+            GraphPersonResponse.From(row.Person), row.Generation, row.Continues, row.HasMore))],
+        [.. bansawali.Links.Select(GraphLinkResponse.From)],
+        [.. bansawali.Spouses.Select(GraphPersonResponse.From)],
+        [.. bansawali.Marriages.Select(GraphMarriageResponse.From)],
+        bansawali.IsTruncated);
+}

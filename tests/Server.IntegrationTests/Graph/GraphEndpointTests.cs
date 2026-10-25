@@ -15,6 +15,7 @@ public class GraphEndpointTests(AccountTestFactory factory) : IClassFixture<Acco
     [InlineData("/api/people/0199f6a2-0000-7000-8000-000000000001/graph")]
     [InlineData("/api/people/0199f6a2-0000-7000-8000-000000000001/connections/0199f6a2-0000-7000-8000-000000000002")]
     [InlineData("/api/graph/overview")]
+    [InlineData("/api/people/0199f6a2-0000-7000-8000-000000000001/bansawali")]
     public async Task Graph_reads_require_a_session(string url)
     {
         using var browser = factory.CreateBrowser();
@@ -191,6 +192,50 @@ public class GraphEndpointTests(AccountTestFactory factory) : IClassFixture<Acco
         {
             factory.Graph.TimesOut = false;
         }
+    }
+
+    [Fact]
+    [Trait("AC", "AC-08.21")]
+    [Trait("AC", "AC-08.22")]
+    [Trait("AC", "AC-08.23")]
+    public async Task Bansawali_follows_sons_by_default_and_every_child_on_request()
+    {
+        var (browser, token) = await SignInAsync(UniqueEmail());
+        var hari = await CreatePersonAsync(browser, token, new { firstName = "Hari", lastName = "Neupane", gender = "Male" });
+        var gauri = await CreatePersonAsync(browser, token, new { firstName = "Gauri", gender = "Female" });
+        var ram = await CreatePersonAsync(browser, token, new { firstName = "Ram", gender = "Male" });
+        var sita = await CreatePersonAsync(browser, token, new { firstName = "Sita", gender = "Female" });
+        var gita = await CreatePersonAsync(browser, token, "Gita");
+        (await CreateLinkAsync(browser, token, hari, ram, "Biological")).Dispose();
+        (await CreateLinkAsync(browser, token, hari, sita, "Biological")).Dispose();
+        (await CreateLinkAsync(browser, token, sita, gita, "Biological")).Dispose();
+        (await SendAsync(browser, token, "/api/marriages", new { spouseId = hari, otherSpouseId = gauri })).Dispose();
+
+        var sons = await browser.GetFromJsonAsync<BansawaliResponse>($"/api/people/{hari}/bansawali", Cancellation);
+        var all = await browser.GetFromJsonAsync<BansawaliResponse>(
+            $"/api/people/{hari}/bansawali?line=AllChildren", Cancellation);
+
+        Assert.Equal((hari, "Sons"), (sons!.RootId, sons.Line));
+        Assert.Equal(
+            [("Hari", 0, true), ("Ram", 1, true), ("Sita", 1, false)],
+            sons.People.Select(row => (row.Person.FirstName, row.Generation, row.Continues)).OrderBy(row => row.FirstName));
+        Assert.Equal("Neupane", sons.People[0].Person.LastName);
+        Assert.Equal(2, sons.Links.Count);
+        Assert.Equal(gauri, Assert.Single(sons.Spouses).Id);
+        Assert.False(Assert.Single(sons.Marriages).IsFormer);
+        Assert.Equal("AllChildren", all!.Line);
+        Assert.Contains(all.People, row => row.Person.Id == gita && row.Generation == 2);
+    }
+
+    [Fact]
+    public async Task Bansawali_rejects_an_unknown_line()
+    {
+        var (browser, token) = await SignInAsync(UniqueEmail());
+        var hari = await CreatePersonAsync(browser, token, "Hari");
+
+        using var response = await browser.GetAsync($"/api/people/{hari}/bansawali?line=Daughters", Cancellation);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     private static string UniqueEmail() => $"{Guid.NewGuid():N}@example.org";

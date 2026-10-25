@@ -86,4 +86,78 @@ public sealed class GraphService(IPersonQueries people, IGraphQueries queries, G
             paths.Count > listed.Count,
             neighbourhood.IsComplete);
     }
+
+    /// <summary>
+    /// The Bansawali of an ancestor (PRD 08, D-043): their descendants generation by generation,
+    /// following only the children that <paramref name="line"/> continues through. The ancestor's
+    /// own children are always listed. Each child is projected before the line decides, so a
+    /// hidden gender counts as not set and the shape leaks nothing (PRD 05). A child of two
+    /// people in the line appears once, under the first. When the next generation would pass
+    /// <see cref="GraphLimits.BansawaliPeople"/>, it is left out and the people whose children
+    /// were cut off get <see cref="BansawaliPerson.HasMore"/>; their own Bansawali loads the rest.
+    /// </summary>
+    public async Task<Bansawali> BansawaliAsync(
+        PersonId rootId, BansawaliLine line, Viewer viewer, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(line);
+        ArgumentNullException.ThrowIfNull(viewer);
+        var viewerId = viewer.AccountId;
+        _ = await people.FindAsync(rootId, viewerId, cancellationToken) ?? throw new PersonNotFoundException();
+        var root = Found(await queries.PeopleAsync([rootId], viewerId, cancellationToken), rootId);
+
+        var shown = new List<(PersonReference Person, int Generation, bool Continues)>
+        {
+            (PrivacyProjection.Project(root, viewer), 0, true),
+        };
+        var seen = new HashSet<PersonId> { rootId };
+        var links = new List<GraphLink>();
+        var withMore = new HashSet<PersonId>();
+        var isTruncated = false;
+        List<PersonId> parents = [rootId];
+        for (var generation = 1; parents.Count > 0; generation++)
+        {
+            var children = await queries.ChildLinksAsync(parents, limits.BansawaliPeople - (shown.Count - 1), cancellationToken);
+            if (children.IsTruncated)
+            {
+                withMore.UnionWith(await queries.WithChildrenAsync(parents, cancellationToken));
+                isTruncated = true;
+                break;
+            }
+
+            var placing = children.Links.Where(link => seen.Add(link.ChildId)).ToList();
+            var records = (await queries.PeopleAsync([.. placing.Select(link => link.ChildId)], viewerId, cancellationToken))
+                .ToDictionary(record => record.Id);
+            parents = [];
+            foreach (var link in placing)
+            {
+                var child = PrivacyProjection.Project(records[link.ChildId], viewer);
+                var continues = line.Continues(link.Type, child.Gender);
+                shown.Add((child, generation, continues));
+                links.Add(link);
+                if (continues)
+                {
+                    parents.Add(child.Id);
+                }
+            }
+        }
+
+        var marriages = await queries.MarriagesOfAsync([.. seen], limits.BansawaliPeople, cancellationToken);
+        var spouseIds = marriages.Marriages
+            .SelectMany(marriage => new[] { marriage.FirstSpouseId, marriage.SecondSpouseId })
+            .Where(id => !seen.Contains(id))
+            .ToHashSet();
+        var spouses = await queries.PeopleAsync(spouseIds, viewerId, cancellationToken);
+
+        return new Bansawali(
+            rootId,
+            line,
+            [.. shown.Select(row => new BansawaliPerson(row.Person, row.Generation, row.Continues, withMore.Contains(row.Person.Id)))],
+            links,
+            [.. spouses.Select(spouse => PrivacyProjection.Project(spouse, viewer))],
+            marriages.Marriages,
+            isTruncated || marriages.IsTruncated);
+    }
+
+    private static PersonRecord Found(IReadOnlyList<PersonRecord> records, PersonId id) =>
+        records.SingleOrDefault(record => record.Id == id) ?? throw new PersonNotFoundException();
 }
