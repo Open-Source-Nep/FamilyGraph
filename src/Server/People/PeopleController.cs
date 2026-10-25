@@ -10,7 +10,7 @@ namespace Server.People;
 
 /// <summary>
 /// Person profiles (PRD 01, PRD 05, #12, #18, #74, #80, #97): create a profile, view one, rename one you
-/// maintain, set its gender, description and birth date, make it Public or Private or set its image, delete one, list the profiles you maintain, and search by name (#85). A profile is never an account,
+/// maintain, set its gender, description and birth date, make it Public or Private or set its image, delete one, list the profiles you maintain, search by name (#85) and list everyone you may see (#22). A profile is never an account,
 /// and creating one never links it to the signed-in user's identity.
 /// </summary>
 [ApiController]
@@ -135,6 +135,20 @@ public sealed class PeopleController(PersonService people) : ControllerBase
         Response.Headers.XContentTypeOptions = "nosniff";
         return File(image.Content, image.Format.MediaType, lastModified: null, new EntityTagHeaderValue($"\"{image.Id.Value}\""));
     }
+
+    /// <summary>
+    /// The All people list (#22, D-042): everyone you may see by name, A to Z, <c>People:PageSize</c>
+    /// (50) at a time from <paramref name="offset"/>, with <c>hasMore</c> when another page follows.
+    /// Public profiles and your own; administrators also get Private ones. Deleted profiles are never
+    /// listed. <paramref name="q"/> narrows it to names or descriptions containing every word. A
+    /// negative offset or a query longer than a full name can be is 400.
+    /// </summary>
+    [HttpGet]
+    public async Task<PeoplePageResponse> Browse(
+        [FromQuery, StringLength(MaxSearchLength)] string? q,
+        [FromQuery, Range(0, int.MaxValue)] int offset,
+        CancellationToken cancellationToken) =>
+        PeoplePageResponse.From(await people.BrowseAsync(q, offset, User.Viewer(), cancellationToken));
 
     [HttpGet("maintained")]
     public async Task<ProfileListResponse> ListMaintained(CancellationToken cancellationToken) =>

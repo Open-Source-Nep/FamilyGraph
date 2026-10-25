@@ -154,7 +154,7 @@ public sealed class PersonService(
     {
         ArgumentNullException.ThrowIfNull(viewer);
 
-        var terms = (text ?? "").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var terms = Words(text);
         if (terms.Length == 0)
         {
             return new PersonSearchResult([], IsTruncated: false);
@@ -168,6 +168,30 @@ public sealed class PersonService(
             .ToList();
         return new PersonSearchResult(people, matches.IsTruncated);
     }
+
+    /// <summary>
+    /// One page of everyone the viewer may see by name, A to Z (#22, D-042): Public profiles, the
+    /// viewer's own, and for an administrator Private ones too (PRD 05). Deleted profiles are never
+    /// listed. Words in <paramref name="text"/> narrow the list: each must appear in a name part or
+    /// the description. Results are never identity matches (PRD 06).
+    /// </summary>
+    public async Task<PeoplePage> BrowseAsync(string? text, int offset, Viewer viewer, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(viewer);
+        ArgumentOutOfRangeException.ThrowIfNegative(offset);
+
+        var matches = await queries.BrowseAsync(
+            Words(text), viewer.AccountId, viewer.IsAdministrator, offset, limits.PageSize, cancellationToken);
+        // The query already leaves hidden people out; the projection keeps it that way if it ever did not.
+        var people = matches.People
+            .Select(person => PrivacyProjection.Project(person, viewer))
+            .Where(person => person.Placeholder is null)
+            .ToList();
+        return new PeoplePage(people, matches.IsTruncated);
+    }
+
+    private static string[] Words(string? text) =>
+        (text ?? "").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     private async Task RemoveImageRowAsync(ProfileImageId? imageId, CancellationToken cancellationToken)
     {

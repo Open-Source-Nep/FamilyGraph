@@ -43,6 +43,23 @@ describe('PeopleService', () => {
     expect(await found).toEqual({ people: [maya], isTruncated: true });
   });
 
+  // AC-08.18: All people pages by offset; AC-08.20: the search words go with it.
+  it('browses everyone a page at a time with the offset and any search words', async () => {
+    const first = service.browse('  ', 0);
+    const all = http.expectOne((req) => req.url === '/api/people');
+    expect(all.request.params.get('offset')).toBe('0');
+    expect(all.request.params.has('q')).toBe(false);
+    all.flush({ people: [maya], hasMore: true });
+    expect(await first).toEqual({ people: [maya], hasMore: true });
+
+    const next = service.browse(' teacher rai ', 50);
+    const searched = http.expectOne((req) => req.url === '/api/people');
+    expect(searched.request.params.get('offset')).toBe('50');
+    expect(searched.request.params.get('q')).toBe('teacher rai');
+    searched.flush({ people: [], hasMore: false });
+    expect(await next).toEqual({ people: [], hasMore: false });
+  });
+
   it('creates a profile with a POST', async () => {
     const created = service.create({
       name: { firstName: 'Maya', middleName: null, lastName: null },

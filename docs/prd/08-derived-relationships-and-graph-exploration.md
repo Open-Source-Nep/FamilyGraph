@@ -24,6 +24,12 @@ Enable people to explore a large interconnected family graph without treating de
 - Active marriages are a step in any direction, like parents and children: local views, the overview and paths walk them. Spouses are in the same generation, drawn side by side with a distinct line, and a former marriage is labelled as former.
 - **Children in birth order (agreed 2026-10-25):** the graph page's tree diagram and text view, and the home page's dots, place each family's children in the order of PRD 02: birth order, then birth dates shown to others, then name. The tree places brothers and sisters with the same parents eldest on the left; the home dots start in that order before they settle. Half siblings are ordered within each set of parents.
 
+## Finding people (agreed 2026-10-25)
+
+- The People page has two tabs: **My profiles** (the profiles you maintain, PRD 01) and **All people**, an entry point into the graph.
+- All people lists everyone you may see by name, A to Z by first, middle and last name, 50 at a time with **Show more**: every Public profile, your own profiles (Private ones marked "(private)"), and for administrators every Private profile too, marked "(private)". Deleted profiles are never listed. Each row shows the photo or initials, name and description and opens the person's page.
+- A search box narrows the list on the server: every typed word must appear in a name part or the description, ignoring case. A Private profile you may not see is never listed and never found by its hidden name or description (PRD 05), and a match is never treated as the same person (PRD 01, PRD 06).
+
 ## Adding relatives from the graph (agreed 2026-10-24)
 
 - On the graph page's diagram, right-clicking a person (or pressing and holding on a touch screen) opens a menu: **Add parent**, **Add children** and **Add spouse**. The home page dots and the text view have no such menu; keyboard and screen reader users add relatives from the person page (PRD 09).
@@ -77,6 +83,9 @@ Enable people to explore a large interconnected family graph without treating de
 - `AC-08.15` Adding children to a person offers each of their spouses as the other parent, and adding a parent offers that parent's spouses as parents; current spouses are ticked and former ones unticked, and the extra links have the chosen type and the usual consent.
 - `AC-08.16` A spouse is never offered when deleted, or when you maintain neither person of the link.
 - `AC-08.17` Every people picker (graph dialog, the person page's parent, child and spouse forms, and the Add a person page) shows each person's photo or initials and description, and offers "Add a new person".
+- `AC-08.18` The People page's All people tab lists every Public profile and your own, A to Z, 50 at a time with Show more; a Private profile of someone else and a deleted profile are never listed or found by their hidden name or description.
+- `AC-08.19` An administrator's All people tab also lists every Private profile, marked "(private)".
+- `AC-08.20` The All people search box shows only people whose name parts or description contain every typed word.
 
 ## Open details
 

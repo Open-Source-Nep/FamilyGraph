@@ -346,6 +346,48 @@ public class PersonPersistenceServicesTests(PostgresFixture postgres)
     }
 
     [Fact]
+    [Trait("AC", "AC-08.18")]
+    [Trait("AC", "AC-08.19")]
+    [Trait("AC", "AC-08.20")]
+    public async Task Browse_pages_public_and_own_profiles_by_name_and_matches_descriptions()
+    {
+        await using var services = await NewServicesAsync();
+        var viewer = TestData.NewAccount();
+        var other = TestData.NewAccount();
+        var mayaRai = Person.Create(new PersonName("Maya", "Devi", "Rai"), other);
+        mayaRai.SetDescription("Teacher in Pokhara", other);
+        await SaveAsync(services, mayaRai);
+        var ownPrivate = Person.Create(new PersonName("Asha", lastName: "Rai"), viewer);
+        ownPrivate.SetVisibility(ProfileVisibility.Private, viewer);
+        await SaveAsync(services, ownPrivate);
+        var othersPrivate = Person.Create(new PersonName("Bina", lastName: "Rai"), other);
+        othersPrivate.SetDescription("Teacher", other);
+        othersPrivate.SetVisibility(ProfileVisibility.Private, other);
+        await SaveAsync(services, othersPrivate);
+        var deleted = Person.Create(new PersonName("Gita", lastName: "Rai"), viewer);
+        deleted.Delete(viewer, actorIsAdministrator: false, DateTimeOffset.UtcNow);
+        await SaveAsync(services, deleted);
+
+        await using var scope = services.CreateAsyncScope();
+        var queries = scope.ServiceProvider.GetRequiredService<IPersonQueries>();
+        var all = await queries.BrowseAsync([], viewer, includePrivate: false, offset: 0, limit: 10, Cancellation);
+        var first = await queries.BrowseAsync([], viewer, includePrivate: false, offset: 0, limit: 1, Cancellation);
+        var second = await queries.BrowseAsync([], viewer, includePrivate: false, offset: 1, limit: 1, Cancellation);
+        var teachers = await queries.BrowseAsync(["TEACHER"], viewer, includePrivate: false, offset: 0, limit: 10, Cancellation);
+        var asAdministrator = await queries.BrowseAsync(["teacher"], viewer, includePrivate: true, offset: 0, limit: 10, Cancellation);
+
+        Assert.Equal([ownPrivate.Id, mayaRai.Id], all.People.Select(person => person.Id));
+        Assert.Equal([true, false], all.People.Select(person => person.MaintainedByViewer));
+        Assert.False(all.IsTruncated);
+        Assert.Equal(ownPrivate.Id, Assert.Single(first.People).Id);
+        Assert.True(first.IsTruncated);
+        Assert.Equal(mayaRai.Id, Assert.Single(second.People).Id);
+        Assert.False(second.IsTruncated);
+        Assert.Equal(mayaRai.Id, Assert.Single(teachers.People).Id);
+        Assert.Equal([othersPrivate.Id, mayaRai.Id], asAdministrator.People.Select(person => person.Id));
+    }
+
+    [Fact]
     [Trait("AC", "AC-01.18")]
     [Trait("AC", "AC-05.13")]
     public async Task Images_are_stored_replaced_and_erased_with_the_profile()

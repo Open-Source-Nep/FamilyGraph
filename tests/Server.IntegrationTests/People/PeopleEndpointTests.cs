@@ -13,6 +13,7 @@ public class PeopleEndpointTests(AccountTestFactory factory) : IClassFixture<Acc
     [Theory]
     [InlineData("GET", "/api/people/maintained")]
     [InlineData("GET", "/api/people/search?q=maya")]
+    [InlineData("GET", "/api/people")]
     [InlineData("GET", "/api/people/0199f6a2-0000-7000-8000-000000000001")]
     public async Task People_require_a_session(string method, string url)
     {
@@ -222,6 +223,41 @@ public class PeopleEndpointTests(AccountTestFactory factory) : IClassFixture<Acc
         var person = Assert.Single(result!.People);
         Assert.Equal((id, "Zarina", false), (person.Id, person.FirstName, person.MaintainedByYou));
         Assert.False(result.IsTruncated);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-08.18")]
+    [Trait("AC", "AC-08.19")]
+    public async Task All_people_lists_public_profiles_to_everyone_and_private_ones_only_to_administrators()
+    {
+        var (owner, ownerToken) = await SignInAsync("gita@example.org");
+        var shown = await CreateWithAsync(owner, ownerToken, "Quillon");
+        var hidden = await CreateWithAsync(owner, ownerToken, "Quillon");
+        using (var response = await SendAsync(owner, ownerToken, HttpMethod.Put, $"/api/people/{hidden}/visibility", new { visibility = "Private" }))
+        {
+            Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        }
+
+        var (browser, _) = await SignInAsync("maya@example.org");
+        var (admin, _) = await SignInAsync(AccountTestFactory.AdministratorEmail);
+
+        var page = await browser.GetFromJsonAsync<PeoplePageResponse>("/api/people?q=quillon", Cancellation);
+        var adminPage = await admin.GetFromJsonAsync<PeoplePageResponse>("/api/people?q=quillon", Cancellation);
+
+        Assert.Equal(shown, Assert.Single(page!.People).Id);
+        Assert.False(page.HasMore);
+        Assert.Equal(new[] { hidden, shown }.Order(), adminPage!.People.Select(person => person.Id).Order());
+        Assert.Equal("Private", adminPage.People.Single(person => person.Id == hidden).Visibility);
+    }
+
+    [Fact]
+    public async Task All_people_with_a_negative_offset_is_a_bad_request()
+    {
+        var (browser, _) = await SignInAsync("maya@example.org");
+
+        using var response = await browser.GetAsync("/api/people?offset=-1", Cancellation);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]

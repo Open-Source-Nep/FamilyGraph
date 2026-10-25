@@ -79,6 +79,44 @@ internal sealed class EfPersonQueries(FamilyGraphDbContext context) : IPersonQue
             : new PersonMatches(people, IsTruncated: false);
     }
 
+    public async Task<PersonMatches> BrowseAsync(
+        IReadOnlyList<string> terms, AccountId viewerId, bool includePrivate, int offset, int limit, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(terms);
+        ArgumentOutOfRangeException.ThrowIfNegative(offset);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(limit);
+
+        var query = context.Set<Person>()
+            .AsNoTracking()
+            .Where(person => person.DeletedAt == null
+                && (includePrivate || person.Visibility == ProfileVisibility.Public || person.MaintainerId == viewerId));
+        foreach (var term in terms)
+        {
+            var pattern = $"%{EscapeLike(term)}%";
+            query = query.Where(person =>
+                EF.Functions.ILike(person.Name.FirstName, pattern, LikeEscape)
+                || EF.Functions.ILike(person.Name.MiddleName!, pattern, LikeEscape)
+                || EF.Functions.ILike(person.Name.LastName!, pattern, LikeEscape)
+                || EF.Functions.ILike(person.Description!, pattern, LikeEscape));
+        }
+
+        // One extra row tells whether another page follows.
+        var people = await query
+            .OrderBy(person => person.Name.FirstName)
+            .ThenBy(person => person.Name.MiddleName)
+            .ThenBy(person => person.Name.LastName)
+            .ThenBy(person => person.Id)
+            .Skip(offset)
+            .Select(person => new PersonRecord(
+                person.Id, person.Name, person.Visibility, false, person.MaintainerId == viewerId, person.ImageId, person.Gender, person.Description, person.BirthDate, person.BirthDateShown))
+            .Take(limit + 1)
+            .ToListAsync(cancellationToken);
+
+        return people.Count > limit
+            ? new PersonMatches(people[..limit], IsTruncated: true)
+            : new PersonMatches(people, IsTruncated: false);
+    }
+
     private const string LikeEscape = "\\";
 
     /// <summary>Searches for <c>%</c>, <c>_</c> and the escape character as themselves.</summary>

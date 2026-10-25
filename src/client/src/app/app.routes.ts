@@ -29,7 +29,7 @@ export const routes: Routes = [
       },
       {
         path: 'people',
-        title: 'Profiles you maintain',
+        title: 'People',
         loadComponent: () => import('./features/people/people-page').then((m) => m.PeoplePage),
       },
       {

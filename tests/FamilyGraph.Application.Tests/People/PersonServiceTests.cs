@@ -17,8 +17,10 @@ public class PersonServiceTests
     private static Viewer As(AccountId account) => new(account, IsAdministrator: false);
 
     private PersonService Service(
-        int maintainedListLimit = PeopleLimits.DefaultMaintainedListLimit, int searchLimit = PeopleLimits.DefaultSearchLimit) =>
-        new(_people, _people, _people, _people, _people, new FixedTimeProvider(Now), new PeopleLimits(maintainedListLimit, searchLimit));
+        int maintainedListLimit = PeopleLimits.DefaultMaintainedListLimit,
+        int searchLimit = PeopleLimits.DefaultSearchLimit,
+        int pageSize = PeopleLimits.DefaultPageSize) =>
+        new(_people, _people, _people, _people, _people, new FixedTimeProvider(Now), new PeopleLimits(maintainedListLimit, searchLimit, pageSize));
 
     [Fact]
     [Trait("AC", "AC-01.1")]
@@ -309,6 +311,78 @@ public class PersonServiceTests
 
         Assert.Single(result.People);
         Assert.True(result.IsTruncated);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-08.18")]
+    public async Task Browse_lists_public_profiles_and_your_own_a_to_z_but_never_hidden_or_deleted_ones()
+    {
+        var service = Service();
+        var bobsPublic = await service.CreateAsync(new PersonName("Maya", lastName: "Rai"), PersonDetails.None, Bob, Cancellation);
+        var alicesPrivate = await service.CreateAsync(new PersonName("Asha"), PersonDetails.None, Alice, Cancellation);
+        await service.SetVisibilityAsync(alicesPrivate, ProfileVisibility.Private, Alice, Cancellation);
+        var bobsPrivate = await service.CreateAsync(new PersonName("Bina"), PersonDetails.None, Bob, Cancellation);
+        await service.SetVisibilityAsync(bobsPrivate, ProfileVisibility.Private, Bob, Cancellation);
+        var deleted = await service.CreateAsync(new PersonName("Gita"), PersonDetails.None, Bob, Cancellation);
+        await service.DeleteAsync(deleted, As(Bob), Cancellation);
+
+        var page = await service.BrowseAsync(null, 0, As(Alice), Cancellation);
+
+        Assert.Equal([alicesPrivate, bobsPublic], page.People.Select(person => person.Id));
+        Assert.All(page.People, person => Assert.Null(person.Placeholder));
+        Assert.False(page.HasMore);
+        Assert.Empty((await service.BrowseAsync("Bina", 0, As(Alice), Cancellation)).People);
+        Assert.Empty((await service.BrowseAsync("erased", 0, As(Alice), Cancellation)).People);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-08.19")]
+    public async Task Browse_lists_private_profiles_to_an_administrator_but_never_deleted_ones()
+    {
+        var service = Service();
+        var bobsPrivate = await service.CreateAsync(new PersonName("Bina"), PersonDetails.None, Bob, Cancellation);
+        await service.SetVisibilityAsync(bobsPrivate, ProfileVisibility.Private, Bob, Cancellation);
+        var deleted = await service.CreateAsync(new PersonName("Gita"), PersonDetails.None, Bob, Cancellation);
+        await service.DeleteAsync(deleted, As(Bob), Cancellation);
+
+        var page = await service.BrowseAsync("bina", 0, new Viewer(Alice, IsAdministrator: true), Cancellation);
+
+        var bina = Assert.Single(page.People);
+        Assert.Equal((bobsPrivate, "Bina", ProfileVisibility.Private), (bina.Id, bina.Name?.FirstName, bina.Visibility));
+    }
+
+    [Fact]
+    [Trait("AC", "AC-08.20")]
+    public async Task Every_word_of_a_browse_search_must_appear_in_a_name_part_or_the_description()
+    {
+        var service = Service();
+        var teacher = await service.CreateAsync(
+            new PersonName("Maya", lastName: "Rai"), new PersonDetails(Description: "Teacher in Pokhara"), Bob, Cancellation);
+        await service.CreateAsync(new PersonName("Maya", lastName: "Gurung"), PersonDetails.None, Bob, Cancellation);
+
+        var page = await service.BrowseAsync("  POKHARA may ", 0, As(Alice), Cancellation);
+
+        Assert.Equal(teacher, Assert.Single(page.People).Id);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-08.18")]
+    public async Task Browse_pages_by_offset_and_says_when_more_follow()
+    {
+        var service = Service(pageSize: 2);
+        var ids = new List<PersonId>();
+        foreach (var name in new[] { "Asha", "Bina", "Gita" })
+        {
+            ids.Add(await service.CreateAsync(new PersonName(name), PersonDetails.None, Bob, Cancellation));
+        }
+
+        var first = await service.BrowseAsync(null, 0, As(Alice), Cancellation);
+        var second = await service.BrowseAsync(null, 2, As(Alice), Cancellation);
+
+        Assert.Equal(ids[..2], first.People.Select(person => person.Id));
+        Assert.True(first.HasMore);
+        Assert.Equal(ids[2], Assert.Single(second.People).Id);
+        Assert.False(second.HasMore);
     }
 
     [Fact]

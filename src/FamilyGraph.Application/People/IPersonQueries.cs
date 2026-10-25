@@ -26,4 +26,15 @@ public interface IPersonQueries
     /// </summary>
     Task<PersonMatches> SearchAsync(
         IReadOnlyList<string> terms, AccountId viewerId, int limit, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// One page of the non-deleted profiles whose first, middle or last name or description contains
+    /// every one of <paramref name="terms"/> (ignoring case; none matches everyone), sorted by name
+    /// and ID, skipping <paramref name="offset"/> and returning at most <paramref name="limit"/>
+    /// (D-042). Only Public profiles and those the viewer maintains are listed, plus every Private
+    /// one when <paramref name="includePrivate"/> (administrators, PRD 05), so a hidden profile is
+    /// never listed or matched by its hidden name. <see cref="PersonMatches.IsTruncated"/> says more follow.
+    /// </summary>
+    Task<PersonMatches> BrowseAsync(
+        IReadOnlyList<string> terms, AccountId viewerId, bool includePrivate, int offset, int limit, CancellationToken cancellationToken);
 }
