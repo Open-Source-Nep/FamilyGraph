@@ -53,7 +53,8 @@ The technical decision log, plus any unresolved choices. Do not treat recommenda
 - Adding relatives from the graph, with person search (D-032 below).
 - Data import: an administrator's upload of an export file into an empty instance (D-033 below).
 - Deleting profiles from the graph (D-034 below).
-- Administrator Users page and profile transfers (D-035 below, proposed).
+- Administrator Users page and profile transfers (D-035 below).
+- Linking spouses too, and choosing relatives on a new profile (D-036 below, proposed).
 - **Name length (agreed 2026-10-21):** Business puts no length cap on name parts. Any storage or input limit is set later by persistence (#9) and API validation (D-010).
 
 ## Discussion topics (all agreed)
@@ -585,7 +586,7 @@ For each major decision, record:
 
 ### D-035: Administrator Users page and profile transfers
 
-- **Status:** proposed (2026-10-25). Issue #94. Agreed with the user on 2026-10-25 (PRD 01): an administrator moves one profile or all of an account's profiles to another account without its approval; the Users page shows each account's email, verified and administrator flags, number of maintained profiles and an expandable list of those profiles. The rest is proposed with the PR.
+- **Status:** agreed (2026-10-25). Issue #94, merged in #95. Agreed with the user on 2026-10-25 (PRD 01): an administrator moves one profile or all of an account's profiles to another account without its approval; the Users page shows each account's email, verified and administrator flags, number of maintained profiles and an expandable list of those profiles. The rest is proposed with the PR.
 - **Context:** Maintainers change only through voluntary handover (D-027), which the receiver accepts. An account is a Google ID, an email and a verified flag (D-018); administrators come from configuration (D-008) and already see maintainers' emails in the export (D-029).
 - **Options considered:** a new aggregate or a method on `Person`; one event for a bulk transfer or one per profile; loading the profiles of a bulk transfer or one set-based `UPDATE`; including deleted profiles in a bulk transfer.
 - **Trade-offs:** A method on `Person` keeps the rule with the profile's other maintainer changes and records its event in the profile's history. One event per profile keeps every profile's history complete at the cost of more rows; loading the profiles lets each check and record its own transfer, and an account maintains far fewer profiles than PRD 09's 10,000. Deleted profiles accept no change (D-026) and leave the maintained list, so a bulk transfer skips them.
@@ -596,3 +597,14 @@ For each major decision, record:
   - **API:** `GET /api/admin/accounts`, `GET /api/admin/accounts/{id}/profiles`, `POST /api/admin/accounts/{id}/transfer` and `POST /api/admin/people/{id}/transfer`, both with `{ "toAccountId" }` (400 without it); the first answers `{ "transferred" }`, the second 204.
   - **Client:** `features/admin`. The header shows **Users** to administrators; `/admin/users` (behind `adminGuard`) lists the accounts, opens one to list its profiles with links, and offers a per-profile transfer and "Transfer all profiles" after a confirmation. The person page shows administrators "Transfer to another account", which loads the accounts when opened.
 - **Consequences:** #25 must refuse transfers of claimed profiles. Account deletion (PRD 01) can reuse `Person.Transfer` when it moves profiles to an administrator. The Users page has no search; a much larger instance would need one before `Accounts:ListLimit` is reached.
+
+### D-036: Linking spouses too, and choosing relatives on a new profile
+
+- **Status:** proposed (2026-10-25). Issue #88 (with #89). Agreed with the user on 2026-10-25 (PRD 01, PRD 08): adding children to a person offers each of their spouses as the other parent, and adding a parent offers that parent's spouses as parents; every spouse through an active marriage has a checkbox, ticked when the marriage is current and unticked when former; the extra links copy the type you picked; the Add a person page, and only that page, lets you choose parents and children. The rest is proposed with the PR.
+- **Context:** Links were made one pair at a time, so a couple's child took two adds, and a new profile had to be linked from its person page afterwards. The Client already has each person's spouses (`GET /api/people/{id}/spouses`, active marriages only, with `isFormer` and `maintainedByYou`), the person search and connections of D-032, and creates links one request at a time.
+- **Options considered:** a server endpoint that creates a profile with its links, or several links, in one transaction; the existing endpoints one link at a time from the Client; a separate picker on each page, or one shared component.
+- **Trade-offs:** One request per link keeps each link's permission, cycle check, consent and audit apart, as D-032 does, and needs no Server change; the cost is that a failure leaves the other links (and the new profile) in place, so the Client reports each link's outcome. A shared picker keeps the graph dialog and the Add a person page searching the same way.
+- **Decision:**
+  - **Client:** `features/relationships/PersonPicker` is the list and search of D-032, moved out of `AddRelatives`, which now uses it. `SpouseLinkChoices` loads the spouses of the person (adding children) or of each picked parent (adding parents) and lists one checkbox each, "Sita Rai, wife of Hari Rai", with current spouses ticked. It leaves out deleted spouses (no new links), the person and the people already picked, and a spouse where you maintain neither side of any resulting link (PRD 03). After the picked people's own links, the ticked spouses are linked to the people whose link was created, with the same type; `link.duplicate` counts as "already linked". The graph's add-relatives dialog and the person page's add-links form show it. The Add a person page has optional **Choose parents** and **Choose children** sections (a `PersonPicker` that searches everyone, a type each, and the spouse choices for parents) inside `PersonNameForm`, which now projects content above its buttons. It creates the profile, then the parents' links, then their spouses', then the children's, and opens the new profile when every link is active, or stays to list each outcome with a link to the profile.
+  - **Server, Application, Business:** no change.
+- **Consequences:** Nothing here is derived: a child is never linked to a spouse unless the box was left ticked. A later bulk-link endpoint could replace the per-link requests without changing the rules.

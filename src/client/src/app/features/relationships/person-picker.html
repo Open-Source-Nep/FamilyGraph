@@ -1,0 +1,62 @@
+@if (error(); as error) {
+  <p class="error" role="alert">{{ error }}</p>
+}
+<label class="search">
+  Search by name
+  <input
+    type="search"
+    autocomplete="off"
+    [value]="query()"
+    (input)="setQuery($any($event.target).value)"
+    (keydown.enter)="$event.preventDefault()"
+  />
+</label>
+@if (hint()) {
+  <p class="hint">{{ hint() }}</p>
+}
+
+<fieldset class="choices">
+  <legend>{{ legend() }}</legend>
+  @if (connections() === null) {
+    <p class="hint">Loading…</p>
+  } @else {
+    <div class="options">
+      @for (option of options(); track option.id) {
+        <label>
+          <input
+            [type]="single() ? 'radio' : 'checkbox'"
+            [name]="name"
+            [value]="option.id"
+            [checked]="isSelected(option.id)"
+            (change)="toggle(option, $any($event.target).checked)"
+          />
+          {{ option.name }}
+          @if (option.maintainedByYou) {
+            <span class="hint">(yours)</span>
+          }
+        </label>
+      } @empty {
+        @if (!searching()) {
+          <p class="hint">
+            {{ query().trim() ? 'Nobody matches.' : 'You maintain no other profiles yet.' }}
+          </p>
+        }
+      }
+    </div>
+    @if (searching()) {
+      <p class="hint" role="status">Searching…</p>
+    }
+    @if (foundTruncated()) {
+      <p class="hint">More people match. Refine your search.</p>
+    } @else if (connectionsTruncated() && !query().trim()) {
+      <p class="hint">Not everyone connected to you is listed. Search by name to find others.</p>
+    }
+  }
+  @if (offersNewPerson()) {
+    <p>
+      <button type="button" class="link-button" (click)="newPersonRequested.emit()">
+        Add a new person
+      </button>
+    </p>
+  }
+</fieldset>

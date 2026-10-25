@@ -11,6 +11,7 @@ Define person profiles, account separation, and profile-maintainer authority.
 - Creating a user account does not create a person profile.
 - A contributor may create multiple person profiles.
 - Creating a person initially requires only a name.
+- On the Add a person page, the contributor may also choose the new person's parents and children (optional), from their own profiles, the people linked to them, or any Public profile found by name. Each becomes an ordinary link created after the profile, under the usual consent rules (PRD 03); a picked parent's spouses are offered as parents too (PRD 08).
 - A person's name has a first name (required), a middle name (optional), and a last name (optional). No other profile data is required.
 - Only the profile's current maintainer may rename the person.
 - Each person profile has exactly one responsible maintainer at a time.
@@ -92,6 +93,7 @@ Define person profiles, account separation, and profile-maintainer authority.
 - `AC-01.26` A transfer leaves every relationship and its consent state unchanged and is recorded in the audit history for each profile.
 - `AC-01.27` A user who is not an administrator cannot list accounts or transfer profiles.
 - `AC-01.28` A claimed profile cannot be transferred.
+- `AC-01.29` Adding a person can optionally link chosen parents and children; each link follows the usual consent rules, and links that are not active are reported.
 
 ## Open details
 

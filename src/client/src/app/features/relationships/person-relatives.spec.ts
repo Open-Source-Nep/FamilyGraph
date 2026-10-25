@@ -3,8 +3,9 @@ import { provideRouter } from '@angular/router';
 
 import { PeopleService } from '../people/people.service';
 import { Person, PersonName } from '../people/person';
+import { MarriagesService } from './marriages.service';
 import { PersonRelatives } from './person-relatives';
-import { CreatedLink, DirectRelatives, LinkEndpoint, NewLink } from './relationship';
+import { CreatedLink, DirectRelatives, LinkEndpoint, NewLink, Spouse } from './relationship';
 import { RelationshipsService } from './relationships.service';
 
 const maya: Person = {
@@ -61,8 +62,10 @@ describe('PersonRelatives', () => {
   let active: boolean;
   let rejected: Set<string>;
   let newPeople: PersonName[];
+  let spouses: Record<string, Spouse[]>;
 
   beforeEach(async () => {
+    spouses = {};
     created = [];
     disagreed = [];
     deleted = [];
@@ -72,6 +75,13 @@ describe('PersonRelatives', () => {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
+        {
+          provide: MarriagesService,
+          useValue: {
+            listSpouses: (id: string) =>
+              Promise.resolve({ spouses: spouses[id] ?? [], isTruncated: false }),
+          },
+        },
         {
           provide: RelationshipsService,
           useValue: {
@@ -305,5 +315,35 @@ describe('PersonRelatives', () => {
     );
     expect(labels.filter((label) => label === 'Withdraw approval')).toHaveLength(1);
     expect(labels).not.toContain('Delete link');
+  });
+
+  it("also links the children to the person's current spouse, with the same type (AC-08.15)", async () => {
+    spouses['p1'] = [
+      {
+        ...relatives.parents[1],
+        id: 'p7',
+        firstName: 'Ram',
+        gender: 'Male',
+        marriageId: 'm1',
+        isFormer: false,
+      },
+    ];
+    await openForm();
+    await choose('input[value="child"]');
+    await choose('input[value="p4"]');
+    await new Promise((resolve) => setTimeout(resolve));
+    await fixture.whenStable();
+
+    expect(text()).toContain('Also add them as children of');
+    expect(text()).toContain('Ram, husband of Maya');
+    await choose('input[value="Adoptive"]');
+    button('Add link').click();
+    await fixture.whenStable();
+
+    expect(created).toEqual([
+      { parentId: 'p1', childId: 'p4', type: 'Adoptive' },
+      { parentId: 'p7', childId: 'p4', type: 'Adoptive' },
+    ]);
+    expect(text()).toContain('Asha as a child of Ram: linked.');
   });
 });

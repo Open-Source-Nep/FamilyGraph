@@ -10,6 +10,7 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
@@ -25,6 +26,12 @@ import {
   relationHint,
 } from './relationship';
 import { RelationshipsService } from './relationships.service';
+import {
+  PickedPerson,
+  SpouseLinkChoices,
+  SpouseLinkOutcome,
+  createSpouseLinks,
+} from './spouse-link-choices';
 
 type Side = 'parent' | 'child';
 
@@ -32,8 +39,7 @@ type Side = 'parent' | 'child';
 type Removal = { kind: 'withdraw'; endpoint: LinkEndpoint } | { kind: 'delete' };
 
 /** What happened to one of the links you submitted together. Each is created on its own. */
-type LinkOutcome =
-  { name: string; state: 'active' | 'pending' } | { name: string; state: 'failed'; reason: string };
+type LinkOutcome = SpouseLinkOutcome;
 
 /**
  * A person's parents and children through active links, and a form to link one or more of your own
@@ -43,7 +49,7 @@ type LinkOutcome =
  */
 @Component({
   selector: 'app-person-relatives',
-  imports: [NgTemplateOutlet, PersonNameForm, ReactiveFormsModule, RouterLink],
+  imports: [NgTemplateOutlet, PersonNameForm, ReactiveFormsModule, RouterLink, SpouseLinkChoices],
   templateUrl: './person-relatives.html',
 })
 export class PersonRelatives {
@@ -72,12 +78,26 @@ export class PersonRelatives {
   /** The link whose withdrawal or deletion waits for confirmation. */
   protected readonly confirming = signal<string | null>(null);
   private readonly newPersonDialog = viewChild<ElementRef<HTMLDialogElement>>('newPersonDialog');
+  private readonly spouseChoices = viewChild(SpouseLinkChoices);
   /** Renaming the person gives a new object but must not reload the lists. */
   private readonly personId = computed(() => this.person().id);
 
   protected readonly form = new FormGroup({
     side: new FormControl<Side>('parent', { nonNullable: true }),
     type: new FormControl<ParentChildType>('Biological', { nonNullable: true }),
+  });
+  protected readonly side = toSignal(this.form.controls.side.valueChanges, {
+    initialValue: this.form.controls.side.value,
+  });
+  protected readonly target = computed(() => ({
+    id: this.personId(),
+    name: this.name(),
+    maintainedByYou: this.person().maintainedByYou,
+  }));
+  /** The ticked profiles, which are all yours. */
+  protected readonly picked = computed<PickedPerson[]>(() => {
+    const names = new Map((this.candidates() ?? []).map((person) => [person.id, fullName(person)]));
+    return this.selected().map((id) => ({ id, name: names.get(id) ?? '', maintainedByYou: true }));
   });
 
   constructor() {
@@ -212,7 +232,8 @@ export class PersonRelatives {
 
   /**
    * Creates one link per selected profile. They are not atomic: each is checked, consented to and
-   * audited on its own, and the profiles whose link failed stay selected to retry.
+   * audited on its own, and the profiles whose link failed stay selected to retry. Then the ticked
+   * spouses are linked to the profiles whose own link was created, with the same type (D-036).
    */
   protected async add(): Promise<void> {
     const ids = this.selected();
@@ -229,6 +250,7 @@ export class PersonRelatives {
     this.outcomes.set([]);
     const outcomes: LinkOutcome[] = [];
     const failedIds: string[] = [];
+    const linked: PickedPerson[] = [];
     for (const otherId of ids) {
       const name = names.get(otherId) ?? '';
       try {
@@ -237,17 +259,20 @@ export class PersonRelatives {
             ? { parentId: otherId, childId: id, type }
             : { parentId: id, childId: otherId, type },
         );
+        linked.push({ id: otherId, name, maintainedByYou: true });
         outcomes.push({ name, state: link.isActive ? 'active' : 'pending' });
       } catch (error) {
         failedIds.push(otherId);
         outcomes.push({ name, state: 'failed', reason: problemMessage(error) });
       }
     }
+    const spouseLinks = this.spouseChoices()?.links(id, linked) ?? [];
+    outcomes.push(...(await createSpouseLinks(this.relationships, spouseLinks, type)));
     this.saving.set(false);
     if (this.personId() !== id) {
       return;
     }
-    if (outcomes.some((outcome) => outcome.state === 'active')) {
+    if (outcomes.some((outcome) => outcome.state === 'active' || outcome.state === 'existing')) {
       this.load(id);
     }
     if (outcomes.length === 1) {

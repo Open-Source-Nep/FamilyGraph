@@ -27,6 +27,8 @@
     </select>
   </label>
 
+  <ng-content />
+
   <div class="actions">
     <button type="submit" [disabled]="busy()">{{ submitLabel() }}</button>
     <button type="button" class="secondary" (click)="cancelled.emit()">Cancel</button>

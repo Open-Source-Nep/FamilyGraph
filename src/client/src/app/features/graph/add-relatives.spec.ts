@@ -1,11 +1,12 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { PeopleService } from '../people/people.service';
 import { Person, PersonName } from '../people/person';
 import { MarriagesService } from '../relationships/marriages.service';
-import { NewLink, NewMarriage } from '../relationships/relationship';
+import { NewLink, NewMarriage, Spouse } from '../relationships/relationship';
 import { RelationshipsService } from '../relationships/relationships.service';
-import { AddRelatives, AddRelativesResult, matchesName } from './add-relatives';
+import { AddRelatives, AddRelativesResult } from './add-relatives';
 import { GraphPerson } from './graph';
 import { AddRelation } from './graph-diagram';
 import { GraphService } from './graph.service';
@@ -31,14 +32,9 @@ const ravi = person('p3', 'Ravi');
 const hidden = person('p4', null, { placeholder: 'Private', visibility: 'Private' });
 const zarina = person('p5', 'Zarina', { lastName: 'Gurung' });
 
-describe('matchesName', () => {
-  it('needs every word in some name part, ignoring case', () => {
-    const name: PersonName = { firstName: 'Maya', middleName: 'Devi', lastName: 'Rai' };
-    expect(matchesName(name, 'rai MAY')).toBe(true);
-    expect(matchesName(name, 'maya gurung')).toBe(false);
-    expect(matchesName(name, '  ')).toBe(true);
-  });
-});
+function spouse(of: Person, isFormer = false): Spouse {
+  return { ...of, marriageId: 'm-' + of.id, isFormer };
+}
 
 describe('AddRelatives', () => {
   let fixture: ComponentFixture<AddRelatives>;
@@ -48,6 +44,8 @@ describe('AddRelatives', () => {
   let overviews: number;
   let active: boolean;
   let rejected: Set<string>;
+  let duplicates: Set<string>;
+  let spouses: Record<string, Spouse[]>;
   let results: AddRelativesResult[];
 
   async function open(target: GraphPerson, relation: AddRelation): Promise<void> {
@@ -68,9 +66,15 @@ describe('AddRelatives', () => {
     overviews = 0;
     active = true;
     rejected = new Set();
+    duplicates = new Set();
+    spouses = {};
     results = [];
     const create = (id: string) =>
       rejected.has(id) ? Promise.reject(new Error('cycle')) : Promise.resolve({ isActive: active });
+    const createLink = (link: NewLink) =>
+      duplicates.has(`${link.parentId}>${link.childId}`)
+        ? Promise.reject(new HttpErrorResponse({ status: 409, error: { code: 'link.duplicate' } }))
+        : create(link.parentId === 'p1' ? link.childId : link.parentId);
     TestBed.configureTestingModule({
       providers: [
         {
@@ -110,7 +114,7 @@ describe('AddRelatives', () => {
           useValue: {
             create: (link: NewLink) => {
               links.push(link);
-              return create(link.parentId === 'p1' ? link.childId : link.parentId);
+              return createLink(link);
             },
           },
         },
@@ -121,6 +125,8 @@ describe('AddRelatives', () => {
               marriages.push(marriage);
               return create(marriage.otherSpouseId);
             },
+            listSpouses: (id: string) =>
+              Promise.resolve({ spouses: spouses[id] ?? [], isTruncated: false }),
           },
         },
       ],
@@ -139,6 +145,18 @@ describe('AddRelatives', () => {
     ) as HTMLButtonElement;
   const pick = async (name: string) => {
     const label = [...element().querySelectorAll('.options label')].find((candidate) =>
+      candidate.textContent?.includes(name),
+    );
+    label?.querySelector('input')?.click();
+    await fixture.whenStable();
+  };
+  const spouseBoxes = () =>
+    [...element().querySelectorAll('.spouse-links label')].map((label) => ({
+      label: label.textContent?.replace(/\s+/g, ' ').trim(),
+      checked: (label.querySelector('input') as HTMLInputElement).checked,
+    }));
+  const tickSpouse = async (name: string) => {
+    const label = [...element().querySelectorAll('.spouse-links label')].find((candidate) =>
       candidate.textContent?.includes(name),
     );
     label?.querySelector('input')?.click();
@@ -262,5 +280,74 @@ describe('AddRelatives', () => {
     button('Cancel').click();
 
     expect(results).toEqual([{ changed: false, message: null }]);
+  });
+
+  it("offers the person's spouses as the children's other parent, current ones ticked (AC-08.15)", async () => {
+    spouses['p1'] = [spouse(ravi), spouse(zarina, true)];
+    await open(maya, 'child');
+    expect(spouseBoxes()).toEqual([]);
+
+    await pick('Asha');
+    await new Promise((resolve) => setTimeout(resolve));
+    await fixture.whenStable();
+
+    expect(spouseBoxes()).toEqual([
+      { label: 'Ravi, spouse of Maya', checked: true },
+      { label: 'Zarina Gurung, former spouse of Maya', checked: false },
+    ]);
+    (element().querySelector('input[value=Adoptive]') as HTMLInputElement).click();
+    button('Add').click();
+    await fixture.whenStable();
+
+    expect(links).toEqual([
+      { parentId: 'p1', childId: 'p2', type: 'Adoptive' },
+      { parentId: 'p3', childId: 'p2', type: 'Adoptive' },
+    ]);
+    expect(results).toEqual([
+      { changed: true, message: 'Linked 1 person to Maya. Also added one link to a spouse.' },
+    ]);
+  });
+
+  it("offers a picked parent's spouses as parents too, and can be unticked (AC-08.15)", async () => {
+    spouses['p3'] = [spouse(zarina)];
+    await open(maya, 'parent');
+    await pick('Ravi');
+    await new Promise((resolve) => setTimeout(resolve));
+    await fixture.whenStable();
+
+    expect(spouseBoxes()).toEqual([{ label: 'Zarina Gurung, spouse of Ravi', checked: true }]);
+    await tickSpouse('Zarina');
+    button('Add').click();
+    await fixture.whenStable();
+
+    expect(links).toEqual([{ parentId: 'p3', childId: 'p1', type: 'Biological' }]);
+  });
+
+  it('counts an existing link to the spouse as done (AC-08.15)', async () => {
+    spouses['p3'] = [spouse(zarina)];
+    duplicates.add('p5>p1');
+    await open(maya, 'parent');
+    await pick('Ravi');
+    await new Promise((resolve) => setTimeout(resolve));
+    await fixture.whenStable();
+
+    button('Add').click();
+    await fixture.whenStable();
+
+    expect(links.length).toBe(2);
+    expect(results).toEqual([{ changed: true, message: 'Linked 1 person to Maya.' }]);
+  });
+
+  it('offers no spouse you could not link, and never a deleted one (AC-08.16)', async () => {
+    spouses['p2'] = [
+      spouse(zarina),
+      spouse(person('p6', null, { placeholder: 'Deleted', maintainedByYou: true })),
+    ];
+    await open(ravi, 'parent');
+    await pick('Asha');
+    await new Promise((resolve) => setTimeout(resolve));
+    await fixture.whenStable();
+
+    expect(spouseBoxes()).toEqual([]);
   });
 });

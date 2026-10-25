@@ -84,10 +84,10 @@
           <li>{{ outcome.name }}: linked.</li>
         }
         @case ('pending') {
-          <li>
-            {{ outcome.name }}: saved, but not active until the maintainer of {{ name() }} approves
-            it.
-          </li>
+          <li>{{ outcome.name }}: saved, but not active until the other maintainer approves it.</li>
+        }
+        @case ('existing') {
+          <li>{{ outcome.name }}: already linked.</li>
         }
         @case ('failed') {
           <li class="error">{{ outcome.name }}: not linked. {{ outcome.reason }}</li>
@@ -143,6 +143,8 @@
       @if (candidatesTruncated()) {
         <p class="hint">Only the first {{ candidates.length }} of your profiles are listed.</p>
       }
+
+      <app-spouse-link-choices [relation]="side()" [person]="target()" [picked]="picked()" />
 
       <fieldset>
         <legend>Relationship</legend>
