@@ -35,7 +35,7 @@ internal sealed class EfMarriageQueries(FamilyGraphDbContext context) : IMarriag
                     hidden ? "" : spouse.Name.LastName, spouse.Id
                 select new SpouseData(
                     marriage.Id,
-                    new PersonRecord(spouse.Id, spouse.Name, spouse.Visibility, spouse.DeletedAt != null, spouse.MaintainerId == viewerId, spouse.ImageId, spouse.Gender),
+                    new PersonRecord(spouse.Id, spouse.Name, spouse.Visibility, spouse.DeletedAt != null, spouse.MaintainerId == viewerId, spouse.ImageId, spouse.Gender, spouse.Description, spouse.BirthDate, spouse.BirthDateShown),
                     marriage.IsFormer))
             .Take(limit + 1)
             .ToListAsync(cancellationToken);
@@ -73,10 +73,10 @@ internal sealed class EfMarriageQueries(FamilyGraphDbContext context) : IMarriag
                 select new MarriageConsentData(
                     marriage.Id,
                     new LinkEndpointData(
-                        new PersonRecord(first.Id, first.Name, first.Visibility, first.DeletedAt != null, first.MaintainerId == viewerId, first.ImageId, first.Gender),
+                        new PersonRecord(first.Id, first.Name, first.Visibility, first.DeletedAt != null, first.MaintainerId == viewerId, first.ImageId, first.Gender, first.Description, first.BirthDate, first.BirthDateShown),
                         marriage.FirstApproval),
                     new LinkEndpointData(
-                        new PersonRecord(second.Id, second.Name, second.Visibility, second.DeletedAt != null, second.MaintainerId == viewerId, second.ImageId, second.Gender),
+                        new PersonRecord(second.Id, second.Name, second.Visibility, second.DeletedAt != null, second.MaintainerId == viewerId, second.ImageId, second.Gender, second.Description, second.BirthDate, second.BirthDateShown),
                         marriage.SecondApproval),
                     marriage.IsFormer,
                     false))

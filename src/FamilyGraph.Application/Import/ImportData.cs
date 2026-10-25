@@ -21,7 +21,13 @@ public sealed record ImportPerson(
     string? Visibility,
     DateTimeOffset? DeletedAt,
     Guid MaintainerId,
-    string? Gender);
+    string? Gender,
+    string? Description = null,
+    ImportBirthDate? BirthDate = null,
+    bool BirthDateShown = false);
+
+/// <summary>A birth date as exported (D-037); files from before birth dates have none.</summary>
+public sealed record ImportBirthDate(string? Calendar, int Year, int? Month, int? Day);
 
 public sealed record ImportLink(
     Guid Id,

@@ -216,7 +216,10 @@ internal sealed class EfGraphQueries(FamilyGraphDbContext context, GraphLimits l
                 person.last_name AS "LastName", person.visibility AS "Visibility",
                 person.deleted_at IS NOT NULL AS "IsDeleted",
                 person.maintainer_id = {viewerId.Value} AS "MaintainedByViewer", person.image_id AS "ImageId",
-                person.gender AS "Gender"
+                person.gender AS "Gender", person.description AS "Description",
+                person.birth_calendar AS "BirthCalendar", person.birth_year AS "BirthYear",
+                person.birth_month AS "BirthMonth", person.birth_day AS "BirthDay",
+                person.birth_sort_date AS "BirthSortDate", person.birth_date_shown AS "BirthDateShown"
             FROM people AS person
             JOIN unnest({values}) AS wanted (id) ON wanted.id = person.id
             """).ToListAsync(token), cancellationToken);
@@ -228,8 +231,19 @@ internal sealed class EfGraphQueries(FamilyGraphDbContext context, GraphLimits l
             row.IsDeleted,
             row.MaintainedByViewer,
             row.ImageId is { } imageId ? new ProfileImageId(imageId) : null,
-            row.Gender is { } gender ? Gender.FromValue(gender) : null))];
+            row.Gender is { } gender ? Gender.FromValue(gender) : null,
+            row.Description,
+            BirthDateOf(row),
+            row.BirthDateShown))];
     }
+
+    /// <summary>A stored birth date keeps the sort date it was saved with (D-037).</summary>
+    private static BirthDate? BirthDateOf(PersonRow row) =>
+        (row.BirthCalendar, row.BirthYear, row.BirthSortDate) is ({ } calendar, { } year, { } sortDate)
+            ? BirthCalendar.FromValue(calendar) == BirthCalendar.Ad
+                ? BirthDate.Ad(year, row.BirthMonth, row.BirthDay)
+                : BirthDate.Bs(year, row.BirthMonth, row.BirthDay, sortDate)
+            : null;
 
     private Task<List<Guid>> ReachedAsync(Guid[] starts, int rowLimit, CancellationToken cancellationToken) =>
         RunAsync(token => context.Database.SqlQueryRaw<Guid>(ReachedSql,
@@ -288,5 +302,12 @@ internal sealed class EfGraphQueries(FamilyGraphDbContext context, GraphLimits l
         bool IsDeleted,
         bool MaintainedByViewer,
         Guid? ImageId,
-        int? Gender);
+        int? Gender,
+        string? Description,
+        int? BirthCalendar,
+        int? BirthYear,
+        int? BirthMonth,
+        int? BirthDay,
+        DateOnly? BirthSortDate,
+        bool BirthDateShown);
 }

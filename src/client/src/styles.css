@@ -1,3 +1,5 @@
+@import '@opensourcenepal/nepali-calendar-angular/styles.css';
+
 :root {
   --text: #1f1f24;
   --muted: #5b5b66;
@@ -53,6 +55,11 @@ button.secondary {
   color: var(--accent);
 }
 
+.description {
+  margin-top: -0.5rem;
+  color: var(--muted);
+}
+
 .hint {
   color: var(--muted);
 }
@@ -101,6 +108,29 @@ select {
   gap: 0.5rem;
 }
 
+.name-form label.check {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.name-form fieldset.birth-date .choices,
+.name-form fieldset.birth-date .date-parts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.name-form fieldset.birth-date .date-parts label {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.name-form fieldset.birth-date .date-parts input {
+  width: 6rem;
+}
+
 .links {
   display: flex;
   flex-direction: column;
@@ -120,6 +150,16 @@ button.link-button {
   color: var(--accent);
   font-size: 0.875rem;
   text-decoration: underline;
+}
+
+button.link-button.order {
+  margin: 0 0.25rem 0 0;
+  text-decoration: none;
+}
+
+button.link-button.order:disabled {
+  color: var(--muted);
+  opacity: 0.5;
 }
 
 .graph-panel {

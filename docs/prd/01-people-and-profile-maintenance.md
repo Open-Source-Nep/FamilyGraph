@@ -28,6 +28,13 @@ Define person profiles, account separation, and profile-maintainer authority.
 - It can be given when the profile is created. Only the profile's maintainer may set, change or clear it. Changes are audited without the gender.
 - The gender is shown wherever the name is, and hidden like the name (PRD 05). Relationship wording uses it (PRD 08).
 
+## Description and birth date
+
+- A profile may have a description: one line of at most 200 characters, such as "Teacher, lives in Pokhara", that helps tell people with the same name apart. It is optional, shown wherever the name is, and hidden like the name (PRD 05).
+- A profile may have a birth date: a year, a year and month, or a full date, in Bikram Sambat (BS) or Gregorian (AD), kept as entered. A full date is also shown in the other calendar; a partial one only in its own. It is optional and can be given when the profile is created.
+- The birth date has a "show to others" switch, off by default. While it is off, only the maintainer and administrators see the date (PRD 05).
+- Only the profile's maintainer may set, change or clear the description, the birth date and its switch. Changes are audited without the text or the date.
+
 ## Profile image
 
 - A profile may have one image (a photo). It is optional.
@@ -93,6 +100,9 @@ Define person profiles, account separation, and profile-maintainer authority.
 - `AC-01.26` A transfer leaves every relationship and its consent state unchanged and is recorded in the audit history for each profile.
 - `AC-01.27` A user who is not an administrator cannot list accounts or transfer profiles.
 - `AC-01.28` A claimed profile cannot be transferred.
+- `AC-01.30` A person can be created with or without a description and a birth date; a new birth date is hidden from others.
+- `AC-01.31` A description is one line of at most 200 characters, and only the maintainer can set, change or clear it, audited without the text.
+- `AC-01.32` A birth date is a year, a year and month or a full date in BS or AD, a date that does not exist is rejected, and only the maintainer can set it or its switch, audited without the date.
 - `AC-01.29` Adding a person can optionally link chosen parents and children; each link follows the usual consent rules, and links that are not active are reported.
 
 ## Open details

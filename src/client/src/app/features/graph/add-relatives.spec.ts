@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { PeopleService } from '../people/people.service';
-import { Person, PersonName } from '../people/person';
+import { Person, PersonDetails, PersonName } from '../people/person';
 import { MarriagesService } from '../relationships/marriages.service';
 import { NewLink, NewMarriage, Spouse } from '../relationships/relationship';
 import { RelationshipsService } from '../relationships/relationships.service';
@@ -22,6 +22,9 @@ function person(id: string, firstName: string | null, extra: Partial<Person> = {
     imageId: null,
     gender: null,
     maintainedByYou: false,
+    description: null,
+    birthDate: null,
+    birthDateShown: false,
     ...extra,
   };
 }
@@ -92,7 +95,8 @@ describe('AddRelatives', () => {
               searches.push(text);
               return Promise.resolve({ people: [zarina, maya], isTruncated: true });
             },
-            create: (name: PersonName) => Promise.resolve({ ...person('p9', null), ...name }),
+            create: ({ name }: PersonDetails) =>
+              Promise.resolve({ ...person('p9', null), ...name }),
           },
         },
         {

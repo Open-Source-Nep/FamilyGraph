@@ -42,22 +42,47 @@ public sealed class Person : AuditedEntity
     /// <summary>The person's gender, or <see langword="null"/> if it is not set (D-030).</summary>
     public Gender? Gender { get; private set; }
 
+    /// <summary>One line that tells people with the same name apart, or <see langword="null"/> (D-037).</summary>
+    public string? Description { get; private set; }
+
+    /// <summary>The birth date as entered, or <see langword="null"/> if it is not known (D-037).</summary>
+    public BirthDate? BirthDate { get; private set; }
+
+    /// <summary>
+    /// Whether people other than the maintainer and administrators may see <see cref="BirthDate"/>.
+    /// Off by default (D-037).
+    /// </summary>
+    public bool BirthDateShown { get; private set; }
+
     /// <summary>
     /// Creates a profile. The creating account becomes its maintainer. Only the name is required;
-    /// the gender is optional (PRD 00, D-030).
+    /// the gender, description and birth date are optional (PRD 00, D-030, D-037).
     /// </summary>
-    public static Person Create(PersonName name, AccountId creatorId, Gender? gender = null)
+    public static Person Create(
+        PersonName name,
+        AccountId creatorId,
+        Gender? gender = null,
+        string? description = null,
+        BirthDate? birthDate = null,
+        bool birthDateShown = false)
     {
         ArgumentNullException.ThrowIfNull(name);
 
-        var person = new Person(PersonId.New(), name, creatorId) { Gender = gender };
+        var person = new Person(PersonId.New(), name, creatorId)
+        {
+            Gender = gender,
+            Description = PersonDescription.Normalize(description),
+            BirthDate = birthDate,
+            BirthDateShown = birthDateShown,
+        };
         person.Record(new PersonCreated(person.Id, creatorId));
         return person;
     }
 
     /// <summary>
     /// Restores a profile from an export file with its ID (D-033). A deleted profile keeps only the
-    /// erased name and no gender. It records no event: the import's one <c>DataImported</c> covers it.
+    /// erased name and no gender, description or birth date. It records no event: the import's one
+    /// <c>DataImported</c> covers it.
     /// </summary>
     public static Person Import(
         PersonId id,
@@ -65,13 +90,23 @@ public sealed class Person : AuditedEntity
         ProfileVisibility visibility,
         DateTimeOffset? deletedAt,
         AccountId maintainerId,
-        Gender? gender)
+        Gender? gender,
+        string? description = null,
+        BirthDate? birthDate = null,
+        bool birthDateShown = false)
     {
         ArgumentNullException.ThrowIfNull(name);
         ArgumentNullException.ThrowIfNull(visibility);
 
         return deletedAt is null
-            ? new Person(id, name, maintainerId) { Visibility = visibility, Gender = gender }
+            ? new Person(id, name, maintainerId)
+            {
+                Visibility = visibility,
+                Gender = gender,
+                Description = PersonDescription.Normalize(description),
+                BirthDate = birthDate,
+                BirthDateShown = birthDateShown,
+            }
             : new Person(id, PersonName.Erased, maintainerId) { Visibility = visibility, DeletedAt = deletedAt };
     }
 
@@ -109,6 +144,39 @@ public sealed class Person : AuditedEntity
     }
 
     /// <summary>
+    /// Sets, changes or clears (blank) the description (D-037). Only the current maintainer may do
+    /// this. The event does not record the text, which is personal data (D-015).
+    /// </summary>
+    public void SetDescription(string? description, AccountId actorId)
+    {
+        EnsureNotDeleted();
+        if (!IsMaintainedBy(actorId))
+        {
+            throw new NotProfileMaintainerException(Id);
+        }
+
+        Description = PersonDescription.Normalize(description);
+        Record(new PersonDescriptionChanged(Id, actorId));
+    }
+
+    /// <summary>
+    /// Sets, changes or clears the birth date, and whether others may see it (D-037). Only the
+    /// current maintainer may do this. The event records the switch, a setting, but not the date (D-015).
+    /// </summary>
+    public void SetBirthDate(BirthDate? birthDate, bool shown, AccountId actorId)
+    {
+        EnsureNotDeleted();
+        if (!IsMaintainedBy(actorId))
+        {
+            throw new NotProfileMaintainerException(Id);
+        }
+
+        BirthDate = birthDate;
+        BirthDateShown = shown;
+        Record(new PersonBirthDateChanged(Id, actorId, shown));
+    }
+
+    /// <summary>
     /// Makes the profile Public or Private. Only the current maintainer may do this (PRD 05). It
     /// changes what others see of the profile and nothing about its relationships or their consent.
     /// </summary>
@@ -132,7 +200,7 @@ public sealed class Person : AuditedEntity
     }
 
     /// <summary>
-    /// Deletes the profile: its name, gender and image are erased for good and it remains as a <c>Deleted</c>
+    /// Deletes the profile: its name, gender, description, birth date and image are erased for good and it remains as a <c>Deleted</c>
     /// placeholder (PRD 05). Its maintainer may do this, or an administrator for moderation; the
     /// event records which. Its links and their consent are unchanged, so active links stay
     /// traversable.
@@ -146,6 +214,9 @@ public sealed class Person : AuditedEntity
 
         Name = PersonName.Erased;
         Gender = null;
+        Description = null;
+        BirthDate = null;
+        BirthDateShown = false;
         ImageId = null;
         DeletedAt = deletedAt;
         Record(new PersonDeleted(Id, actorId, deleter));

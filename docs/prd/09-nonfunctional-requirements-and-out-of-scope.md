@@ -11,11 +11,11 @@
 
 ## Data export
 
-An administrator can download the whole instance as one file that a later import can read back. It holds every profile (Private ones with their names; deleted ones as placeholders without any name), every relationship that has not been deleted with each side's consent and the birth order, every marriage that has not been deleted with each side's consent and whether it is former, and the email of each account that maintains a profile. It holds no profile images, audit history or deleted relationships. Other users cannot export. Each export is recorded in the audit history with the administrator and the time.
+An administrator can download the whole instance as one file that a later import can read back. It holds every profile with its details, including birth dates hidden from others (Private ones with their names; deleted ones as placeholders without any name or details), every relationship that has not been deleted with each side's consent and the birth order, every marriage that has not been deleted with each side's consent and whether it is former, and the email of each account that maintains a profile. It holds no profile images, audit history or deleted relationships. Other users cannot export. Each export is recorded in the audit history with the administrator and the time.
 
 ## Data import
 
-An administrator can load an export file into an instance that has no profiles yet, for example to move to a new server or restore one. Every profile, relationship and marriage comes back as it was in the file, with its consent, visibility, gender and birth order. Each profile's maintainer is the account here with the same verified email; when there is no such account, the administrator who imports becomes its maintainer. A file with any problem is refused whole and nothing is saved, and the administrator is shown the problems. Other users cannot import, and an instance that already has profiles refuses an import. Each import is recorded in the audit history once, with the administrator and the time; the imported rows get no history entries of their own.
+An administrator can load an export file into an instance that has no profiles yet, for example to move to a new server or restore one. Every profile, relationship and marriage comes back as it was in the file, with its consent, visibility, gender, description, birth date and birth order. Each profile's maintainer is the account here with the same verified email; when there is no such account, the administrator who imports becomes its maintainer. A file with any problem is refused whole and nothing is saved, and the administrator is shown the problems. Other users cannot import, and an instance that already has profiles refuses an import. Each import is recorded in the audit history once, with the administrator and the time; the imported rows get no history entries of their own.
 
 ## Initial release exclusions
 
@@ -34,7 +34,7 @@ An administrator can load an export file into an instance that has no profiles y
 - `AC-09.5` A user who is not an administrator cannot export data.
 - `AC-09.6` The export includes Private profiles with their names and deleted profiles without any name, and leaves out images, audit history and deleted relationships.
 - `AC-09.7` Each export is recorded in the audit history with the administrator and the time.
-- `AC-09.8` An administrator can import an export file into an instance without profiles, and every profile, relationship and marriage comes back with its consent, visibility, gender and birth order.
+- `AC-09.8` An administrator can import an export file into an instance without profiles, and every profile, relationship and marriage comes back with its consent, visibility, gender, description, birth date and birth order.
 - `AC-09.9` A user who is not an administrator cannot import, and an instance that has any profile refuses an import.
 - `AC-09.10` An imported profile is maintained by the account with its maintainer's verified email, or by the importing administrator when there is none.
 - `AC-09.11` A file with any problem is refused whole, nothing is saved, and the problems are listed.

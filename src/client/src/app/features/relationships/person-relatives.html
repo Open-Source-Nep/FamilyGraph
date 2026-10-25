@@ -28,9 +28,32 @@
   @if (relatives.children.length === 0) {
     <p class="hint">No children are linked.</p>
   } @else {
+    @if (person().maintainedByYou && relatives.children.length > 1) {
+      <p class="hint">Eldest first. Use the arrows to put the children in birth order.</p>
+    }
     <ul class="people">
-      @for (child of relatives.children; track child.id) {
+      @for (child of relatives.children; track child.id; let index = $index, last = $last) {
         <li>
+          @if (person().maintainedByYou && relatives.children.length > 1) {
+            <button
+              type="button"
+              class="link-button order"
+              [disabled]="saving() || index === 0"
+              [attr.aria-label]="'Move ' + fullName(child) + ' up'"
+              (click)="move(index, -1)"
+            >
+              ↑
+            </button>
+            <button
+              type="button"
+              class="link-button order"
+              [disabled]="saving() || last"
+              [attr.aria-label]="'Move ' + fullName(child) + ' down'"
+              (click)="move(index, 1)"
+            >
+              ↓
+            </button>
+          }
           <a [routerLink]="['/people', child.id]">{{ fullName(child) }}</a>
           @if (relationHint('child', child.gender, child.type); as hint) {
             <span class="hint"> ({{ hint }})</span>

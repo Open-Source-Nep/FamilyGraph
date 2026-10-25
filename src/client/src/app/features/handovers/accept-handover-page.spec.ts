@@ -19,6 +19,9 @@ describe('AcceptHandoverPage', () => {
     imageId: null,
     gender: null,
     maintainedByYou: false,
+    description: null,
+    birthDate: null,
+    birthDateShown: false,
   };
 
   const render = async (fragment: string | null) => {

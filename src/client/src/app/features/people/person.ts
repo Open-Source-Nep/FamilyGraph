@@ -1,3 +1,5 @@
+import { BirthDate } from './birth-date';
+
 /** A person's name. Only the first name is required (PRD 01). */
 export interface PersonName {
   firstName: string;
@@ -5,10 +7,14 @@ export interface PersonName {
   lastName: string | null;
 }
 
-/** What a profile form saves: the name and the optional gender (D-030). */
+/** What a profile form saves: the name and the optional gender, description and birth date (D-030, D-037). */
 export interface PersonDetails {
   name: PersonName;
   gender: Gender | null;
+  description: string | null;
+  birthDate: BirthDate | null;
+  /** Whether people other than the maintainer and administrators see the birth date. Off by default. */
+  birthDateShown: boolean;
 }
 
 /** Public profiles show their name to signed-in users; Private ones only to their maintainer and administrators (PRD 05). */
@@ -40,6 +46,12 @@ export interface PersonLabel {
 export interface Person extends PersonLabel {
   id: string;
   maintainedByYou: boolean;
+  /** One line telling people with the same name apart, or null. A placeholder never has one (D-037). */
+  description: string | null;
+  /** Null when not known, for a placeholder, or when its maintainer does not show it to you (D-037). */
+  birthDate: BirthDate | null;
+  /** Whether the maintainer shows the birth date to others. */
+  birthDateShown: boolean;
 }
 
 /** One of your profiles, which you always see by name. */
@@ -67,6 +79,9 @@ export function imageUrl(person: { id: string; imageId: string | null }): string
     ? `/api/people/${encodeURIComponent(person.id)}/image?v=${encodeURIComponent(person.imageId)}`
     : null;
 }
+
+/** The longest description the server accepts (D-037). */
+export const maxDescriptionLength = 200;
 
 /** The longest name part the server accepts. */
 export const maxNamePartLength = 100;

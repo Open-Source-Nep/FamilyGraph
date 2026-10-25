@@ -7,7 +7,7 @@ import { NewLink, Spouse } from '../relationships/relationship';
 import { RelationshipsService } from '../relationships/relationships.service';
 import { NewPersonPage } from './new-person-page';
 import { PeopleService } from './people.service';
-import { Person, PersonName } from './person';
+import { Person, PersonDetails, PersonName } from './person';
 
 function person(id: string, firstName: string, extra: Partial<Person> = {}): Person {
   return {
@@ -20,6 +20,9 @@ function person(id: string, firstName: string, extra: Partial<Person> = {}): Per
     imageId: null,
     gender: null,
     maintainedByYou: false,
+    description: null,
+    birthDate: null,
+    birthDateShown: false,
     ...extra,
   };
 }
@@ -48,7 +51,7 @@ describe('NewPersonPage', () => {
         {
           provide: PeopleService,
           useValue: {
-            create: (name: PersonName) => {
+            create: ({ name }: PersonDetails) => {
               created.push(name);
               return Promise.resolve({ ...person('p1', name.firstName), ...name });
             },

@@ -35,7 +35,13 @@ describe('PersonNameForm', () => {
     await submit();
 
     expect(saved).toEqual([
-      { name: { firstName: 'Maya', middleName: null, lastName: null }, gender: null },
+      {
+        name: { firstName: 'Maya', middleName: null, lastName: null },
+        gender: null,
+        description: null,
+        birthDate: null,
+        birthDateShown: false,
+      },
     ]);
   });
 
@@ -74,7 +80,99 @@ describe('PersonNameForm', () => {
     await submit();
 
     expect(saved).toEqual([
-      { name: { firstName: 'Maya', middleName: null, lastName: null }, gender: 'Female' },
+      {
+        name: { firstName: 'Maya', middleName: null, lastName: null },
+        gender: 'Female',
+        description: null,
+        birthDate: null,
+        birthDateShown: false,
+      },
     ]);
+  });
+
+  const button = (label: string) =>
+    Array.from(
+      fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
+    ).find((button) => button.textContent?.trim() === label);
+
+  const choose = (label: string, option: string) => {
+    const select = Array.from(
+      fixture.nativeElement.querySelectorAll('.date-parts label') as NodeListOf<HTMLLabelElement>,
+    )
+      .find((element) => element.textContent?.trim().startsWith(label))!
+      .querySelector('select') as HTMLSelectElement;
+    select.value = option;
+    select.dispatchEvent(new Event('change'));
+  };
+
+  const year = (value: string) => {
+    const field = fixture.nativeElement.querySelector('.date-parts input') as HTMLInputElement;
+    field.value = value;
+    field.dispatchEvent(new Event('input'));
+  };
+
+  it('saves a one-line description and a partial BS birth date, hidden from others by default (AC-01.30)', async () => {
+    type('firstName', 'Maya');
+    type('description', '  Teacher,\n lives in Pokhara ');
+    button('Add birth date')!.click();
+    await fixture.whenStable();
+    year('2009');
+    choose('Month', '1');
+    await fixture.whenStable();
+    await submit();
+
+    expect(saved).toEqual([
+      {
+        name: { firstName: 'Maya', middleName: null, lastName: null },
+        gender: null,
+        description: 'Teacher, lives in Pokhara',
+        birthDate: { calendar: 'Bs', year: 2009, month: 1, day: null },
+        birthDateShown: false,
+      },
+    ]);
+  });
+
+  it('saves a full AD date shown to others (AC-01.32)', async () => {
+    type('firstName', 'Maya');
+    button('Add birth date')!.click();
+    await fixture.whenStable();
+    (
+      fixture.nativeElement.querySelectorAll('input[type=radio]')[1] as HTMLInputElement
+    ).dispatchEvent(new Event('change'));
+    year('1952');
+    choose('Month', '3');
+    await fixture.whenStable();
+    choose('Day', '4');
+    await fixture.whenStable();
+    input('birthDateShown').click();
+    await submit();
+
+    expect(saved[0].birthDate).toEqual({ calendar: 'Ad', year: 1952, month: 3, day: 4 });
+    expect(saved[0].birthDateShown).toBe(true);
+  });
+
+  it('does not save a date that does not exist', async () => {
+    fixture.componentRef.setInput('birthDate', { calendar: 'Ad', year: 1952, month: 2, day: 29 });
+    await fixture.whenStable();
+    type('firstName', 'Maya');
+    year('1951');
+    await fixture.whenStable();
+    await submit();
+
+    expect(saved).toEqual([]);
+    expect(fixture.nativeElement.textContent).toContain('That date does not exist.');
+  });
+
+  it('starts from the given birth date and can remove it', async () => {
+    fixture.componentRef.setInput('birthDate', { calendar: 'Bs', year: 2082, month: 6, day: 16 });
+    fixture.componentRef.setInput('birthDateShown', true);
+    await fixture.whenStable();
+    type('firstName', 'Maya');
+    button('Remove birth date')!.click();
+    await fixture.whenStable();
+    await submit();
+
+    expect(saved[0].birthDate).toBeNull();
+    expect(saved[0].birthDateShown).toBe(false);
   });
 });

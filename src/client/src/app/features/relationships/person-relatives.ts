@@ -154,20 +154,50 @@ export class PersonRelatives {
   }
 
   /** Creates a profile you maintain, then lists and selects it for linking (PRD 01). */
-  protected async createPerson({ name, gender }: PersonDetails): Promise<void> {
+  protected async createPerson(details: PersonDetails): Promise<void> {
     this.saving.set(true);
     this.personError.set(null);
     try {
-      const person = await this.people.create(name, gender);
+      const person = await this.people.create(details);
       // You maintain the new profile, so you see it by the name you gave it.
       this.candidates.update((list) => [
         ...(list ?? []),
-        { ...name, id: person.id, visibility: person.visibility, gender },
+        { ...details.name, id: person.id, visibility: person.visibility, gender: details.gender },
       ]);
       this.toggle(person.id, true);
       this.closeNewPerson();
     } catch (error) {
       this.personError.set(problemMessage(error));
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  /**
+   * Moves a child one place up (-1) or down (+1) in this parent's birth order. The whole list as
+   * shown is numbered 1, 2, 3…, so unordered children become ordered (D-016, D-037).
+   */
+  protected async move(index: number, offset: -1 | 1): Promise<void> {
+    const relatives = this.relatives();
+    const target = index + offset;
+    if (!relatives || target < 0 || target >= relatives.children.length) {
+      return;
+    }
+    const children = [...relatives.children];
+    [children[index], children[target]] = [children[target], children[index]];
+    this.saving.set(true);
+    this.error.set(null);
+    try {
+      await this.relationships.orderChildren(
+        this.personId(),
+        children.map((child) => child.linkId),
+      );
+      this.relatives.set({
+        ...relatives,
+        children: children.map((child, position) => ({ ...child, birthOrder: position + 1 })),
+      });
+    } catch (error) {
+      this.error.set(problemMessage(error));
     } finally {
       this.saving.set(false);
     }

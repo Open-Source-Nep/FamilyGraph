@@ -104,6 +104,38 @@ public sealed class RelationshipService(
         await SaveAsync(link, cancellationToken);
     }
 
+    /// <summary>
+    /// Places a parent's children in birth order, eldest first (D-016, D-037): the links in
+    /// <paramref name="linkIds"/> get 1, 2, 3… and every number that changes is audited. Links not
+    /// listed keep theirs. Only the parent's maintainer may; consent and activity never change.
+    /// </summary>
+    public async Task OrderChildrenAsync(
+        PersonId parentId, IReadOnlyList<LinkId> linkIds, AccountId actorId, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(linkIds);
+        if (linkIds.Count > limits.DirectRelativesLimit || linkIds.Distinct().Count() != linkIds.Count)
+        {
+            throw new InvalidBirthOrderException();
+        }
+
+        var parent = await people.FindAsync(parentId, cancellationToken) ?? throw new PersonNotFoundException();
+        var ordered = new List<ParentChildLink>(linkIds.Count);
+        foreach (var linkId in linkIds)
+        {
+            var link = await links.FindAsync(linkId, cancellationToken);
+            ordered.Add(link is not null && link.ParentId == parentId ? link : throw new LinkNotFoundException());
+        }
+
+        var changed = ordered.Where((link, index) => link.BirthOrder != index + 1).ToList();
+        foreach (var link in changed)
+        {
+            link.SetBirthOrder(parent, actorId, ordered.IndexOf(link) + 1);
+        }
+
+        audit.Add(changed.SelectMany(link => link.TakeEvents()), time.GetUtcNow());
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+
     /// <summary>The inactive links of the profiles the account maintains (D-021).</summary>
     public async Task<LinkConsentList> ListInactiveLinksAsync(Viewer viewer, CancellationToken cancellationToken)
     {

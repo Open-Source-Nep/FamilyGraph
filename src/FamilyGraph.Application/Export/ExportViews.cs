@@ -8,7 +8,7 @@ public sealed record ExportedAccount(AccountId Id, string Email, bool EmailVerif
 
 /// <summary>
 /// A profile as stored. <see cref="Name"/> is <see langword="null"/> for a deleted profile, whose name was erased,
-/// and <see cref="Gender"/> when it is not set or was erased.
+/// and <see cref="Gender"/>, <see cref="Description"/> and <see cref="BirthDate"/> when not set or erased.
 /// </summary>
 public sealed record ExportedPerson(
     PersonId Id,
@@ -16,7 +16,10 @@ public sealed record ExportedPerson(
     ProfileVisibility Visibility,
     DateTimeOffset? DeletedAt,
     AccountId MaintainerId,
-    Gender? Gender);
+    Gender? Gender,
+    string? Description,
+    BirthDate? BirthDate,
+    bool BirthDateShown);
 
 /// <summary>A non-deleted parent–child link with both endpoints' consent, active or not.</summary>
 public sealed record ExportedLink(

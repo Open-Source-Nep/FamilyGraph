@@ -220,6 +220,100 @@ public class PeopleEndpointTests(AccountTestFactory factory) : IClassFixture<Acc
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Fact]
+    [Trait("AC", "AC-01.30")]
+    [Trait("AC", "AC-05.16")]
+    public async Task Create_takes_a_description_and_a_birth_date_that_others_do_not_see_by_default()
+    {
+        var (browser, token) = await SignInAsync("maya@example.org");
+        using var created = await SendAsync(browser, token, HttpMethod.Post, "/api/people", new
+        {
+            firstName = "Maya",
+            description = "Teacher, lives in Pokhara",
+            birthDate = new { calendar = "Bs", year = 2009, month = 1 },
+        });
+        var own = await created.Content.ReadFromJsonAsync<PersonResponse>(Cancellation);
+        var (other, _) = await SignInAsync("gita@example.org");
+
+        var seen = await other.GetFromJsonAsync<PersonResponse>($"/api/people/{own!.Id}", Cancellation);
+
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        Assert.Equal(("Teacher, lives in Pokhara", new BirthDateResponse("Bs", 2009, 1, null), false), (own.Description, own.BirthDate, own.BirthDateShown));
+        Assert.Equal(("Teacher, lives in Pokhara", (BirthDateResponse?)null), (seen!.Description, seen.BirthDate));
+    }
+
+    [Fact]
+    [Trait("AC", "AC-01.31")]
+    [Trait("AC", "AC-01.32")]
+    [Trait("AC", "AC-05.16")]
+    public async Task Maintainer_sets_the_description_and_shows_the_birth_date_to_others()
+    {
+        var (browser, token) = await SignInAsync("maya@example.org");
+        var id = await CreateWithAsync(browser, token, "Maya");
+
+        using var description = await SendAsync(browser, token, HttpMethod.Put, $"/api/people/{id}/description", new { description = "Engineer" });
+        using var birthDate = await SendAsync(browser, token, HttpMethod.Put, $"/api/people/{id}/birth-date", new
+        {
+            birthDate = new { calendar = "Ad", year = 1990, month = 6, day = 1 },
+            shown = true,
+        });
+        var (other, _) = await SignInAsync("gita@example.org");
+        var seen = await other.GetFromJsonAsync<PersonResponse>($"/api/people/{id}", Cancellation);
+
+        Assert.Equal((HttpStatusCode.NoContent, HttpStatusCode.NoContent), (description.StatusCode, birthDate.StatusCode));
+        Assert.Equal(("Engineer", new BirthDateResponse("Ad", 1990, 6, 1), true), (seen!.Description, seen.BirthDate, seen.BirthDateShown));
+    }
+
+    [Theory]
+    [Trait("AC", "AC-01.31")]
+    [Trait("AC", "AC-01.32")]
+    [InlineData("description", "person.description_too_long")]
+    [InlineData("birth-date", "person.birth_date_invalid")]
+    public async Task Too_long_descriptions_and_dates_that_do_not_exist_are_domain_rule_violations(string field, string code)
+    {
+        var (browser, token) = await SignInAsync("maya@example.org");
+        var id = await CreateWithAsync(browser, token, "Maya");
+        object body = field == "description"
+            ? new { description = new string('a', 201) }
+            : new { birthDate = new { calendar = "Bs", year = 2081, month = 1, day = 32 }, shown = false };
+
+        using var response = await SendAsync(browser, token, HttpMethod.Put, $"/api/people/{id}/{field}", body);
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        Assert.Equal(code, await CodeAsync(response));
+    }
+
+    [Fact]
+    public async Task An_unknown_calendar_is_a_bad_request()
+    {
+        var (browser, token) = await SignInAsync("maya@example.org");
+        var id = await CreateWithAsync(browser, token, "Maya");
+
+        using var response = await SendAsync(
+            browser, token, HttpMethod.Put, $"/api/people/{id}/birth-date", new { birthDate = new { calendar = "Lunar", year = 1990 } });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-01.31")]
+    public async Task Someone_other_than_the_maintainer_cannot_set_the_description_or_birth_date()
+    {
+        var id = await CreateAsync("maya@example.org", "Maya");
+        var (browser, token) = await SignInAsync("gita@example.org");
+
+        using var description = await SendAsync(browser, token, HttpMethod.Put, $"/api/people/{id}/description", new { description = "x" });
+        using var birthDate = await SendAsync(browser, token, HttpMethod.Put, $"/api/people/{id}/birth-date", new { birthDate = (object?)null });
+
+        Assert.Equal((HttpStatusCode.Forbidden, HttpStatusCode.Forbidden), (description.StatusCode, birthDate.StatusCode));
+    }
+
+    private async Task<Guid> CreateWithAsync(HttpClient browser, string token, string firstName)
+    {
+        using var response = await SendAsync(browser, token, HttpMethod.Post, "/api/people", new { firstName });
+        return (await response.Content.ReadFromJsonAsync<PersonResponse>(Cancellation))!.Id;
+    }
+
     private async Task<(HttpClient Browser, string Token)> SignInAsync(string email)
     {
         var browser = factory.CreateBrowser();

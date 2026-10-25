@@ -30,12 +30,12 @@ Do not add guardianship, step-parent, foster-parent, or other parent categories 
 - The ancestor check is bounded. If it reaches its limit before it can rule out a cycle, the link is rejected with an explanation that it could not be verified as cycle-free. The concrete limits are a technical decision.
 - Graph traversal must still tolerate cycles defensively.
 
-## Birth order of children (agreed 2026-10-22)
+## Birth order of children (agreed 2026-10-22, changed 2026-10-25)
 
 - A parent's children have a birth order, eldest first. It sorts that parent's children in views and path explanations only. It is not used to derive relationships or labels (PRD 08).
-- The order is set manually per parent. No birth dates are stored. Each parent has their own order, so half siblings are ordered within each parent's list.
+- The order is set manually per parent, by moving a child up or down in the parent's list of children, which numbers the whole list eldest first. Each parent has their own order, so half siblings are ordered within each parent's list.
 - Only the parent profile's maintainer changes the order. It needs no consent and never changes a link's consent state or whether it is active. Every change is audited (PRD 07).
-- A newly linked child is unordered until the parent's maintainer places it. Views list ordered children first, then unordered ones by name.
+- A newly linked child is unordered until the parent's maintainer places it. Views list ordered children first, then unordered ones by birth date where it is shown to others (PRD 01), then by name. A birth date hidden from others never affects the order, for anyone.
 - Pending and inactive links keep their position, but only active links are shown.
 
 ## Marriages (agreed 2026-10-23 and 2026-10-24)

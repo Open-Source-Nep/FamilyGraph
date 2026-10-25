@@ -2,16 +2,25 @@ import { HttpClient } from '@angular/common/http';
 import { Service, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-import { Gender, Person, PersonName, PersonSearchResult, ProfileList, Visibility } from './person';
+import { BirthDate } from './birth-date';
+import {
+  Gender,
+  Person,
+  PersonDetails,
+  PersonName,
+  PersonSearchResult,
+  ProfileList,
+  Visibility,
+} from './person';
 
 /** Person profile requests. The server checks who may change a profile. */
 @Service()
 export class PeopleService {
   private readonly http = inject(HttpClient);
 
-  /** Only the first name is required; the gender is optional (D-030). */
-  create(name: PersonName, gender: Gender | null = null): Promise<Person> {
-    return firstValueFrom(this.http.post<Person>('/api/people', { ...name, gender }));
+  /** Only the first name is required; the other details are optional (D-030, D-037). */
+  create({ name, ...details }: PersonDetails): Promise<Person> {
+    return firstValueFrom(this.http.post<Person>('/api/people', { ...name, ...details }));
   }
 
   get(id: string): Promise<Person> {
@@ -26,6 +35,20 @@ export class PeopleService {
   setGender(id: string, gender: Gender | null): Promise<void> {
     return firstValueFrom(
       this.http.put<void>(`/api/people/${encodeURIComponent(id)}/gender`, { gender }),
+    );
+  }
+
+  /** Sets, changes or clears (null) the description; only the profile's maintainer may (D-037). */
+  setDescription(id: string, description: string | null): Promise<void> {
+    return firstValueFrom(
+      this.http.put<void>(`/api/people/${encodeURIComponent(id)}/description`, { description }),
+    );
+  }
+
+  /** Sets or clears the birth date and whether others see it; only the profile's maintainer may (D-037). */
+  setBirthDate(id: string, birthDate: BirthDate | null, shown: boolean): Promise<void> {
+    return firstValueFrom(
+      this.http.put<void>(`/api/people/${encodeURIComponent(id)}/birth-date`, { birthDate, shown }),
     );
   }
 

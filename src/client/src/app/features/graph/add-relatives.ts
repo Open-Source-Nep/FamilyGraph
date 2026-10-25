@@ -123,12 +123,12 @@ export class AddRelatives {
   }
 
   /** Creates a profile you maintain, then lists and selects it (PRD 01). */
-  protected async createPerson({ name, gender }: PersonDetails): Promise<void> {
+  protected async createPerson(details: PersonDetails): Promise<void> {
     this.saving.set(true);
     this.error.set(null);
     try {
-      const person = await this.people.create(name, gender);
-      this.picker()?.addCreated({ id: person.id, ...name });
+      const person = await this.people.create(details);
+      this.picker()?.addCreated({ id: person.id, ...details.name });
       this.creatingPerson.set(false);
     } catch (error) {
       this.error.set(problemMessage(error));

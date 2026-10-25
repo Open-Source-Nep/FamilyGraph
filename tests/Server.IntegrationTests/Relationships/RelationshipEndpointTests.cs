@@ -354,6 +354,40 @@ public class RelationshipEndpointTests(AccountTestFactory factory) : IClassFixtu
         Assert.True(list.Links[0].Child.MaintainedByYou);
     }
 
+    [Fact]
+    [Trait("AC", "AC-02.8")]
+    [Trait("AC", "AC-02.9")]
+    public async Task Parent_maintainer_puts_the_children_in_birth_order()
+    {
+        var (browser, token) = await SignInAsync(UniqueEmail());
+        var parent = await CreatePersonAsync(browser, token, "Hari");
+        var elder = await CreatedLinkIdAsync(browser, token, parent, await CreatePersonAsync(browser, token, "Zarina"));
+        var younger = await CreatedLinkIdAsync(browser, token, parent, await CreatePersonAsync(browser, token, "Asha"));
+
+        using var response = await SendAsync(
+            browser, token, HttpMethod.Put, $"/api/people/{parent}/children/order", new { linkIds = new[] { elder, younger } });
+        var children = (await RelativesAsync(browser, parent)).Children;
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal([(elder, (int?)1), (younger, 2)], children.Select(child => (child.LinkId, child.BirthOrder)));
+    }
+
+    [Fact]
+    [Trait("AC", "AC-02.9")]
+    public async Task Only_the_parents_maintainer_orders_the_children()
+    {
+        var (browser, token) = await SignInAsync(UniqueEmail());
+        var parent = await CreatePersonAsync(browser, token, "Hari");
+        var link = await CreatedLinkIdAsync(browser, token, parent, await CreatePersonAsync(browser, token, "Maya"));
+        var (other, otherToken) = await SignInAsync(UniqueEmail());
+
+        using var response = await SendAsync(
+            other, otherToken, HttpMethod.Put, $"/api/people/{parent}/children/order", new { linkIds = new[] { link } });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal("link.birth_order_not_parent_maintainer", await CodeAsync(response));
+    }
+
     private static string UniqueEmail() => $"{Guid.NewGuid():N}@example.org";
 
     private async Task<DirectRelativesResponse> RelativesAsync(HttpClient browser, Guid personId) =>

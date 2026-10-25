@@ -21,3 +21,10 @@ public sealed record PersonMatches(IReadOnlyList<PersonRecord> People, bool IsTr
 
 /// <summary>Search results as the viewer may see them. <see cref="IsTruncated"/> says to refine the search (D-010).</summary>
 public sealed record PersonSearchResult(IReadOnlyList<PersonReference> People, bool IsTruncated);
+
+/// <summary>What a new profile may have besides its name, all optional (PRD 00, D-030, D-037).</summary>
+public sealed record PersonDetails(
+    Gender? Gender = null, string? Description = null, BirthDate? BirthDate = null, bool BirthDateShown = false)
+{
+    public static PersonDetails None { get; } = new();
+}

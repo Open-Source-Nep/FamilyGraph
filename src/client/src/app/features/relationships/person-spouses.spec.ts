@@ -17,6 +17,9 @@ const ram: Person = {
   imageId: null,
   gender: 'Male',
   maintainedByYou: true,
+  description: null,
+  birthDate: null,
+  birthDateShown: false,
 };
 
 const spouse = (

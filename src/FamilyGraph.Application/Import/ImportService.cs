@@ -158,20 +158,30 @@ public sealed class ImportService(
                 var visibility = Parse<ProfileVisibility>(person.Visibility, path, "visibility");
                 var gender = person.Gender is null ? null : Parse<Gender>(person.Gender, path, "gender");
                 PersonName? name = PersonName.Erased;
+                string? description = null;
+                BirthDate? birthDate = null;
                 if (person.DeletedAt is null)
                 {
                     name = Name(person, path);
+                    description = Try(path, () => PersonDescription.Normalize(person.Description));
+                    birthDate = person.BirthDate is null ? null : BirthDateOf(person.BirthDate, path);
                 }
 
                 if (_problemCount == problems)
                 {
-                    var (id, deletedAt, maintainerId) = (new PersonId(person.Id), person.DeletedAt, person.MaintainerId);
-                    result.Add((id, maintainerId, account => Person.Import(id, name!, visibility!, deletedAt, account, gender)));
+                    var (id, deletedAt, maintainerId, shown) = (new PersonId(person.Id), person.DeletedAt, person.MaintainerId, person.BirthDateShown);
+                    result.Add((id, maintainerId, account =>
+                        Person.Import(id, name!, visibility!, deletedAt, account, gender, description, birthDate, shown)));
                 }
             }
 
             return result;
         }
+
+        private BirthDate? BirthDateOf(ImportBirthDate date, string path) =>
+            Parse<BirthCalendar>(date.Calendar, path, "birth date calendar") is { } calendar
+                ? Try(path, () => BirthDates.Create(calendar, date.Year, date.Month, date.Day))
+                : null;
 
         private PersonName? Name(ImportPerson person, string path)
         {

@@ -29,3 +29,10 @@ public sealed class LinkConsentRequest
 
     internal LinkEndpoint ToEndpoint() => LinkEndpoint.FromName(Endpoint!);
 }
+
+/// <summary>A parent's children in birth order, eldest first, by their link IDs (D-016, D-037).</summary>
+public sealed class ChildrenOrderRequest
+{
+    [Required]
+    public IReadOnlyList<Guid>? LinkIds { get; init; }
+}

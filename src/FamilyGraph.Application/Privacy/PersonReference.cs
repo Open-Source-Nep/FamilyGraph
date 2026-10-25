@@ -10,7 +10,8 @@ namespace FamilyGraph.Application.Privacy;
 public sealed record PersonReference
 {
     internal PersonReference(
-        PersonId id, PersonName? name, PersonPlaceholder? placeholder, ProfileVisibility visibility, bool maintainedByViewer, ProfileImageId? imageId, Gender? gender)
+        PersonId id, PersonName? name, PersonPlaceholder? placeholder, ProfileVisibility visibility, bool maintainedByViewer, ProfileImageId? imageId, Gender? gender,
+        string? description, BirthDate? birthDate, bool birthDateShown)
     {
         Id = id;
         Name = name;
@@ -19,6 +20,9 @@ public sealed record PersonReference
         MaintainedByViewer = maintainedByViewer;
         ImageId = imageId;
         Gender = gender;
+        Description = description;
+        BirthDate = birthDate;
+        BirthDateShown = birthDateShown;
     }
 
     public PersonId Id { get; }
@@ -45,4 +49,19 @@ public sealed record PersonReference
     /// placeholder: a placeholder shows nothing the name would not (D-030).
     /// </summary>
     public Gender? Gender { get; }
+
+    /// <summary>The description, or <see langword="null"/> if it has none or is a placeholder (D-037).</summary>
+    public string? Description { get; }
+
+    /// <summary>
+    /// The birth date, or <see langword="null"/> if it is not known, is a placeholder, or is not
+    /// shown to others and the viewer is neither its maintainer nor an administrator (D-037).
+    /// </summary>
+    public BirthDate? BirthDate { get; }
+
+    /// <summary>
+    /// Whether the maintainer shows the birth date to others; always <see langword="false"/> for a
+    /// placeholder. It does not tell whether a date exists (D-037).
+    /// </summary>
+    public bool BirthDateShown { get; }
 }

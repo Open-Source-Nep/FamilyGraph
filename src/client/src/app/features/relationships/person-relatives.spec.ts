@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
 import { PeopleService } from '../people/people.service';
-import { Person, PersonName } from '../people/person';
+import { Person, PersonDetails, PersonName } from '../people/person';
 import { MarriagesService } from './marriages.service';
 import { PersonRelatives } from './person-relatives';
 import { CreatedLink, DirectRelatives, LinkEndpoint, NewLink, Spouse } from './relationship';
@@ -18,6 +18,9 @@ const maya: Person = {
   imageId: null,
   gender: null,
   maintainedByYou: true,
+  description: null,
+  birthDate: null,
+  birthDateShown: false,
 };
 
 const relatives: DirectRelatives = {
@@ -115,7 +118,7 @@ describe('PersonRelatives', () => {
                 ],
                 isTruncated: false,
               }),
-            create: (name: PersonName) => {
+            create: ({ name }: PersonDetails) => {
               newPeople.push(name);
               return Promise.resolve({ ...name, id: 'p6', maintainedByYou: true });
             },
@@ -268,7 +271,11 @@ describe('PersonRelatives', () => {
     await fixture.whenStable();
 
     const dialog = fixture.nativeElement.querySelector('dialog') as HTMLDialogElement;
-    (dialog.querySelector('button.secondary') as HTMLButtonElement).click();
+    (
+      Array.from(dialog.querySelectorAll('button')).find(
+        (button) => button.textContent?.trim() === 'Cancel',
+      ) as HTMLButtonElement
+    ).click();
     await fixture.whenStable();
 
     expect(dialog.open).toBe(false);
