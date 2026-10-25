@@ -18,8 +18,10 @@
       [graph]="shown"
       [selectedId]="selectedId()"
       [addMenu]="true"
+      [administrator]="auth.isAdministrator()"
       (selected)="selectedId.set($event)"
       (addRelative)="startAdding($event)"
+      (deletePerson)="startDeleting($event)"
     />
     @if (adding(); as adding) {
       <app-add-relatives
@@ -27,6 +29,9 @@
         [relation]="adding.relation"
         (closed)="finishAdding($event)"
       />
+    }
+    @if (deleting(); as deleting) {
+      <app-delete-person [person]="deleting" (closed)="finishDeleting($event)" />
     }
 
     @if (selected(); as selected) {
@@ -52,7 +57,8 @@
     } @else {
       <p class="hint">
         Hover over someone for their details, select them in the diagram, or use the list below.
-        Right-click someone, or press and hold, to add their parents, children or spouse.
+        Right-click someone, or press and hold, to add their parents, children or spouse, or to
+        delete a profile you may delete.
       </p>
     }
 

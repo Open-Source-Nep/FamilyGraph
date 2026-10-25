@@ -1,0 +1,14 @@
+<dialog #dialog class="dialog" aria-labelledby="delete-person-title" (close)="close()">
+  <h2 id="delete-person-title">Delete {{ fullName(person()) }}?</h2>
+  <p>
+    This cannot be undone. Their name, photo and gender are erased for good, and they stay in the
+    family graph as “Deleted”, with their links.
+  </p>
+  @if (error(); as error) {
+    <p class="error" role="alert">{{ error }}</p>
+  }
+  <div class="actions">
+    <button type="button" [disabled]="saving()" (click)="confirm()">Delete</button>
+    <button type="button" class="secondary" (click)="close()">Cancel</button>
+  </div>
+</dialog>

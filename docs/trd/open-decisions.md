@@ -51,7 +51,8 @@ The technical decision log, plus any unresolved choices. Do not treat recommenda
 - Genders on profiles (D-030 below).
 - Marriages (D-031 below).
 - Adding relatives from the graph, with person search (D-032 below).
-- Data import: an administrator's upload of an export file into an empty instance (D-033 below, proposed).
+- Data import: an administrator's upload of an export file into an empty instance (D-033 below).
+- Deleting profiles from the graph (D-034 below, proposed).
 - **Name length (agreed 2026-10-21):** Business puts no length cap on name parts. Any storage or input limit is set later by persistence (#9) and API validation (D-010).
 
 ## Discussion topics (all agreed)
@@ -557,7 +558,7 @@ For each major decision, record:
 
 ### D-033: Data import
 
-- **Status:** proposed (2026-10-24). Issue #87. Agreed with the user on 2026-10-24 (PRD 09): import reads the export file (D-029, version 1); only administrators import; only into an instance without any profile; a profile whose maintainer account does not exist here goes to the importing administrator; the import records one audit event and nothing per row; a file with any problem is refused whole. The rest is proposed with the PR.
+- **Status:** agreed (2026-10-24). Issue #87, merged in #91. Agreed with the user on 2026-10-24 (PRD 09): import reads the export file (D-029, version 1); only administrators import; only into an instance without any profile; a profile whose maintainer account does not exist here goes to the importing administrator; the import records one audit event and nothing per row; a file with any problem is refused whole. The rest is proposed with the PR.
 - **Context:** D-029 left the import to a later issue: it must accept version 1, keep IDs, and match accounts without a Google ID. An account is only a Google ID and an email (D-018), emails are not unique (`RequireUniqueEmail` is off) and an email can be unverified. The domain's creation methods give the creator's side approval and record events, which an import of stored states cannot use.
 - **Options considered:** matching a file account by any account with its email, or only by exactly one verified one; reading the file as it streams, or whole; validating in Server, or in Application with every problem listed; a transaction that only checks emptiness, or one that locks the tables; a multipart upload, or the raw JSON body.
 - **Trade-offs:** Matching only a single verified account means an unverified or shared email can never hand profiles to the wrong person; the importing administrator can hand them over later (D-027). Reading the file whole is simple and keeps the checks over all rows (cycles, duplicate pairs) in memory; the 64 MiB cap holds far more than PRD 09's 10,000 people. Locking the people, link and marriage tables for the import lets reads go on and makes a second, concurrent import wait and then find the instance not empty.
@@ -568,3 +569,15 @@ For each major decision, record:
   - **API:** `POST /api/import` with the export file as the `application/json` body, at most 64 MiB (413 beyond). Unreadable JSON is `import.invalid_json`, another `format` `import.unsupported_format`, another `version` `import.unsupported_version`, each as one problem of a 422. Unknown fields are ignored and missing sections are empty. It answers `{ "people", "links", "marriages", "matchedAccounts", "assignedToYou" }`.
   - **Client:** the account page shows administrators a "Data import" box under the export: a file picker and "Import file", then the counts, or the refusal with its problems.
 - **Consequences:** An imported instance starts with one audit entry and no per-row history (PRD 07 traceability begins at the import). A maintainer who signs in after the import does not get their profiles automatically; the administrator hands them over. A later export version must stay importable or raise `version` with a matching import.
+
+### D-034: Deleting profiles from the graph
+
+- **Status:** proposed (2026-10-24). Issue #92. Agreed with the user on 2026-10-24 (PRD 08): the graph page's right-click menu offers Delete profile to the maintainer or an administrator, under the deletion rules of D-026, after a confirmation dialog. The rest is proposed with the PR.
+- **Context:** Profiles could only be deleted from the person page (D-026). The diagram's menu (D-032) already has the person, and each graph person carries `maintainedByYou`; the Client knows whether you are an administrator from `GET /api/account`.
+- **Options considered:** a new endpoint, or the existing `DELETE /api/people/{id}`; reloading the whole view after a deletion, or replacing the one person in it.
+- **Trade-offs:** The existing endpoint already enforces who may delete and records the audit event, so the Server and the domain stay as they are. Replacing the one person with the placeholder fetched from `GET /api/people/{id}` keeps the people the viewer loaded with "load more", which a reload of the centre's view would drop; links stay as they were, because deletion leaves them active.
+- **Decision:**
+  - **Client:** `GraphDiagram` takes `administrator` and, on a person you maintain or on anyone as an administrator, adds **Delete profile** to the menu (never on a deleted person, who has no menu) and emits `deletePerson`. `GraphView` opens `DeletePerson`, a modal dialog that names the person, says the name, photo and gender are erased for good and that they stay as "Deleted" with their links, and calls `DELETE /api/people/{id}`; a refusal shows in the dialog. Then the person in the view is replaced by `GET /api/people/{id}` (the `Deleted` placeholder) and a notice says so.
+  - **Server, Application, Business:** no change; the menu is only a hint, and the server decides (403 `person.not_maintainer`, 409 `person.deleted`).
+  - **Accessibility:** the person page's "Delete profile" stays the keyboard and screen reader route (AC-09.2).
+- **Consequences:** Every later menu action follows the same pattern: the Client hides what you may not do, and the existing endpoint enforces it.
