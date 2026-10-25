@@ -42,6 +42,7 @@
           @if (selected.person.id !== shown.centreId) {
             <a [routerLink]="['/people', selected.person.id, 'graph']">Centre the view here</a>
           }
+          <a [routerLink]="['/people', selected.person.id, 'bansawali']">Show the Bansawali</a>
           @if (selected.hasMore && !full()) {
             <button
               type="button"

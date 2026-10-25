@@ -49,6 +49,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/graph/graph-page').then((m) => m.GraphPage),
       },
       {
+        path: 'people/:id/bansawali',
+        title: 'Bansawali',
+        loadComponent: () => import('./features/graph/bansawali-page').then((m) => m.BansawaliPage),
+      },
+      {
         path: 'approvals',
         title: 'Link approvals',
         loadComponent: () =>

@@ -1,0 +1,86 @@
+<section class="panel bansawali">
+  @if (error(); as error) {
+    <p class="error" role="alert">{{ error }}</p>
+  }
+
+  @if (tree(); as root) {
+    <h1>{{ title() }}</h1>
+    <p class="hint">
+      Descendants of {{ fullName(root.row.person) }}
+      {{ allChildren() ? 'through every child' : 'through sons' }}, {{ generations() }}
+      {{ generations() === 1 ? 'generation' : 'generations' }}, children in birth order.
+    </p>
+
+    <nav class="tabs no-print" aria-label="Whose children to follow">
+      <a
+        [routerLink]="[]"
+        [queryParams]="lineParams(false)"
+        [class.current]="!allChildren()"
+        [attr.aria-current]="allChildren() ? null : 'page'"
+        >Through sons</a
+      >
+      <a
+        [routerLink]="[]"
+        [queryParams]="lineParams(true)"
+        [class.current]="allChildren()"
+        [attr.aria-current]="allChildren() ? 'page' : null"
+        >Through every child</a
+      >
+    </nav>
+    @if (!allChildren()) {
+      <p class="hint no-print">
+        Daughters, adopted sons and children whose gender is not known are listed without their
+        descendants. Choose "Through every child" to follow them too.
+      </p>
+    }
+    @if (bansawali()?.isTruncated) {
+      <p class="hint" role="status">
+        This Bansawali stops at the most people it can show. People marked "more descendants" have
+        descendants not listed here; open their own Bansawali to continue.
+      </p>
+    }
+
+    <div class="actions no-print">
+      <button type="button" (click)="print()">Print</button>
+      <a [routerLink]="['/people', root.row.person.id]">Back to the profile</a>
+      <a [routerLink]="['/people', root.row.person.id, 'graph']">Family graph</a>
+    </div>
+
+    <ol class="lineage">
+      <ng-container *ngTemplateOutlet="lineageEntry; context: { $implicit: root }" />
+    </ol>
+
+    <ng-template #lineageEntry let-entry>
+      <li>
+        <div class="lineage-person">
+          <span class="generation" aria-hidden="true">{{ entry.row.generation + 1 }}</span>
+          <a [routerLink]="['/people', entry.row.person.id]">{{ fullName(entry.row.person) }}</a>
+          @if (entry.relation) {
+            <span class="relation">({{ entry.relation }})</span>
+          }
+          @for (spouse of entry.spouses; track spouse.person.id) {
+            <span class="spouse">{{ spouse.label }} {{ fullName(spouse.person) }}</span>
+          }
+          @if (entry.row.hasMore) {
+            <a
+              class="no-print"
+              [routerLink]="['/people', entry.row.person.id, 'bansawali']"
+              [queryParams]="lineParams(allChildren())"
+              >More descendants</a
+            >
+            <span class="print-only">(more descendants)</span>
+          }
+        </div>
+        @if (entry.children.length) {
+          <ol>
+            @for (child of entry.children; track child.row.person.id) {
+              <ng-container *ngTemplateOutlet="lineageEntry; context: { $implicit: child }" />
+            }
+          </ol>
+        }
+      </li>
+    </ng-template>
+  } @else if (!error()) {
+    <p class="hint">Loading the Bansawali…</p>
+  }
+</section>

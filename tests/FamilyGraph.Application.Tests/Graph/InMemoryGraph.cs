@@ -95,6 +95,33 @@ internal sealed class InMemoryGraph(InMemoryPeople store) : IGraphQueries
             reached.Count > shown.Count));
     }
 
+    public Task<ChildLinks> ChildLinksAsync(
+        IReadOnlyCollection<PersonId> parentIds, int limit, CancellationToken cancellationToken)
+    {
+        var links = ActiveLinks()
+            .Where(link => parentIds.Contains(link.ParentId))
+            .OrderBy(link => link.ParentId.Value)
+            .ThenBy(link => link.BirthOrder ?? int.MaxValue)
+            .ThenBy(link => link.Id.Value)
+            .ToList();
+        return Task.FromResult(new ChildLinks([.. links.Take(limit)], links.Count > limit));
+    }
+
+    public Task<IReadOnlySet<PersonId>> WithChildrenAsync(
+        IReadOnlyCollection<PersonId> parentIds, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlySet<PersonId>>(
+            ActiveLinks().Select(link => link.ParentId).Where(parentIds.Contains).ToHashSet());
+
+    public Task<MarriagesOf> MarriagesOfAsync(
+        IReadOnlyCollection<PersonId> personIds, int limit, CancellationToken cancellationToken)
+    {
+        var marriages = ActiveMarriages()
+            .Where(marriage => personIds.Contains(marriage.FirstSpouseId) || personIds.Contains(marriage.SecondSpouseId))
+            .OrderBy(marriage => marriage.Id.Value)
+            .ToList();
+        return Task.FromResult(new MarriagesOf([.. marriages.Take(limit)], marriages.Count > limit));
+    }
+
     public Task<IReadOnlyList<PersonRecord>> PeopleAsync(
         IReadOnlyCollection<PersonId> ids, AccountId viewerId, CancellationToken cancellationToken) =>
         Task.FromResult<IReadOnlyList<PersonRecord>>(

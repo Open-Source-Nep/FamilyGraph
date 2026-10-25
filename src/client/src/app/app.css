@@ -20,3 +20,10 @@ nav {
 main {
   padding: 1rem;
 }
+
+/* Printed pages, such as the Bansawali, leave out the navigation. */
+@media print {
+  header {
+    display: none;
+  }
+}
