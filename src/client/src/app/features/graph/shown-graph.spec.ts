@@ -12,17 +12,24 @@ const person = (id: string): GraphPerson => ({
   gender: null,
   maintainedByYou: false,
   description: null,
+  birthSortDate: null,
 });
 const row = (id: string, generation: number, hasMore = false): LocalViewPerson => ({
   person: person(id),
   generation,
   hasMore,
 });
-const link = (parentId: string, childId: string, type: GraphLink['type'] = 'Biological') => ({
+const link = (
+  parentId: string,
+  childId: string,
+  type: GraphLink['type'] = 'Biological',
+  birthOrder: number | null = null,
+): GraphLink => ({
   id: `${parentId}-${childId}`,
   parentId,
   childId,
   type,
+  birthOrder,
 });
 const view = (
   centreId: string,
@@ -115,5 +122,26 @@ describe('shown graph', () => {
     expect(generationLabel(2)).toBe('2 generations above');
     expect(generationLabel(0)).toBe('Same generation');
     expect(generationLabel(-1)).toBe('1 generation below');
+  });
+
+  it("lists brothers and sisters and each person's children in birth order (AC-02.17)", () => {
+    const family = view(
+      'hari',
+      [row('hari', 0), row('zara', -1), row('asha', -1), row('bina', -1)],
+      [
+        link('hari', 'zara'),
+        link('hari', 'asha', 'Biological', 2),
+        link('hari', 'bina', 'Biological', 1),
+      ],
+    );
+
+    const [parents, children] = byGeneration(fromView(family));
+
+    expect(parents.people[0].children.map((child) => child.person.id)).toEqual([
+      'bina',
+      'asha',
+      'zara',
+    ]);
+    expect(children.people.map((entry) => entry.row.person.id)).toEqual(['bina', 'asha', 'zara']);
   });
 });

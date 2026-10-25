@@ -10,6 +10,11 @@ export interface GraphPerson extends PersonLabel {
   maintainedByYou: boolean;
   /** Null when not set and for a placeholder (D-037). */
   description: string | null;
+  /**
+   * The earliest day the birth date can mean (`yyyy-mm-dd`), only when its maintainer shows it to
+   * others, so that children sort the same for everyone (D-039).
+   */
+  birthSortDate: string | null;
 }
 
 /**
@@ -22,12 +27,13 @@ export interface LocalViewPerson {
   hasMore: boolean;
 }
 
-/** An active parent–child link. */
+/** An active parent–child link, with the child's place in the parent's birth order if set (D-016). */
 export interface GraphLink {
   id: string;
   parentId: string;
   childId: string;
   type: ParentChildType;
+  birthOrder: number | null;
 }
 
 /** An active marriage between two people of the same generation; `isFormer` when it ended (D-031). */

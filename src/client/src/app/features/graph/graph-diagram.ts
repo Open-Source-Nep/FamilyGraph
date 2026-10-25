@@ -16,6 +16,7 @@ import dagre, { DagreLayoutOptions } from 'cytoscape-dagre';
 
 import { fullName, initials } from '../people/person';
 import { PhotoLoader } from '../people/photo-loader.service';
+import { compareChildren, orderRow, orderSiblings, siblingSets } from './child-order';
 import { familyLayout } from './family-layout';
 import { GraphPerson, LocalViewPerson } from './graph';
 import { ShownGraph, generationLabel } from './shown-graph';
@@ -216,7 +217,7 @@ export class GraphDiagram {
       if (dots) {
         cy.layout(this.dotsLayout(this.graph())).run();
       } else {
-        this.treeLayout(cy);
+        this.treeLayout(cy, this.graph());
       }
       if (!dots) {
         this.showPhotos(cy, this.graph());
@@ -300,9 +301,10 @@ export class GraphDiagram {
   /**
    * The tree diagram by dagre, which cannot lay out an edge within a row. Each marriage is
    * replaced by a tiny stand-in child of both spouses, weighted so that they share a row, and the
-   * stand-ins are removed once the people are placed.
+   * stand-ins are removed once the people are placed. Then each row puts brothers and sisters in
+   * birth order, which dagre's crossing reduction may have mixed up (D-039).
    */
-  private treeLayout(cy: cytoscape.Core): void {
+  private treeLayout(cy: cytoscape.Core, graph: ShownGraph): void {
     const standIns = cy.add(
       cy
         .edges('.marriage')
@@ -327,12 +329,45 @@ export class GraphDiagram {
     standIns.nodes().style({ width: 1, height: 1, label: '', 'background-image': 'none' });
     cy.elements().not('edge.marriage').layout(layout).run();
     standIns.remove();
+
+    const sets = [...siblingSets(graph.people, graph.links).values()].map((rows) =>
+      rows.map((row) => row.person.id),
+    );
+    const partners = new Map<string, Set<string>>();
+    for (const marriage of graph.marriages) {
+      for (const [a, b] of [
+        [marriage.firstSpouseId, marriage.secondSpouseId],
+        [marriage.secondSpouseId, marriage.firstSpouseId],
+      ]) {
+        partners.set(a, (partners.get(a) ?? new Set()).add(b));
+      }
+    }
+    const rows = new Map<number, { id: string; x: number; width: number }[]>();
+    cy.nodes().forEach((node) => {
+      const y = Math.round(node.position('y'));
+      rows.set(y, [
+        ...(rows.get(y) ?? []),
+        { id: node.id(), x: node.position('x'), width: node.width() },
+      ]);
+    });
+    cy.batch(() => {
+      for (const row of rows.values()) {
+        for (const [id, x] of orderRow(row, sets, partners)) {
+          const node = cy.getElementById(id);
+          node.position({ x, y: node.position('y') });
+        }
+      }
+    });
   }
 
   /** Families grouped under their parents rather than spread out evenly (D-024). */
   private dotsLayout(graph: ShownGraph): cytoscape.PresetLayoutOptions {
+    // Brothers and sisters start in birth order before the layout settles (D-039).
     const positions = familyLayout(
-      graph.people.map((row) => ({ id: row.person.id, width: dotSize })),
+      orderSiblings(graph.people, graph.links).map((row) => ({
+        id: row.person.id,
+        width: dotSize,
+      })),
       graph.links,
       { height: dotSize, nodeSep: 8, groupSep: 24, rankSep: 28 },
       graph.marriages.map((marriage) => ({
@@ -343,11 +378,21 @@ export class GraphDiagram {
     return { name: 'preset', positions: Object.fromEntries(positions), padding: 16 };
   }
 
+  /**
+   * People and each parent's links in birth order (D-039): dagre places a row's people in the order
+   * it first meets them, so brothers and sisters come out eldest on the left.
+   */
   private elements(graph: ShownGraph): ElementDefinition[] {
     const ids = new Set(graph.people.map((row) => row.person.id));
+    const people = new Map(graph.people.map((row) => [row.person.id, row.person]));
+    const links = graph.links
+      .filter((link) => ids.has(link.parentId) && ids.has(link.childId))
+      .map((link) => ({ person: people.get(link.childId)!, link }))
+      .sort(compareChildren)
+      .map(({ link }) => link);
     const measure = this.textWidth();
     return [
-      ...graph.people.map((row) => ({
+      ...orderSiblings(graph.people, graph.links).map((row) => ({
         group: 'nodes' as const,
         data: {
           id: row.person.id,
@@ -362,13 +407,11 @@ export class GraphDiagram {
           row.hasMore ? 'has-more' : '',
         ].join(' '),
       })),
-      ...graph.links
-        .filter((link) => ids.has(link.parentId) && ids.has(link.childId))
-        .map((link) => ({
-          group: 'edges' as const,
-          data: { id: link.id, source: link.parentId, target: link.childId },
-          classes: link.type === 'Adoptive' ? 'adoptive' : '',
-        })),
+      ...links.map((link) => ({
+        group: 'edges' as const,
+        data: { id: link.id, source: link.parentId, target: link.childId },
+        classes: link.type === 'Adoptive' ? 'adoptive' : '',
+      })),
       ...graph.marriages
         .filter((marriage) => ids.has(marriage.firstSpouseId) && ids.has(marriage.secondSpouseId))
         .map((marriage) => ({

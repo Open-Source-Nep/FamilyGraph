@@ -112,7 +112,8 @@ internal sealed class EfGraphQueries(FamilyGraphDbContext context, GraphLimits l
 
     /// <summary>Parameter: <c>@ids</c>.</summary>
     private static readonly string LinksBetweenSql = $"""
-        SELECT link.id AS "Id", link.parent_id AS "ParentId", link.child_id AS "ChildId", link.type AS "Type"
+        SELECT link.id AS "Id", link.parent_id AS "ParentId", link.child_id AS "ChildId", link.type AS "Type",
+            link.birth_order AS "BirthOrder"
         FROM parent_child_links AS link
         JOIN unnest(@ids) AS parent (id) ON parent.id = link.parent_id
         JOIN unnest(@ids) AS child (id) ON child.id = link.child_id
@@ -256,7 +257,7 @@ internal sealed class EfGraphQueries(FamilyGraphDbContext context, GraphLimits l
             new NpgsqlParameter<Guid[]>("ids", ids)).ToListAsync(token), cancellationToken);
 
         return [.. rows.Select(row => new GraphLink(
-            new LinkId(row.Id), new PersonId(row.ParentId), new PersonId(row.ChildId), ParentChildType.FromValue(row.Type)))];
+            new LinkId(row.Id), new PersonId(row.ParentId), new PersonId(row.ChildId), ParentChildType.FromValue(row.Type), row.BirthOrder))];
     }
 
     private async Task<IReadOnlyList<GraphMarriage>> MarriagesBetweenAsync(Guid[] ids, CancellationToken cancellationToken)
@@ -289,7 +290,7 @@ internal sealed class EfGraphQueries(FamilyGraphDbContext context, GraphLimits l
 
     private sealed record ViewRow(Guid PersonId, int Generation);
 
-    private sealed record LinkRow(Guid Id, Guid ParentId, Guid ChildId, int Type);
+    private sealed record LinkRow(Guid Id, Guid ParentId, Guid ChildId, int Type, int? BirthOrder);
 
     private sealed record MarriageRow(Guid Id, Guid FirstSpouseId, Guid SecondSpouseId, bool IsFormer);
 

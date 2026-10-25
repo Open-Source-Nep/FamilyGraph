@@ -188,7 +188,9 @@ export class GraphView {
         this.shown.set({
           ...shown,
           people: shown.people.map((row) =>
-            row.person.id === person.id ? { ...row, person: placeholder } : row,
+            row.person.id === person.id
+              ? { ...row, person: { ...placeholder, birthSortDate: null } }
+              : row,
           ),
         });
       }

@@ -16,6 +16,7 @@ const person = (id: string, firstName: string): GraphPerson => ({
   gender: null,
   maintainedByYou: false,
   description: null,
+  birthSortDate: null,
 });
 const sita = person('sita', 'Sita');
 const maya = person('maya', 'Maya');

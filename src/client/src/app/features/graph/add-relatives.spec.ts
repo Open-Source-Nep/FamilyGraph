@@ -51,9 +51,12 @@ describe('AddRelatives', () => {
   let spouses: Record<string, Spouse[]>;
   let results: AddRelativesResult[];
 
-  async function open(target: GraphPerson, relation: AddRelation): Promise<void> {
+  async function open(target: Person, relation: AddRelation): Promise<void> {
     fixture = TestBed.createComponent(AddRelatives);
-    fixture.componentRef.setInput('person', target);
+    fixture.componentRef.setInput('person', {
+      ...target,
+      birthSortDate: null,
+    } satisfies GraphPerson);
     fixture.componentRef.setInput('relation', relation);
     fixture.componentInstance.closed.subscribe((result) => results.push(result));
     await fixture.whenStable();

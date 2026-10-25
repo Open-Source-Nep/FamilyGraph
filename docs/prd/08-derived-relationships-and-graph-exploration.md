@@ -22,6 +22,7 @@ Enable people to explore a large interconnected family graph without treating de
 - The related people are the ones nearest to the centre person in any direction, closest first: parents and children, then siblings, grandparents and grandchildren, and so on, within a limited number of generations above and below.
 - Adoptive links are drawn differently from biological links (e.g. dashed) with a legend. The exact styling is a UI decision.
 - Active marriages are a step in any direction, like parents and children: local views, the overview and paths walk them. Spouses are in the same generation, drawn side by side with a distinct line, and a former marriage is labelled as former.
+- **Children in birth order (agreed 2026-10-25):** the graph page's tree diagram and text view, and the home page's dots, place each family's children in the order of PRD 02: birth order, then birth dates shown to others, then name. The tree places brothers and sisters with the same parents eldest on the left; the home dots start in that order before they settle. Half siblings are ordered within each set of parents.
 
 ## Adding relatives from the graph (agreed 2026-10-24)
 
