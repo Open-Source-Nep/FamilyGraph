@@ -108,6 +108,43 @@ internal sealed class EfRelationshipQueries(FamilyGraphDbContext context) : IRel
         return new LinkConsentListData(rows.Count > limit ? rows[..limit] : rows, rows.Count > limit);
     }
 
+    public async Task<LinkConsentListData> ListPendingLinksAsync(
+        Viewer viewer, int limit, CancellationToken cancellationToken)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(limit);
+
+        var viewerId = viewer.AccountId;
+
+        var rows = await (
+                from link in context.Set<ParentChildLink>().AsNoTracking()
+                where link.DeletedAt == null
+                    && (link.ParentApproval == EndpointApproval.Pending || link.ChildApproval == EndpointApproval.Pending)
+                join parent in context.Set<Person>() on link.ParentId equals parent.Id
+                join child in context.Set<Person>() on link.ChildId equals child.Id
+                where (link.ParentApproval == EndpointApproval.Pending && parent.DeletedAt == null && parent.MaintainerId != viewerId)
+                    || (link.ChildApproval == EndpointApproval.Pending && child.DeletedAt == null && child.MaintainerId != viewerId)
+                let parentHidden = parent.DeletedAt != null
+                let childHidden = child.DeletedAt != null
+                orderby parentHidden, parentHidden ? "" : parent.Name.FirstName,
+                    parentHidden ? "" : parent.Name.MiddleName, parentHidden ? "" : parent.Name.LastName,
+                    childHidden, childHidden ? "" : child.Name.FirstName, childHidden ? "" : child.Name.MiddleName,
+                    childHidden ? "" : child.Name.LastName, link.Id
+                select new LinkConsentData(
+                    link.Id,
+                    link.Type,
+                    new LinkEndpointData(
+                        new PersonRecord(parent.Id, parent.Name, parent.Visibility, parent.DeletedAt != null, parent.MaintainerId == viewerId, parent.ImageId, parent.Gender, parent.Description, parent.BirthDate, parent.BirthDateShown),
+                        link.ParentApproval),
+                    new LinkEndpointData(
+                        new PersonRecord(child.Id, child.Name, child.Visibility, child.DeletedAt != null, child.MaintainerId == viewerId, child.ImageId, child.Gender, child.Description, child.BirthDate, child.BirthDateShown),
+                        link.ChildApproval),
+                    false))
+            .Take(limit + 1)
+            .ToListAsync(cancellationToken);
+
+        return new LinkConsentListData(rows.Count > limit ? rows[..limit] : rows, rows.Count > limit);
+    }
+
     /// <summary>Not deleted and approved on both sides (PRD 03, D-009).</summary>
     private IQueryable<ParentChildLink> ActiveLinks() =>
         context.Set<ParentChildLink>()

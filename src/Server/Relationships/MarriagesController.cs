@@ -51,6 +51,25 @@ public sealed class MarriagesController(MarriageService marriages) : ControllerB
             ToMarriageId(id), ToPersonId(request.SpouseId!.Value), User.Viewer(), cancellationToken));
 
     /// <summary>
+    /// Every marriage in the instance with a side waiting for a maintainer other than you (D-040).
+    /// 403 <c>consent.not_administrator</c>.
+    /// </summary>
+    [HttpGet("pending")]
+    public async Task<MarriageConsentListResponse> ListPending(CancellationToken cancellationToken) =>
+        MarriageConsentListResponse.From(await marriages.ListPendingForAdministratorAsync(User.Viewer(), cancellationToken));
+
+    /// <summary>
+    /// An administrator approves a spouse's pending side on behalf of its maintainer (D-040). 403
+    /// <c>consent.not_administrator</c>, 404 <c>marriage.not_found</c>, 409
+    /// <c>marriage.consent_unchanged</c> or <c>consent.not_pending</c>, 422 <c>marriage.not_a_spouse</c>.
+    /// </summary>
+    [HttpPost("{id:guid}/approve-as-administrator")]
+    public async Task<MarriageConsentResponse> ApproveAsAdministrator(
+        Guid id, MarriageConsentRequest request, CancellationToken cancellationToken) =>
+        MarriageConsentResponse.From(await marriages.ApproveAsAdministratorAsync(
+            ToMarriageId(id), ToPersonId(request.SpouseId!.Value), User.Viewer(), cancellationToken));
+
+    /// <summary>
     /// Declines for a pending spouse you maintain or withdraws your approval; the marriage is
     /// inactive at once. 403 <c>marriage.consent_not_maintainer</c>, 404 <c>marriage.not_found</c>,
     /// 409 <c>marriage.consent_unchanged</c>, 422 <c>marriage.sole_maintainer_must_delete</c>.

@@ -173,6 +173,29 @@ internal sealed class InMemoryPeople
         return Task.FromResult(new LinkConsentListData(inactive.Take(limit).ToList(), inactive.Count > limit));
     }
 
+    /// <summary>Links with a pending side someone else maintains, by parent and child name, like the database query.</summary>
+    public Task<LinkConsentListData> ListPendingLinksAsync(Viewer viewer, int limit, CancellationToken cancellationToken)
+    {
+        var viewerId = viewer.AccountId;
+        var pending = NotDeletedLinks()
+            .Select(link => (Link: link, Parent: People[link.ParentId], Child: People[link.ChildId]))
+            .Where(row => WaitsForOther(row.Link.ParentApproval, row.Parent, viewerId)
+                || WaitsForOther(row.Link.ChildApproval, row.Child, viewerId))
+            .OrderBy(row => row.Parent.IsDeleted)
+            .ThenBy(row => row.Parent.IsDeleted ? "" : row.Parent.Name.FirstName, StringComparer.Ordinal)
+            .ThenBy(row => row.Child.IsDeleted)
+            .ThenBy(row => row.Child.IsDeleted ? "" : row.Child.Name.FirstName, StringComparer.Ordinal)
+            .ThenBy(row => row.Link.Id.Value)
+            .Select(row => new LinkConsentData(
+                row.Link.Id,
+                row.Link.Type,
+                new LinkEndpointData(Record(row.Parent.Id, viewer), row.Link.ParentApproval),
+                new LinkEndpointData(Record(row.Child.Id, viewer), row.Link.ChildApproval),
+                IsActive: false))
+            .ToList();
+        return Task.FromResult(new LinkConsentListData(pending.Take(limit).ToList(), pending.Count > limit));
+    }
+
     Task<Marriage?> IMarriageStore.FindAsync(LinkId id, CancellationToken cancellationToken) =>
         Task.FromResult(Marriages.GetValueOrDefault(id));
 
@@ -222,6 +245,29 @@ internal sealed class InMemoryPeople
             .ToList();
         return Task.FromResult(new MarriageConsentListData(inactive.Take(limit).ToList(), inactive.Count > limit));
     }
+
+    public Task<MarriageConsentListData> ListPendingMarriagesAsync(Viewer viewer, int limit, CancellationToken cancellationToken)
+    {
+        var viewerId = viewer.AccountId;
+        var pending = Marriages.Values
+            .Where(marriage => !marriage.IsDeleted)
+            .Select(marriage => (Marriage: marriage, First: People[marriage.FirstSpouseId], Second: People[marriage.SecondSpouseId]))
+            .Where(row => WaitsForOther(row.Marriage.FirstApproval, row.First, viewerId)
+                || WaitsForOther(row.Marriage.SecondApproval, row.Second, viewerId))
+            .OrderBy(row => row.First.IsDeleted ? "" : row.First.Name.FirstName, StringComparer.Ordinal)
+            .ThenBy(row => row.Marriage.Id.Value)
+            .Select(row => new MarriageConsentData(
+                row.Marriage.Id,
+                new LinkEndpointData(Record(row.First.Id, viewer), row.Marriage.FirstApproval),
+                new LinkEndpointData(Record(row.Second.Id, viewer), row.Marriage.SecondApproval),
+                row.Marriage.IsFormer,
+                IsActive: false))
+            .ToList();
+        return Task.FromResult(new MarriageConsentListData(pending.Take(limit).ToList(), pending.Count > limit));
+    }
+
+    private static bool WaitsForOther(EndpointApproval approval, Person person, AccountId viewerId) =>
+        approval == EndpointApproval.Pending && !person.IsDeleted && !person.IsMaintainedBy(viewerId);
 
     public void Add(IEnumerable<AuditEvent> auditEvents, DateTimeOffset occurredAt) =>
         _addedEvents.AddRange(auditEvents.Select(auditEvent => (auditEvent, occurredAt)));

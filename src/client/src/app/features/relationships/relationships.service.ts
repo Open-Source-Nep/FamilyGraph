@@ -34,6 +34,21 @@ export class RelationshipsService {
     return firstValueFrom(this.http.get<LinkConsentList>('/api/relationships/inactive'));
   }
 
+  /** Every link with a side waiting for another maintainer; administrators only (D-040). */
+  listPending(): Promise<LinkConsentList> {
+    return firstValueFrom(this.http.get<LinkConsentList>('/api/relationships/pending'));
+  }
+
+  /** An administrator approves a pending endpoint on behalf of its maintainer (D-040). */
+  approveAsAdministrator(linkId: string, endpoint: LinkEndpoint): Promise<LinkConsent> {
+    return firstValueFrom(
+      this.http.post<LinkConsent>(
+        `/api/relationships/${encodeURIComponent(linkId)}/approve-as-administrator`,
+        { endpoint },
+      ),
+    );
+  }
+
   /** Approves a pending endpoint you maintain, or restores your approval. */
   approve(linkId: string, endpoint: LinkEndpoint): Promise<LinkConsent> {
     return this.consent(linkId, 'approve', endpoint);

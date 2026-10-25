@@ -23,6 +23,13 @@ public interface IMarriageQueries
     /// most <paramref name="limit"/> marriages (D-010).
     /// </summary>
     Task<MarriageConsentListData> ListInactiveMarriagesAsync(Viewer viewer, int limit, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Every non-deleted marriage with a pending side whose spouse is not deleted and is maintained
+    /// by someone other than the viewer, by the spouses' names (D-040). At most
+    /// <paramref name="limit"/> marriages.
+    /// </summary>
+    Task<MarriageConsentListData> ListPendingMarriagesAsync(Viewer viewer, int limit, CancellationToken cancellationToken);
 }
 
 /// <summary>A spouse before privacy is applied.</summary>

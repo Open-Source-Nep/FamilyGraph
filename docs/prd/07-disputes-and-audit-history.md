@@ -13,7 +13,7 @@ Provide accountability without giving administrators the power to override relat
 - Audit history must distinguish identity-claim decisions from relationship-consent decisions.
 - Record administrator decisions and rationale for manual claim review.
 - Restrict access to sensitive claim evidence and non-public audit details.
-- Administrators can investigate disputes but cannot force relationship activation without required consent.
+- Administrators can investigate disputes but cannot force relationship activation without required consent. Approving a pending side on behalf of its maintainer (PRD 03) is recorded as an administrator approval.
 
 ## Audit visibility and retention
 

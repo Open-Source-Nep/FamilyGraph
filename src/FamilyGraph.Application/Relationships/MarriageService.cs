@@ -51,6 +51,22 @@ public sealed class MarriageService(
         return MarriageConsentView.From(marriage, first, second, actor);
     }
 
+    /// <summary>
+    /// An administrator approves a spouse's pending side on behalf of its maintainer (D-040).
+    /// </summary>
+    public async Task<MarriageConsentView> ApproveAsAdministratorAsync(
+        LinkId marriageId, PersonId spouseId, Viewer actor, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(actor);
+        EnsureAdministrator(actor);
+        var (marriage, first, second) = await LoadAsync(marriageId, cancellationToken);
+
+        marriage.ApproveAsAdministrator(SpouseIn(marriage, spouseId, first, second), actor.AccountId, actor.IsAdministrator);
+        await SaveAsync(marriage, cancellationToken);
+
+        return MarriageConsentView.From(marriage, first, second, actor);
+    }
+
     /// <summary>Declines a pending side or withdraws an approval. The marriage is inactive at once.</summary>
     public async Task<MarriageConsentView> DisagreeAsync(
         LinkId marriageId, PersonId spouseId, Viewer actor, CancellationToken cancellationToken)
@@ -91,6 +107,20 @@ public sealed class MarriageService(
             [.. list.Marriages.Select(marriage => MarriageConsentView.From(marriage, viewer))], list.IsTruncated);
     }
 
+    /// <summary>
+    /// Every marriage in the instance with a side waiting for a maintainer other than the
+    /// administrator (D-040). Administrators only.
+    /// </summary>
+    public async Task<MarriageConsentList> ListPendingForAdministratorAsync(Viewer viewer, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(viewer);
+        EnsureAdministrator(viewer);
+
+        var list = await queries.ListPendingMarriagesAsync(viewer, limits.InactiveLinksLimit, cancellationToken);
+        return new MarriageConsentList(
+            [.. list.Marriages.Select(marriage => MarriageConsentView.From(marriage, viewer))], list.IsTruncated);
+    }
+
     /// <summary>Any signed-in account may list them, like a person's parents and children (D-019).</summary>
     public async Task<SpouseList> ListSpousesAsync(PersonId personId, Viewer viewer, CancellationToken cancellationToken)
     {
@@ -119,6 +149,14 @@ public sealed class MarriageService(
     }
 
     /// <summary>Saves the change and its audit events in one transaction (D-002, D-015).</summary>
+    private static void EnsureAdministrator(Viewer viewer)
+    {
+        if (!viewer.IsAdministrator)
+        {
+            throw new ApprovalNotAdministratorException();
+        }
+    }
+
     private async Task SaveAsync(Marriage marriage, CancellationToken cancellationToken)
     {
         audit.Add(marriage.TakeEvents(), time.GetUtcNow());

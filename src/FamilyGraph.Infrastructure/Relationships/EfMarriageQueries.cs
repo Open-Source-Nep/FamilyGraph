@@ -85,4 +85,41 @@ internal sealed class EfMarriageQueries(FamilyGraphDbContext context) : IMarriag
 
         return new MarriageConsentListData(rows.Count > limit ? rows[..limit] : rows, rows.Count > limit);
     }
+
+    public async Task<MarriageConsentListData> ListPendingMarriagesAsync(
+        Viewer viewer, int limit, CancellationToken cancellationToken)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(limit);
+
+        var viewerId = viewer.AccountId;
+
+        var rows = await (
+                from marriage in context.Set<Marriage>().AsNoTracking()
+                where marriage.DeletedAt == null
+                    && (marriage.FirstApproval == EndpointApproval.Pending || marriage.SecondApproval == EndpointApproval.Pending)
+                join first in context.Set<Person>() on marriage.FirstSpouseId equals first.Id
+                join second in context.Set<Person>() on marriage.SecondSpouseId equals second.Id
+                where (marriage.FirstApproval == EndpointApproval.Pending && first.DeletedAt == null && first.MaintainerId != viewerId)
+                    || (marriage.SecondApproval == EndpointApproval.Pending && second.DeletedAt == null && second.MaintainerId != viewerId)
+                let firstHidden = first.DeletedAt != null
+                let secondHidden = second.DeletedAt != null
+                orderby firstHidden, firstHidden ? "" : first.Name.FirstName,
+                    firstHidden ? "" : first.Name.MiddleName, firstHidden ? "" : first.Name.LastName,
+                    secondHidden, secondHidden ? "" : second.Name.FirstName, secondHidden ? "" : second.Name.MiddleName,
+                    secondHidden ? "" : second.Name.LastName, marriage.Id
+                select new MarriageConsentData(
+                    marriage.Id,
+                    new LinkEndpointData(
+                        new PersonRecord(first.Id, first.Name, first.Visibility, first.DeletedAt != null, first.MaintainerId == viewerId, first.ImageId, first.Gender, first.Description, first.BirthDate, first.BirthDateShown),
+                        marriage.FirstApproval),
+                    new LinkEndpointData(
+                        new PersonRecord(second.Id, second.Name, second.Visibility, second.DeletedAt != null, second.MaintainerId == viewerId, second.ImageId, second.Gender, second.Description, second.BirthDate, second.BirthDateShown),
+                        marriage.SecondApproval),
+                    marriage.IsFormer,
+                    false))
+            .Take(limit + 1)
+            .ToListAsync(cancellationToken);
+
+        return new MarriageConsentListData(rows.Count > limit ? rows[..limit] : rows, rows.Count > limit);
+    }
 }

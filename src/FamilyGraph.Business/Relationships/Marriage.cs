@@ -161,6 +161,37 @@ public sealed class Marriage : AuditedEntity
     }
 
     /// <summary>
+    /// An administrator approves <paramref name="spouse"/>'s pending side on behalf of its
+    /// maintainer (D-040). Only a pending side: a decline or a withdrawn approval stays the
+    /// maintainer's to undo (PRD 03).
+    /// </summary>
+    public void ApproveAsAdministrator(Person spouse, AccountId actorId, bool actorIsAdministrator)
+    {
+        ArgumentNullException.ThrowIfNull(spouse);
+
+        var isFirst = IsFirst(spouse.Id);
+        if (!actorIsAdministrator)
+        {
+            throw new ApprovalNotAdministratorException();
+        }
+
+        EnsureNotDeleted();
+        spouse.EnsureNotDeleted();
+        if (Approval(isFirst) == EndpointApproval.Approved)
+        {
+            throw new MarriageConsentUnchangedException();
+        }
+
+        if (Approval(isFirst) == EndpointApproval.Disagreed)
+        {
+            throw new ApprovalNotPendingException();
+        }
+
+        SetApproval(isFirst, EndpointApproval.Approved);
+        Record(new MarriageSpouseApprovedByAdministrator(Id, spouse.Id, actorId, spouse.MaintainerId));
+    }
+
+    /// <summary>
     /// Records disagreement for <paramref name="spouse"/>'s side, from approved or from pending
     /// (declining). The marriage becomes inactive immediately. An account that maintains both
     /// spouses deletes the marriage instead.
