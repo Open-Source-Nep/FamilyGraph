@@ -76,6 +76,19 @@ public sealed class RelationshipsController(RelationshipService relationships) :
         return NoContent();
     }
 
+    /// <summary>
+    /// Numbers the parent's listed children 1, 2, 3… in birth order (D-016, D-037). Only the parent's
+    /// maintainer may (403 <c>link.birth_order_not_parent_maintainer</c>); a link that is not this
+    /// parent's is 404 <c>link.not_found</c>, a repeated one 422 <c>link.birth_order_invalid</c>.
+    /// </summary>
+    [HttpPut("/api/people/{id:guid}/children/order")]
+    public async Task<NoContentResult> OrderChildren(Guid id, ChildrenOrderRequest request, CancellationToken cancellationToken)
+    {
+        await relationships.OrderChildrenAsync(
+            ToPersonId(id), [.. request.LinkIds!.Select(ToLinkId)], User.AccountId(), cancellationToken);
+        return NoContent();
+    }
+
     [HttpGet("/api/people/{id:guid}/relatives")]
     public async Task<DirectRelativesResponse> ListDirectRelatives(Guid id, CancellationToken cancellationToken) =>
         DirectRelativesResponse.From(

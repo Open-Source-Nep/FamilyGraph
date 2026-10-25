@@ -86,9 +86,17 @@ namespace FamilyGraph.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<bool>("BirthDateShown")
+                        .HasColumnType("boolean")
+                        .HasColumnName("birth_date_shown");
+
                     b.Property<DateTimeOffset?>("DeletedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("deleted_at");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
 
                     b.Property<int?>("Gender")
                         .HasColumnType("integer")
@@ -105,6 +113,29 @@ namespace FamilyGraph.Infrastructure.Persistence.Migrations
                     b.Property<int>("Visibility")
                         .HasColumnType("integer")
                         .HasColumnName("visibility");
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "BirthDate", "FamilyGraph.Business.People.Person.BirthDate#BirthDate", b1 =>
+                        {
+                            b1.Property<int>("Calendar")
+                                .HasColumnType("integer")
+                                .HasColumnName("birth_calendar");
+
+                            b1.Property<int?>("Day")
+                                .HasColumnType("integer")
+                                .HasColumnName("birth_day");
+
+                            b1.Property<int?>("Month")
+                                .HasColumnType("integer")
+                                .HasColumnName("birth_month");
+
+                            b1.Property<DateOnly>("SortDate")
+                                .HasColumnType("date")
+                                .HasColumnName("birth_sort_date");
+
+                            b1.Property<int>("Year")
+                                .HasColumnType("integer")
+                                .HasColumnName("birth_year");
+                        });
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Name", "FamilyGraph.Business.People.Person.Name#PersonName", b1 =>
                         {
@@ -130,7 +161,10 @@ namespace FamilyGraph.Infrastructure.Persistence.Migrations
                     b.HasIndex("MaintainerId")
                         .HasDatabaseName("ix_people_maintainer_id");
 
-                    b.ToTable("people", (string)null);
+                    b.ToTable("people", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_people_description_length", "char_length(description) <= 200");
+                        });
                 });
 
             modelBuilder.Entity("FamilyGraph.Business.People.ProfileImage", b =>

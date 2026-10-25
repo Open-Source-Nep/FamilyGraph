@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using FamilyGraph.Application.People;
 using FamilyGraph.Business.People;
 using GenderValue = FamilyGraph.Business.People.Gender;
 
@@ -26,7 +27,8 @@ public sealed class PersonNameRequest
 
 /// <summary>
 /// A new profile: its name and, optionally, its gender (<c>Male</c>, <c>Female</c> or <c>Other</c>;
-/// 400 otherwise). Only the first name is required (PRD 00, D-030).
+/// 400 otherwise), description and birth date with its switch. Only the first name is required
+/// (PRD 00, D-030, D-037).
 /// </summary>
 public sealed class CreatePersonRequest
 {
@@ -42,9 +44,53 @@ public sealed class CreatePersonRequest
     [AllowedValues(null, nameof(GenderValue.Male), nameof(GenderValue.Female), nameof(GenderValue.Other))]
     public string? Gender { get; init; }
 
+    public string? Description { get; init; }
+
+    public BirthDateValue? BirthDate { get; init; }
+
+    public bool BirthDateShown { get; init; }
+
     internal PersonName ToName() => new(FirstName ?? "", MiddleName, LastName);
 
-    internal GenderValue? ToGender() => GenderRequest.Parse(Gender);
+    internal PersonDetails ToDetails() =>
+        new(GenderRequest.Parse(Gender), Description, BirthDate?.ToBirthDate(), BirthDateShown);
+}
+
+/// <summary>A profile's new description, or null or blank to clear it (D-037).</summary>
+public sealed class DescriptionRequest
+{
+    public string? Description { get; init; }
+}
+
+/// <summary>
+/// A profile's birth date, or null to clear it, and whether people other than the maintainer and
+/// administrators may see it (D-037).
+/// </summary>
+public sealed class BirthDateRequest
+{
+    public BirthDateValue? BirthDate { get; init; }
+
+    public bool Shown { get; init; }
+}
+
+/// <summary>
+/// A birth date as entered: <see cref="Calendar"/> <c>Bs</c> or <c>Ad</c> (400 otherwise), a year,
+/// optionally a month, and with a month optionally a day. A date that does not exist is 422
+/// <c>person.birth_date_invalid</c> (D-037).
+/// </summary>
+public sealed class BirthDateValue
+{
+    [Required]
+    [AllowedValues(nameof(BirthCalendar.Bs), nameof(BirthCalendar.Ad))]
+    public string? Calendar { get; init; }
+
+    public int Year { get; init; }
+
+    public int? Month { get; init; }
+
+    public int? Day { get; init; }
+
+    internal BirthDate ToBirthDate() => BirthDates.Create(BirthCalendar.FromName(Calendar!), Year, Month, Day);
 }
 
 /// <summary>A profile's new gender: <c>Male</c>, <c>Female</c>, <c>Other</c>, or null to clear it (400 otherwise).</summary>

@@ -52,8 +52,8 @@ public class ExportServiceTests
     [Trait("AC", "AC-09.6")]
     public async Task People_links_and_accounts_pass_through_and_a_deleted_profile_has_no_name()
     {
-        var kept = new ExportedPerson(new PersonId(Guid.NewGuid()), new PersonName("Maya"), ProfileVisibility.Private, null, Alice, Gender.Female);
-        var deleted = new ExportedPerson(new PersonId(Guid.NewGuid()), PersonName.Erased, ProfileVisibility.Public, Now, Alice, null);
+        var kept = new ExportedPerson(new PersonId(Guid.NewGuid()), new PersonName("Maya"), ProfileVisibility.Private, null, Alice, Gender.Female, null, null, false);
+        var deleted = new ExportedPerson(new PersonId(Guid.NewGuid()), PersonName.Erased, ProfileVisibility.Public, Now, Alice, null, null, null, false);
         var link = new ExportedLink(
             new LinkId(Guid.NewGuid()), deleted.Id, kept.Id, ParentChildType.Adoptive, EndpointApproval.Approved, EndpointApproval.Pending, null);
         var account = new ExportedAccount(Alice, "alice@example.org", true);

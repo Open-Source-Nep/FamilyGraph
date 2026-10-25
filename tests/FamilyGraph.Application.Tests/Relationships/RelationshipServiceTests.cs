@@ -377,6 +377,45 @@ public class RelationshipServiceTests
     }
 
     [Fact]
+    [Trait("AC", "AC-02.8")]
+    [Trait("AC", "AC-02.9")]
+    public async Task Parent_maintainer_numbers_the_children_in_birth_order_and_only_changed_numbers_are_audited()
+    {
+        var parent = AddPerson("Hari", Alice);
+        var service = Service();
+        var elder = await service.CreateLinkAsync(parent, AddPerson("Maya", Alice), ParentChildType.Biological, Alice, Cancellation);
+        var younger = await service.CreateLinkAsync(parent, AddPerson("Gita", Bob), ParentChildType.Biological, Alice, Cancellation);
+        await service.OrderChildrenAsync(parent, [younger.Id, elder.Id], Alice, Cancellation);
+        var events = _store.AuditEvents.Count;
+
+        await service.OrderChildrenAsync(parent, [elder.Id, younger.Id], Alice, Cancellation);
+
+        Assert.Equal((1, 2), (_store.Links[elder.Id].BirthOrder, _store.Links[younger.Id].BirthOrder));
+        Assert.Equal(
+            [new LinkBirthOrderChanged(elder.Id, parent, 1, Alice), new LinkBirthOrderChanged(younger.Id, parent, 2, Alice)],
+            _store.AuditEvents[events..].Select(entry => entry.Event));
+        Assert.False(_store.Links[younger.Id].IsActive);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-02.9")]
+    public async Task Only_the_parents_maintainer_orders_its_own_children_once_each()
+    {
+        var parent = AddPerson("Hari", Alice);
+        var other = AddPerson("Sita", Alice);
+        var service = Service();
+        var child = await service.CreateLinkAsync(parent, AddPerson("Maya", Alice), ParentChildType.Biological, Alice, Cancellation);
+        var otherChild = await service.CreateLinkAsync(other, AddPerson("Gita", Alice), ParentChildType.Biological, Alice, Cancellation);
+
+        await Assert.ThrowsAsync<NotParentMaintainerException>(() => service.OrderChildrenAsync(parent, [child.Id], Bob, Cancellation));
+        await Assert.ThrowsAsync<LinkNotFoundException>(
+            () => service.OrderChildrenAsync(parent, [child.Id, otherChild.Id], Alice, Cancellation));
+        await Assert.ThrowsAsync<InvalidBirthOrderException>(
+            () => service.OrderChildrenAsync(parent, [child.Id, child.Id], Alice, Cancellation));
+        Assert.Null(_store.Links[child.Id].BirthOrder);
+    }
+
+    [Fact]
     [Trait("AC", "AC-03.4")]
     public async Task Sole_maintainer_deletes_the_link_and_it_leaves_every_list()
     {

@@ -51,7 +51,8 @@ internal sealed class EfExportQueries(FamilyGraphDbContext context) : IExportQue
                 .AsNoTracking()
                 .OrderBy(person => person.Id)
                 .Select(person => new ExportedPerson(
-                    person.Id, person.Name, person.Visibility, person.DeletedAt, person.MaintainerId, person.Gender)),
+                    person.Id, person.Name, person.Visibility, person.DeletedAt, person.MaintainerId, person.Gender,
+                    person.Description, person.BirthDate, person.BirthDateShown)),
                 cancellationToken);
 
         public IAsyncEnumerable<ExportedLink> LinksAsync(CancellationToken cancellationToken) =>

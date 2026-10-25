@@ -9,12 +9,18 @@
       <app-person-name-form
         [name]="editableName()"
         [gender]="person.gender"
+        [description]="person.description"
+        [birthDate]="person.birthDate"
+        [birthDateShown]="person.birthDateShown"
         [busy]="saving()"
         (saved)="saveDetails($event)"
         (cancelled)="editing.set(false)"
       />
     } @else {
       <h1>{{ name() }}</h1>
+      @if (person.description) {
+        <p class="description">{{ person.description }}</p>
+      }
       <app-person-photo [person]="person" (changed)="photoChanged($event)" />
       @if (person.placeholder === 'Deleted') {
         <p class="hint">This profile was deleted. Its name and details were erased.</p>
@@ -35,6 +41,15 @@
           @if (person.gender) {
             <dt>Gender</dt>
             <dd>{{ person.gender }}</dd>
+          }
+          @if (birthDate(); as birthDate) {
+            <dt>Born</dt>
+            <dd>
+              {{ birthDate }}
+              @if (!person.birthDateShown) {
+                <span class="hint">(hidden from others)</span>
+              }
+            </dd>
           }
           @if (person.visibility === 'Private') {
             <dt>Visibility</dt>

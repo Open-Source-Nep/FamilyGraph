@@ -59,7 +59,7 @@ public class PersonPersistenceServicesTests(PostgresFixture postgres)
         await using (var scope = services.CreateAsyncScope())
         {
             var service = scope.ServiceProvider.GetRequiredService<PersonService>();
-            id = await service.CreateAsync(new PersonName("Maya"), null, maintainer, Cancellation);
+            id = await service.CreateAsync(new PersonName("Maya"), PersonDetails.None, maintainer, Cancellation);
         }
 
         await using (var scope = services.CreateAsyncScope())
@@ -97,7 +97,7 @@ public class PersonPersistenceServicesTests(PostgresFixture postgres)
         await using (var scope = services.CreateAsyncScope())
         {
             id = await scope.ServiceProvider.GetRequiredService<PersonService>()
-                .CreateAsync(new PersonName("Maya", "Devi", "Rai"), null, maintainer, Cancellation);
+                .CreateAsync(new PersonName("Maya", "Devi", "Rai"), PersonDetails.None, maintainer, Cancellation);
         }
 
         await using (var scope = services.CreateAsyncScope())
@@ -140,7 +140,7 @@ public class PersonPersistenceServicesTests(PostgresFixture postgres)
         await using (var scope = services.CreateAsyncScope())
         {
             var service = scope.ServiceProvider.GetRequiredService<PersonService>();
-            id = await service.CreateAsync(new PersonName("Maya"), Gender.Female, maintainer, Cancellation);
+            id = await service.CreateAsync(new PersonName("Maya"), new PersonDetails(Gender.Female), maintainer, Cancellation);
             await service.SetGenderAsync(id, Gender.Other, maintainer, Cancellation);
         }
 
@@ -168,6 +168,56 @@ public class PersonPersistenceServicesTests(PostgresFixture postgres)
     }
 
     [Fact]
+    [Trait("AC", "AC-01.30")]
+    [Trait("AC", "AC-01.32")]
+    [Trait("AC", "AC-05.15")]
+    public async Task Description_and_birth_date_are_saved_read_back_by_every_query_and_erased_on_deletion()
+    {
+        await using var services = await NewServicesAsync();
+        var maintainer = TestData.NewAccount();
+        var bsDate = BirthDates.Create(BirthCalendar.Bs, 2082, 6, 16);
+
+        PersonId id, withoutDate;
+        await using (var scope = services.CreateAsyncScope())
+        {
+            var service = scope.ServiceProvider.GetRequiredService<PersonService>();
+            id = await service.CreateAsync(
+                new PersonName("Maya"), new PersonDetails(Description: "Teacher", BirthDate: BirthDate.Ad(1952, 3)), maintainer, Cancellation);
+            withoutDate = await service.CreateAsync(new PersonName("Ram"), PersonDetails.None, maintainer, Cancellation);
+            await service.SetBirthDateAsync(id, bsDate, shown: true, maintainer, Cancellation);
+        }
+
+        await using (var scope = services.CreateAsyncScope())
+        {
+            var service = scope.ServiceProvider.GetRequiredService<PersonService>();
+            var graph = scope.ServiceProvider.GetRequiredService<FamilyGraph.Application.Graph.IGraphQueries>();
+            var context = scope.ServiceProvider.GetRequiredService<FamilyGraphDbContext>();
+            var record = await context.Set<AuditEventRecord>().SingleAsync(r => r.Type == nameof(PersonBirthDateChanged), Cancellation);
+            var fromGraph = (await graph.PeopleAsync([id, withoutDate], maintainer, Cancellation)).ToDictionary(person => person.Id);
+
+            var person = await service.GetAsync(id, As(maintainer), Cancellation);
+            Assert.Equal(("Teacher", bsDate, true), (person.Description, person.BirthDate, person.BirthDateShown));
+            Assert.Equal(("Teacher", bsDate, true), (fromGraph[id].Description, fromGraph[id].BirthDate, fromGraph[id].BirthDateShown));
+            Assert.Null(fromGraph[withoutDate].BirthDate);
+            Assert.Null((await service.GetAsync(withoutDate, As(maintainer), Cancellation)).BirthDate);
+            Assert.DoesNotContain("2082", record.Data, StringComparison.Ordinal);
+
+            await service.DeleteAsync(id, As(maintainer), Cancellation);
+        }
+
+        await using (var scope = services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<FamilyGraphDbContext>();
+            var erased = await context.Database.SqlQuery<int>($"""
+                SELECT count(*)::int AS "Value" FROM people
+                WHERE id = {id.Value} AND description IS NULL AND birth_year IS NULL AND birth_sort_date IS NULL AND NOT birth_date_shown
+                """).SingleAsync(Cancellation);
+
+            Assert.Equal(1, erased);
+        }
+    }
+
+    [Fact]
     [Trait("AC", "AC-01.8")]
     public async Task Rename_through_the_service_is_saved_with_its_audit_event()
     {
@@ -178,7 +228,7 @@ public class PersonPersistenceServicesTests(PostgresFixture postgres)
         await using (var scope = services.CreateAsyncScope())
         {
             id = await scope.ServiceProvider.GetRequiredService<PersonService>()
-                .CreateAsync(new PersonName("Maya"), null, maintainer, Cancellation);
+                .CreateAsync(new PersonName("Maya"), PersonDetails.None, maintainer, Cancellation);
         }
 
         await using (var scope = services.CreateAsyncScope())
@@ -338,6 +388,7 @@ public class PersonPersistenceServicesTests(PostgresFixture postgres)
         services.AddInfrastructure(await postgres.NewMigratedConnectionStringAsync());
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton(new PeopleLimits());
+        services.AddSingleton(new FamilyGraph.Application.Graph.GraphLimits());
         services.AddScoped<PersonService>();
         return services.BuildServiceProvider();
     }

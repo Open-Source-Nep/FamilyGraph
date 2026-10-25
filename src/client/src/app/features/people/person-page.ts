@@ -8,6 +8,7 @@ import { PersonHandover } from '../handovers/person-handover';
 import { PersonRelatives } from '../relationships/person-relatives';
 import { PersonSpouses } from '../relationships/person-spouses';
 import { PeopleService } from './people.service';
+import { BirthDate, formatBirthDate } from './birth-date';
 import { Person, PersonDetails, PersonName, Visibility, fullName } from './person';
 import { PersonNameForm } from './person-name-form';
 import { PersonPhoto } from './person-photo';
@@ -61,6 +62,10 @@ export class PersonPage {
     );
   });
   protected readonly isAdministrator = this.auth.isAdministrator;
+  protected readonly birthDate = computed(() => {
+    const date = this.person()?.birthDate;
+    return date ? formatBirthDate(date) : null;
+  });
   protected readonly confirmingDelete = signal(false);
   protected readonly editing = signal(false);
   protected readonly saving = signal(false);
@@ -136,8 +141,14 @@ export class PersonPage {
     }
   }
 
-  /** Saves the name and the gender, each only when it changed. */
-  protected async saveDetails({ name, gender }: PersonDetails): Promise<void> {
+  /** Saves the name, gender, description and birth date, each only when it changed. */
+  protected async saveDetails({
+    name,
+    gender,
+    description,
+    birthDate,
+    birthDateShown,
+  }: PersonDetails): Promise<void> {
     const person = this.person();
     if (!person) {
       return;
@@ -158,6 +169,14 @@ export class PersonPage {
         await this.people.setGender(person.id, gender);
         this.person.update((current) => current && { ...current, gender });
       }
+      if (description !== person.description) {
+        await this.people.setDescription(person.id, description);
+        this.person.update((current) => current && { ...current, description });
+      }
+      if (!sameDate(birthDate, person.birthDate) || birthDateShown !== person.birthDateShown) {
+        await this.people.setBirthDate(person.id, birthDate, birthDateShown);
+        this.person.update((current) => current && { ...current, birthDate, birthDateShown });
+      }
       this.editing.set(false);
     } catch (error) {
       this.error.set(problemMessage(error));
@@ -165,4 +184,16 @@ export class PersonPage {
       this.saving.set(false);
     }
   }
+}
+
+function sameDate(a: BirthDate | null, b: BirthDate | null): boolean {
+  return (
+    a === b ||
+    (!!a &&
+      !!b &&
+      a.calendar === b.calendar &&
+      a.year === b.year &&
+      a.month === b.month &&
+      a.day === b.day)
+  );
 }

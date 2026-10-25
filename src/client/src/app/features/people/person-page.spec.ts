@@ -14,6 +14,7 @@ describe('PersonPage', () => {
   let person: Person;
   let visibilityCalls: [string, string][];
   let genderCalls: [string, string | null][];
+  let detailCalls: unknown[][];
   let renamed: string[];
   let deleted: string[];
   let removedImages: string[];
@@ -22,6 +23,7 @@ describe('PersonPage', () => {
   beforeEach(() => {
     visibilityCalls = [];
     genderCalls = [];
+    detailCalls = [];
     renamed = [];
     deleted = [];
     removedImages = [];
@@ -55,6 +57,14 @@ describe('PersonPage', () => {
             },
             setGender: (id: string, gender: string | null) => {
               genderCalls.push([id, gender]);
+              return Promise.resolve();
+            },
+            setDescription: (...args: unknown[]) => {
+              detailCalls.push(['description', ...args]);
+              return Promise.resolve();
+            },
+            setBirthDate: (...args: unknown[]) => {
+              detailCalls.push(['birthDate', ...args]);
               return Promise.resolve();
             },
             setVisibility: (id: string, visibility: string) => {
@@ -92,6 +102,9 @@ describe('PersonPage', () => {
       imageId: null,
       gender: null,
       maintainedByYou,
+      description: null,
+      birthDate: null,
+      birthDateShown: false,
       ...changes,
     };
     fixture = TestBed.createComponent(PersonPage);
@@ -144,6 +157,45 @@ describe('PersonPage', () => {
     expect(genderCalls).toEqual([['p1', 'Other']]);
     expect(renamed).toEqual([]);
     expect(fixture.nativeElement.querySelector('dl').textContent).toContain('GenderOther');
+  });
+
+  it('shows the description and a birth date in both calendars (AC-01.30)', async () => {
+    await show(false, {
+      description: 'Teacher',
+      birthDate: { calendar: 'Bs', year: 2082, month: 6, day: 16 },
+      birthDateShown: true,
+    });
+
+    expect(fixture.nativeElement.querySelector('.description').textContent).toBe('Teacher');
+    expect(fixture.nativeElement.querySelector('dl').textContent).toContain(
+      'Born 16 Ashwin 2082 BS (2 October 2025)',
+    );
+  });
+
+  it('tells the maintainer a birth date is hidden from others (AC-05.16)', async () => {
+    await show(true, { birthDate: { calendar: 'Ad', year: 1990, month: null, day: null } });
+
+    expect(fixture.nativeElement.querySelector('dl').textContent).toContain(
+      '1990 (hidden from others)',
+    );
+  });
+
+  // AC-01.31: only changed details are saved.
+  it('saves the description and leaves an unchanged birth date alone', async () => {
+    await show(true, { birthDate: { calendar: 'Ad', year: 1990, month: null, day: null } });
+    editButton()!.click();
+    await fixture.whenStable();
+
+    const field = fixture.nativeElement.querySelector(
+      'input[formControlName=description]',
+    ) as HTMLInputElement;
+    field.value = 'Engineer';
+    field.dispatchEvent(new Event('input'));
+    button('Save')!.click();
+    await fixture.whenStable();
+
+    expect(detailCalls).toEqual([['description', 'p1', 'Engineer']]);
+    expect(fixture.nativeElement.querySelector('.description').textContent).toBe('Engineer');
   });
 
   it('offers a handover to the maintainer only', async () => {

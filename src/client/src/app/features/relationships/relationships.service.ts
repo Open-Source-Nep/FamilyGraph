@@ -44,6 +44,18 @@ export class RelationshipsService {
     return this.consent(linkId, 'disagree', endpoint);
   }
 
+  /**
+   * Numbers the parent's children 1, 2, 3… in the order of `linkIds`, eldest first; only the
+   * parent's maintainer may (D-016, D-037).
+   */
+  orderChildren(parentId: string, linkIds: readonly string[]): Promise<void> {
+    return firstValueFrom(
+      this.http.put<void>(`/api/people/${encodeURIComponent(parentId)}/children/order`, {
+        linkIds,
+      }),
+    );
+  }
+
   /** Deletes a link whose two people you maintain. Deletion is final (D-014). */
   delete(linkId: string): Promise<void> {
     return firstValueFrom(

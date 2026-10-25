@@ -84,7 +84,49 @@ public class PrivacyProjectionTests
         Assert.Equal((Gender.Female, (Gender?)null, (Gender?)null), (visible.Gender, hidden.Gender, deleted.Gender));
     }
 
+    [Fact]
+    [Trait("AC", "AC-05.15")]
+    public void Description_shows_with_the_name_and_never_on_a_placeholder()
+    {
+        var visible = PrivacyProjection.Project(Record(ProfileVisibility.Public, false), new Viewer(Alice, false));
+        var hidden = PrivacyProjection.Project(Record(ProfileVisibility.Private, false), new Viewer(Alice, false));
+        var deleted = PrivacyProjection.Project(Record(ProfileVisibility.Public, true, isDeleted: true), new Viewer(Alice, true));
+
+        Assert.Equal(("Teacher", (string?)null, (string?)null), (visible.Description, hidden.Description, deleted.Description));
+    }
+
+    [Fact]
+    [Trait("AC", "AC-05.16")]
+    public void A_birth_date_not_shown_to_others_is_seen_only_by_its_maintainer_and_administrators()
+    {
+        var others = PrivacyProjection.Project(Record(ProfileVisibility.Public, false), new Viewer(Alice, false));
+        var maintainer = PrivacyProjection.Project(Record(ProfileVisibility.Public, true), new Viewer(Alice, false));
+        var administrator = PrivacyProjection.Project(Record(ProfileVisibility.Public, false), new Viewer(Alice, true));
+
+        Assert.Equal(
+            ((BirthDate?)null, BirthDate.Ad(1952), BirthDate.Ad(1952)),
+            (others.BirthDate, maintainer.BirthDate, administrator.BirthDate));
+    }
+
+    [Fact]
+    [Trait("AC", "AC-05.16")]
+    public void A_birth_date_shown_to_others_is_seen_by_everyone_who_sees_the_name_but_never_on_a_placeholder()
+    {
+        var visible = PrivacyProjection.Project(Record(ProfileVisibility.Public, false, birthDateShown: true), new Viewer(Alice, false));
+        var hidden = PrivacyProjection.Project(Record(ProfileVisibility.Private, false, birthDateShown: true), new Viewer(Alice, false));
+        var deleted = PrivacyProjection.Project(
+            Record(ProfileVisibility.Public, true, isDeleted: true, birthDateShown: true), new Viewer(Alice, true));
+
+        Assert.Equal((BirthDate.Ad(1952), true), (visible.BirthDate, visible.BirthDateShown));
+        Assert.Equal(((BirthDate?)null, false), (hidden.BirthDate, hidden.BirthDateShown));
+        Assert.Equal(((BirthDate?)null, false), (deleted.BirthDate, deleted.BirthDateShown));
+    }
+
     private static PersonRecord Record(
-        ProfileVisibility visibility, bool maintainedByViewer, bool isDeleted = false, ProfileImageId? imageId = null) =>
-        new(PersonId.New(), Name, visibility, isDeleted, maintainedByViewer, imageId, Gender.Female);
+        ProfileVisibility visibility,
+        bool maintainedByViewer,
+        bool isDeleted = false,
+        ProfileImageId? imageId = null,
+        bool birthDateShown = false) =>
+        new(PersonId.New(), Name, visibility, isDeleted, maintainedByViewer, imageId, Gender.Female, "Teacher", BirthDate.Ad(1952), birthDateShown);
 }

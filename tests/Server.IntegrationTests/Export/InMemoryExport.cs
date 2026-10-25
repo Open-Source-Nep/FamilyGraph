@@ -18,7 +18,7 @@ public sealed class InMemoryExport(InMemoryAccountStore accounts, InMemoryPeople
                 .ToList(),
             people.People.Values
                 .OrderBy(person => person.Id.Value)
-                .Select(person => new ExportedPerson(person.Id, person.Name, person.Visibility, person.DeletedAt, person.MaintainerId, person.Gender))
+                .Select(person => new ExportedPerson(person.Id, person.Name, person.Visibility, person.DeletedAt, person.MaintainerId, person.Gender, person.Description, person.BirthDate, person.BirthDateShown))
                 .ToList(),
             people.Links.Values
                 .Where(link => !link.IsDeleted)

@@ -13,7 +13,7 @@ internal sealed class EfPersonQueries(FamilyGraphDbContext context) : IPersonQue
             .AsNoTracking()
             .Where(person => person.Id == id)
             .Select(person => new PersonRecord(
-                person.Id, person.Name, person.Visibility, person.DeletedAt != null, person.MaintainerId == viewerId, person.ImageId, person.Gender))
+                person.Id, person.Name, person.Visibility, person.DeletedAt != null, person.MaintainerId == viewerId, person.ImageId, person.Gender, person.Description, person.BirthDate, person.BirthDateShown))
             .SingleOrDefaultAsync(cancellationToken);
 
     public Task<ImageContent?> FindImageAsync(ProfileImageId id, CancellationToken cancellationToken) =>
@@ -70,7 +70,7 @@ internal sealed class EfPersonQueries(FamilyGraphDbContext context) : IPersonQue
             .ThenBy(person => person.Name.LastName)
             .ThenBy(person => person.Id)
             .Select(person => new PersonRecord(
-                person.Id, person.Name, person.Visibility, false, person.MaintainerId == viewerId, person.ImageId, person.Gender))
+                person.Id, person.Name, person.Visibility, false, person.MaintainerId == viewerId, person.ImageId, person.Gender, person.Description, person.BirthDate, person.BirthDateShown))
             .Take(limit + 1)
             .ToListAsync(cancellationToken);
 

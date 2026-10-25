@@ -1,4 +1,5 @@
 using FamilyGraph.Application.Import;
+using FamilyGraph.Application.People;
 using FamilyGraph.Application.Privacy;
 using FamilyGraph.Application.Tests.People;
 using FamilyGraph.Business.Audit;
@@ -181,5 +182,46 @@ public class ImportServiceTests
         }
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+
+    [Fact]
+    [Trait("AC", "AC-09.8")]
+    public async Task Description_and_birth_date_come_back_and_files_without_them_still_import()
+    {
+        var maya = Person("Maya", FileBina) with
+        {
+            Description = "Teacher",
+            BirthDate = new ImportBirthDate("Bs", 2082, 6, 16),
+            BirthDateShown = true,
+        };
+        var hari = Person("Hari", FileBina);
+
+        await Service().ImportAsync(Administrator, new ImportData([], [maya, hari], [], []), Cancellation);
+
+        var imported = _people.People[new PersonId(maya.Id)];
+        Assert.Equal(("Teacher", BirthDates.Create(BirthCalendar.Bs, 2082, 6, 16), true), (imported.Description, imported.BirthDate, imported.BirthDateShown));
+        Assert.Equal((null, null, false), (_people.People[new PersonId(hari.Id)].Description, _people.People[new PersonId(hari.Id)].BirthDate, _people.People[new PersonId(hari.Id)].BirthDateShown));
+    }
+
+    [Fact]
+    [Trait("AC", "AC-09.11")]
+    public async Task A_birth_date_that_does_not_exist_or_a_long_description_refuses_the_file()
+    {
+        var data = new ImportData(
+            [],
+            [
+                Person("Maya", FileBina) with { BirthDate = new ImportBirthDate("Ad", 1952, 2, 30) },
+                Person("Hari", FileBina) with { BirthDate = new ImportBirthDate("Lunar", 1952, null, null) },
+                Person("Sita", FileBina) with { Description = new string('a', 201) },
+            ],
+            [],
+            []);
+
+        var refused = await Assert.ThrowsAsync<InvalidImportFileException>(() => Service().ImportAsync(Administrator, data, Cancellation));
+
+        Assert.Equal(
+            [("people[0]", "person.birth_date_invalid"), ("people[1]", "import.invalid_value"), ("people[2]", "person.description_too_long")],
+            refused.Problems.Select(problem => (problem.Path, problem.Code)));
+        Assert.Empty(_people.People);
     }
 }

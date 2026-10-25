@@ -8,7 +8,8 @@ internal sealed class PersonConfiguration : IEntityTypeConfiguration<Person>
 {
     public void Configure(EntityTypeBuilder<Person> builder)
     {
-        builder.ToTable("people");
+        builder.ToTable("people", table => table.HasCheckConstraint(
+            "ck_people_description_length", $"char_length(description) <= {PersonDescription.MaxLength}"));
         builder.HasKey(person => person.Id);
         builder.Property(person => person.Id).HasConversion(ValueConverters.PersonId).ValueGeneratedNever();
         builder.Property(person => person.MaintainerId).HasConversion(ValueConverters.AccountId);
@@ -20,6 +21,15 @@ internal sealed class PersonConfiguration : IEntityTypeConfiguration<Person>
             name.Property(part => part.FirstName).HasColumnName("first_name");
             name.Property(part => part.MiddleName).HasColumnName("middle_name");
             name.Property(part => part.LastName).HasColumnName("last_name");
+        });
+        builder.ComplexProperty(person => person.BirthDate, date =>
+        {
+            date.Property(part => part.Calendar).HasColumnName("birth_calendar").HasConversion(ValueConverters.Enum<BirthCalendar>());
+            date.Property(part => part.Year).HasColumnName("birth_year");
+            date.Property(part => part.Month).HasColumnName("birth_month");
+            date.Property(part => part.Day).HasColumnName("birth_day");
+            date.Property(part => part.SortDate).HasColumnName("birth_sort_date");
+            date.Ignore(part => part.IsFull);
         });
         builder.Ignore(person => person.IsDeleted);
         builder.Ignore(person => person.PendingEvents);

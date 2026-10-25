@@ -77,7 +77,9 @@ public sealed record ExportedAccountItem(Guid Id, string Email, bool EmailVerifi
 /// <summary>
 /// A profile. <see cref="Visibility"/> is <c>Public</c> or <c>Private</c>. A deleted profile has
 /// <see cref="DeletedAt"/> and no name parts. <see cref="Gender"/> is <c>Male</c>, <c>Female</c>,
-/// <c>Other</c>, or null when not set (D-030).
+/// <c>Other</c>, or null when not set (D-030). <see cref="Description"/> and <see cref="BirthDate"/> are null
+/// when not set; <see cref="BirthDateShown"/> is the maintainer's switch (D-037). Files from before them
+/// still import.
 /// </summary>
 public sealed record ExportedPersonItem(
     Guid Id,
@@ -87,7 +89,10 @@ public sealed record ExportedPersonItem(
     string Visibility,
     DateTimeOffset? DeletedAt,
     Guid MaintainerId,
-    string? Gender)
+    string? Gender,
+    string? Description,
+    ExportedBirthDateItem? BirthDate,
+    bool BirthDateShown)
 {
     internal static ExportedPersonItem From(ExportedPerson person) => new(
         person.Id.Value,
@@ -97,8 +102,14 @@ public sealed record ExportedPersonItem(
         person.Visibility.Name,
         person.DeletedAt,
         person.MaintainerId.Value,
-        person.Gender?.Name);
+        person.Gender?.Name,
+        person.Description,
+        person.BirthDate is { } date ? new ExportedBirthDateItem(date.Calendar.Name, date.Year, date.Month, date.Day) : null,
+        person.BirthDateShown);
 }
+
+/// <summary>A birth date as entered: <c>Bs</c> or <c>Ad</c>, a year, and the month and day if known (D-037).</summary>
+public sealed record ExportedBirthDateItem(string Calendar, int Year, int? Month, int? Day);
 
 /// <summary>
 /// A link. <see cref="Type"/> is <c>Biological</c> or <c>Adoptive</c>; each approval is

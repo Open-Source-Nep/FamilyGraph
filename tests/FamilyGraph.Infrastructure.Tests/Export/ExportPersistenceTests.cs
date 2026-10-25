@@ -55,9 +55,9 @@ public class ExportPersistenceTests(PostgresFixture postgres)
         Assert.Equal(
             new HashSet<ExportedPerson>
             {
-                new ExportedPerson(parent.Id, new PersonName("Hari"), ProfileVisibility.Public, null, alice, null),
-                new ExportedPerson(child.Id, new PersonName("Maya"), ProfileVisibility.Private, null, alice, null),
-                new ExportedPerson(deleted.Id, null, ProfileVisibility.Public, Now, alice, null),
+                new ExportedPerson(parent.Id, new PersonName("Hari"), ProfileVisibility.Public, null, alice, null, null, null, false),
+                new ExportedPerson(child.Id, new PersonName("Maya"), ProfileVisibility.Private, null, alice, null, null, null, false),
+                new ExportedPerson(deleted.Id, null, ProfileVisibility.Public, Now, alice, null, null, null, false),
             },
             people.ToHashSet());
         Assert.Equal(

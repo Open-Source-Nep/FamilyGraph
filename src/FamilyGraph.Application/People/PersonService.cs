@@ -5,8 +5,8 @@ using FamilyGraph.Business.People;
 namespace FamilyGraph.Application.People;
 
 /// <summary>
-/// Creates, renames, sets the gender, visibility and image of, deletes, reads and searches person profiles (PRD 01,
-/// PRD 05, #12, #18, #74, #80, #85).
+/// Creates, renames, sets the gender, description, birth date, visibility and image of, deletes, reads and searches person profiles (PRD 01,
+/// PRD 05, #12, #18, #74, #80, #85, #97).
 /// The creating account becomes the maintainer, and only the maintainer can rename or change the
 /// visibility; <see cref="Person"/> enforces both. A profile is never matched or merged by name.
 /// </summary>
@@ -20,9 +20,11 @@ public sealed class PersonService(
     PeopleLimits limits)
 {
     public async Task<PersonId> CreateAsync(
-        PersonName name, Gender? gender, AccountId actorId, CancellationToken cancellationToken)
+        PersonName name, PersonDetails details, AccountId actorId, CancellationToken cancellationToken)
     {
-        var person = Person.Create(name, actorId, gender);
+        ArgumentNullException.ThrowIfNull(details);
+
+        var person = Person.Create(name, actorId, details.Gender, details.Description, details.BirthDate, details.BirthDateShown);
         people.Add(person);
         await SaveAsync(person, cancellationToken);
         return person.Id;
@@ -40,6 +42,25 @@ public sealed class PersonService(
     {
         var person = await people.FindAsync(id, cancellationToken) ?? throw new PersonNotFoundException();
         person.SetGender(gender, actorId);
+        await SaveAsync(person, cancellationToken);
+    }
+
+    /// <summary>Sets, changes or clears the description (D-037). Only the maintainer may.</summary>
+    public async Task SetDescriptionAsync(PersonId id, string? description, AccountId actorId, CancellationToken cancellationToken)
+    {
+        var person = await people.FindAsync(id, cancellationToken) ?? throw new PersonNotFoundException();
+        person.SetDescription(description, actorId);
+        await SaveAsync(person, cancellationToken);
+    }
+
+    /// <summary>
+    /// Sets, changes or clears the birth date and whether others see it (D-037). Only the maintainer may.
+    /// </summary>
+    public async Task SetBirthDateAsync(
+        PersonId id, BirthDate? birthDate, bool shown, AccountId actorId, CancellationToken cancellationToken)
+    {
+        var person = await people.FindAsync(id, cancellationToken) ?? throw new PersonNotFoundException();
+        person.SetBirthDate(birthDate, shown, actorId);
         await SaveAsync(person, cancellationToken);
     }
 

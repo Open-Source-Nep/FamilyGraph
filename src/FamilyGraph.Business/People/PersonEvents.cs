@@ -16,6 +16,15 @@ public sealed record PersonRenamed(PersonId PersonId, AccountId ActorId) : Perso
 /// <summary>Records that the gender was set, changed or cleared, without the gender (D-015, D-030).</summary>
 public sealed record PersonGenderChanged(PersonId PersonId, AccountId ActorId) : PersonEvent(PersonId, ActorId);
 
+/// <summary>Records that the description was set, changed or cleared, without the text (D-015, D-037).</summary>
+public sealed record PersonDescriptionChanged(PersonId PersonId, AccountId ActorId) : PersonEvent(PersonId, ActorId);
+
+/// <summary>
+/// Records that the birth date or its switch changed, with the switch (a setting) but never the
+/// date (D-015, D-037).
+/// </summary>
+public sealed record PersonBirthDateChanged(PersonId PersonId, AccountId ActorId, bool Shown) : PersonEvent(PersonId, ActorId);
+
 /// <summary>Records the new visibility, which is a setting and not personal data (D-015).</summary>
 public sealed record PersonVisibilityChanged(PersonId PersonId, AccountId ActorId, ProfileVisibility Visibility)
     : PersonEvent(PersonId, ActorId);

@@ -59,12 +59,12 @@ export class NewPersonPage {
 
   private readonly spouseChoices = viewChild(SpouseLinkChoices);
 
-  protected async create({ name, gender }: PersonDetails): Promise<void> {
+  protected async create(details: PersonDetails): Promise<void> {
     this.saving.set(true);
     this.error.set(null);
     let person;
     try {
-      person = await this.people.create(name, gender);
+      person = await this.people.create(details);
     } catch (error) {
       this.error.set(problemMessage(error));
       this.saving.set(false);
@@ -75,7 +75,7 @@ export class NewPersonPage {
     if (outcomes.every((outcome) => outcome.state === 'active' || outcome.state === 'existing')) {
       await this.router.navigate(['/people', person.id]);
     } else {
-      this.created.set({ id: person.id, name: fullName(name), outcomes });
+      this.created.set({ id: person.id, name: fullName(details.name), outcomes });
     }
   }
 

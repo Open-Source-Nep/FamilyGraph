@@ -27,6 +27,25 @@
     </select>
   </label>
 
+  <label>
+    Description <span class="hint">(optional, one line)</span>
+    <input
+      formControlName="description"
+      autocomplete="off"
+      placeholder="For example: Teacher, lives in Pokhara"
+      [attr.maxlength]="maxDescriptionLength"
+    />
+  </label>
+
+  <app-birth-date-input [initial]="birthDate()" (changed)="date.set($event)" />
+  @if (date()) {
+    <label class="check">
+      <input type="checkbox" formControlName="birthDateShown" />
+      Show the birth date to others
+      <span class="hint">(otherwise only you and administrators see it)</span>
+    </label>
+  }
+
   <ng-content />
 
   <div class="actions">

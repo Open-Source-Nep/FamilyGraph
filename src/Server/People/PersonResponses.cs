@@ -10,6 +10,8 @@ namespace Server.People;
 /// <see cref="Visibility"/> is <c>Public</c> or <c>Private</c>. <see cref="ImageId"/> names the
 /// current image at <c>/api/people/{id}/image</c>, and is null without one or for a placeholder (D-028).
 /// <see cref="Gender"/> is <c>Male</c>, <c>Female</c> or <c>Other</c>, and null when not set or for a placeholder (D-030).
+/// <see cref="Description"/> and <see cref="BirthDate"/> are null when not set or for a placeholder, and the birth
+/// date also when it is not shown to you (D-037).
 /// </summary>
 public sealed record PersonResponse(
     Guid Id,
@@ -20,7 +22,10 @@ public sealed record PersonResponse(
     string Visibility,
     bool MaintainedByYou,
     Guid? ImageId,
-    string? Gender)
+    string? Gender,
+    string? Description,
+    BirthDateResponse? BirthDate,
+    bool BirthDateShown)
 {
     internal static PersonResponse From(PersonReference person) => new(
         person.Id.Value,
@@ -31,7 +36,17 @@ public sealed record PersonResponse(
         person.Visibility.Name,
         person.MaintainedByViewer,
         person.ImageId?.Value,
-        person.Gender?.Name);
+        person.Gender?.Name,
+        person.Description,
+        BirthDateResponse.From(person.BirthDate),
+        person.BirthDateShown);
+}
+
+/// <summary>A birth date as entered (D-037): <c>Bs</c> or <c>Ad</c>, a year, and the month and day if known.</summary>
+public sealed record BirthDateResponse(string Calendar, int Year, int? Month, int? Day)
+{
+    internal static BirthDateResponse? From(FamilyGraph.Business.People.BirthDate? date) =>
+        date is null ? null : new(date.Calendar.Name, date.Year, date.Month, date.Day);
 }
 
 /// <summary>One of your profiles, which you always see by name, Private or not (PRD 05).</summary>

@@ -15,6 +15,9 @@ const maya: Person = {
   imageId: null,
   gender: null,
   maintainedByYou: true,
+  description: null,
+  birthDate: null,
+  birthDateShown: false,
 };
 
 describe('PeopleService', () => {
@@ -41,10 +44,13 @@ describe('PeopleService', () => {
   });
 
   it('creates a profile with a POST', async () => {
-    const created = service.create(
-      { firstName: 'Maya', middleName: null, lastName: null },
-      'Female',
-    );
+    const created = service.create({
+      name: { firstName: 'Maya', middleName: null, lastName: null },
+      gender: 'Female',
+      description: 'Teacher',
+      birthDate: { calendar: 'Bs', year: 2009, month: 1, day: null },
+      birthDateShown: false,
+    });
     const request = http.expectOne('/api/people');
     expect(request.request.method).toBe('POST');
     expect(request.request.body).toEqual({
@@ -52,6 +58,9 @@ describe('PeopleService', () => {
       middleName: null,
       lastName: null,
       gender: 'Female',
+      description: 'Teacher',
+      birthDate: { calendar: 'Bs', year: 2009, month: 1, day: null },
+      birthDateShown: false,
     });
     request.flush(maya);
 
