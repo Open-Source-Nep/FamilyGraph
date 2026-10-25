@@ -53,7 +53,9 @@ describe('NewPersonPage', () => {
           useValue: {
             create: ({ name }: PersonDetails) => {
               created.push(name);
-              return Promise.resolve({ ...person('p1', name.firstName), ...name });
+              // Maya is the page's own person; one added from a picker is named by its first name.
+              const id = name.firstName === 'Maya' ? 'p1' : 'p-' + name.firstName.toLowerCase();
+              return Promise.resolve({ ...person(id, name.firstName), ...name });
             },
             listMaintained: () => Promise.resolve({ people: [hari, kiran], isTruncated: false }),
             search: () => Promise.resolve({ people: [], isTruncated: false }),
@@ -170,5 +172,35 @@ describe('NewPersonPage', () => {
     expect(text()).toContain('Maya was added.');
     expect(text()).toContain('Sita as a parent: saved, but not active until the other maintainer');
     expect(element().querySelector('a')?.getAttribute('href')).toBe('/people/p1');
+  });
+
+  // AC-08.17: the shared picker adds a new parent without submitting the page's own form.
+  it('adds a new parent from the picker before adding the person', async () => {
+    await enterName('Maya');
+    button('Choose parents').click();
+    await settle();
+    button('Add a new person').click();
+    await fixture.whenStable();
+    const dialog = element().querySelector('app-person-picker dialog') as HTMLDialogElement;
+    const first = dialog.querySelector('input[formcontrolname=firstName]') as HTMLInputElement;
+    first.value = 'Ganga';
+    first.dispatchEvent(new Event('input'));
+    (dialog.querySelector('form') as HTMLFormElement).dispatchEvent(
+      new Event('submit', { bubbles: true }),
+    );
+    await settle();
+
+    expect(created).toEqual([{ firstName: 'Ganga', middleName: null, lastName: null }]);
+    expect(navigations).toEqual([]);
+    expect(text()).toContain('Parents: Ganga');
+
+    button('Add person').click();
+    await settle();
+
+    expect(created).toEqual([
+      { firstName: 'Ganga', middleName: null, lastName: null },
+      { firstName: 'Maya', middleName: null, lastName: null },
+    ]);
+    expect(links).toEqual([{ parentId: 'p-ganga', childId: 'p1', type: 'Biological' }]);
   });
 });

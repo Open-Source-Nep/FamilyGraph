@@ -49,16 +49,33 @@ public sealed record BirthDateResponse(string Calendar, int Year, int? Month, in
         date is null ? null : new(date.Calendar.Name, date.Year, date.Month, date.Day);
 }
 
-/// <summary>One of your profiles, which you always see by name, Private or not (PRD 05).</summary>
+/// <summary>
+/// One of your profiles, which you always see by name, Private or not (PRD 05), with its image
+/// and description to tell it apart (D-038).
+/// </summary>
 public sealed record PersonSummaryResponse(
-    Guid Id, string FirstName, string? MiddleName, string? LastName, string Visibility, string? Gender);
+    Guid Id,
+    string FirstName,
+    string? MiddleName,
+    string? LastName,
+    string Visibility,
+    string? Gender,
+    Guid? ImageId,
+    string? Description);
 
 /// <summary><see cref="IsTruncated"/> says that the list stopped at its limit (D-010).</summary>
 public sealed record ProfileListResponse(IReadOnlyList<PersonSummaryResponse> People, bool IsTruncated)
 {
     internal static ProfileListResponse From(ProfileList list) => new(
         [.. list.People.Select(person => new PersonSummaryResponse(
-            person.Id.Value, person.Name.FirstName, person.Name.MiddleName, person.Name.LastName, person.Visibility.Name, person.Gender?.Name))],
+            person.Id.Value,
+            person.Name.FirstName,
+            person.Name.MiddleName,
+            person.Name.LastName,
+            person.Visibility.Name,
+            person.Gender?.Name,
+            person.ImageId?.Value,
+            person.Description))],
         list.IsTruncated);
 }
 

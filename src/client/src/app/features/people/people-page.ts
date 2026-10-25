@@ -3,12 +3,16 @@ import { RouterLink } from '@angular/router';
 
 import { PeopleService } from './people.service';
 import { ProfileList, fullName } from './person';
+import { PersonAvatar } from './person-avatar';
 import { problemMessage } from './problem';
 
-/** The profiles the signed-in user maintains (PRD 01: one account, many profiles). */
+/**
+ * The profiles the signed-in user maintains (PRD 01: one account, many profiles), each a row with
+ * its photo or initials and its description (D-038).
+ */
 @Component({
   selector: 'app-people-page',
-  imports: [RouterLink],
+  imports: [PersonAvatar, RouterLink],
   templateUrl: './people-page.html',
 })
 export class PeoplePage {

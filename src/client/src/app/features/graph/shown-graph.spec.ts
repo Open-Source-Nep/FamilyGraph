@@ -11,6 +11,7 @@ const person = (id: string): GraphPerson => ({
   imageId: null,
   gender: null,
   maintainedByYou: false,
+  description: null,
 });
 const row = (id: string, generation: number, hasMore = false): LocalViewPerson => ({
   person: person(id),

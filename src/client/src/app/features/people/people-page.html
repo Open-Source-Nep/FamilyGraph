@@ -13,13 +13,23 @@
     @if (list.people.length === 0) {
       <p>You do not maintain any profiles yet.</p>
     } @else {
-      <ul class="people">
+      <ul class="person-rows">
         @for (person of list.people; track person.id) {
           <li>
-            <a [routerLink]="['/people', person.id]">{{ fullName(person) }}</a>
-            @if (person.visibility === 'Private') {
-              <span class="hint">(private)</span>
-            }
+            <a class="person-row" [routerLink]="['/people', person.id]">
+              <app-person-avatar [person]="person" />
+              <span class="person-text">
+                <span class="person-name"
+                  >{{ fullName(person) }}
+                  @if (person.visibility === 'Private') {
+                    <span class="hint">(private)</span>
+                  }
+                </span>
+                @if (person.description; as description) {
+                  <span class="person-description">{{ description }}</span>
+                }
+              </span>
+            </a>
           </li>
         }
       </ul>

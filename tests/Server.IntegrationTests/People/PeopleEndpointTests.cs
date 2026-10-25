@@ -197,6 +197,20 @@ public class PeopleEndpointTests(AccountTestFactory factory) : IClassFixture<Acc
     }
 
     [Fact]
+    [Trait("AC", "AC-01.33")]
+    public async Task Maintained_list_carries_each_profiles_description_and_image()
+    {
+        var (browser, token) = await SignInAsync("maya@example.org");
+        using var _ = await SendAsync(browser, token, HttpMethod.Post, "/api/people", new { firstName = "Maya", description = "Teacher" });
+
+        var list = await browser.GetFromJsonAsync<ProfileListResponse>("/api/people/maintained", Cancellation);
+
+        var maya = Assert.Single(list!.People);
+        Assert.Equal("Teacher", maya.Description);
+        Assert.Null(maya.ImageId);
+    }
+
+    [Fact]
     [Trait("AC", "AC-08.11")]
     public async Task Search_finds_public_profiles_maintained_by_someone_else()
     {

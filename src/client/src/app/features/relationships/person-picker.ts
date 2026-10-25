@@ -1,6 +1,7 @@
 import {
   Component,
   DestroyRef,
+  ElementRef,
   computed,
   effect,
   inject,
@@ -8,19 +9,27 @@ import {
   model,
   output,
   signal,
+  viewChild,
 } from '@angular/core';
 
 import { GraphService } from '../graph/graph.service';
 import { PeopleService } from '../people/people.service';
-import { PersonName, fullName } from '../people/person';
+import { Person, PersonDetails, PersonName, fullName } from '../people/person';
+import { PersonAvatar } from '../people/person-avatar';
+import { PersonNameForm } from '../people/person-name-form';
 import { problemMessage } from '../people/problem';
 
-/** Someone you can pick, by the name you see. */
+/** Someone you can pick, by the name you see, with their photo and description to tell them apart (D-038). */
 export interface Candidate {
   id: string;
   name: string;
   maintainedByYou: boolean;
+  imageId: string | null;
+  description: string | null;
 }
+
+/** What the picker lists a person by: their name parts, image and description. */
+type Listed = PersonName & { id: string; imageId: string | null; description: string | null };
 
 /** Searches start at this many characters, and wait this long after the last key. */
 const minSearchLength = 2;
@@ -39,13 +48,19 @@ export function matchesName(name: PersonName, text: string): boolean {
 }
 
 /**
- * Picks people to link (D-032). The list starts with your connections: your own profiles and, when
- * `searchesEveryone`, the people you can see by name who are linked to them. Typing then also
- * searches every Public profile, so separate families can be joined. Otherwise only your own
- * profiles are listed, because you must maintain one of the two people (PRD 03).
+ * Picks people to link (D-032), everywhere people are picked: parents, children and spouses, on
+ * the person page and from the graph (D-038). The list starts with your connections: your own
+ * profiles and, when `searchesEveryone`, the people you can see by name who are linked to them.
+ * Typing then also searches every Public profile, so separate families can be joined. Otherwise
+ * only your own profiles are listed, because you must maintain one of the two people (PRD 03).
+ * Each row shows the photo or initials and the description. "Add a new person" opens a dialog that
+ * creates a profile you maintain, then lists and selects it. The picker may sit inside another
+ * form, as on the Add a person page, so the dialog keeps its own form's submit and reset events
+ * from reaching that form.
  */
 @Component({
   selector: 'app-person-picker',
+  imports: [PersonAvatar, PersonNameForm],
   templateUrl: './person-picker.html',
   styleUrl: './person-picker.css',
 })
@@ -60,11 +75,12 @@ export class PersonPicker {
   readonly single = input(false);
   readonly legend = input('People');
   readonly hint = input('');
-  /** Shows "Add a new person", which only asks the parent to create one; see `addCreated`. */
-  readonly offersNewPerson = input(false);
+  /** Shows "Add a new person". */
+  readonly offersNewPerson = input(true);
   /** The people to add, in the order they were picked, kept while the list is filtered. */
   readonly selected = model<Candidate[]>([]);
-  readonly newPersonRequested = output<void>();
+  /** A profile created with "Add a new person", already listed and selected. */
+  readonly created = output<Person>();
 
   /** Your profiles, and the people linked to them when searching everyone; null while loading. */
   protected readonly connections = signal<Candidate[] | null>(null);
@@ -76,6 +92,10 @@ export class PersonPicker {
   protected readonly searching = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly name = 'person-picker-' + nextId++;
+  protected readonly creatingPerson = signal(false);
+  protected readonly creating = signal(false);
+  protected readonly createError = signal<string | null>(null);
+  private readonly newPersonDialog = viewChild<ElementRef<HTMLDialogElement>>('newPersonDialog');
 
   protected readonly options = computed(() => {
     const text = this.query().trim();
@@ -95,11 +115,53 @@ export class PersonPicker {
     effect(() => void this.loadConnections(this.excludeId(), this.searchesEveryone()));
   }
 
-  /** Lists a profile you just created and selects it (PRD 01). */
-  addCreated(person: PersonName & { id: string }): void {
-    const candidate = this.remember(person, true);
-    this.connections.update((list) => [...(list ?? []), candidate]);
-    this.toggle(candidate, true);
+  protected openNewPerson(): void {
+    this.createError.set(null);
+    this.creatingPerson.set(true);
+    const dialog = this.newPersonDialog()?.nativeElement;
+    // jsdom has no showModal, so fall back to a non-modal dialog there.
+    if (dialog && !dialog.open) {
+      if (typeof dialog.showModal === 'function') {
+        dialog.showModal();
+      } else {
+        dialog.setAttribute('open', '');
+      }
+    }
+  }
+
+  /** Closes the dialog. Escape closes it too, which ends here through its `close` event. */
+  protected closeNewPerson(): void {
+    this.creatingPerson.set(false);
+    const dialog = this.newPersonDialog()?.nativeElement;
+    if (dialog?.open) {
+      if (typeof dialog.close === 'function') {
+        dialog.close();
+      } else {
+        dialog.removeAttribute('open');
+      }
+    }
+  }
+
+  /** Creates a profile you maintain, then lists and selects it (PRD 01). */
+  protected async createPerson(details: PersonDetails): Promise<void> {
+    this.creating.set(true);
+    this.createError.set(null);
+    try {
+      const person = await this.people.create(details);
+      // You maintain the new profile, so you see it by the name and description you gave it.
+      const candidate = this.remember(
+        { ...details.name, id: person.id, imageId: null, description: details.description },
+        true,
+      );
+      this.connections.update((list) => [...(list ?? []), candidate]);
+      this.toggle(candidate, true);
+      this.closeNewPerson();
+      this.created.emit(person);
+    } catch (error) {
+      this.createError.set(problemMessage(error));
+    } finally {
+      this.creating.set(false);
+    }
   }
 
   protected setQuery(text: string): void {
@@ -142,21 +204,11 @@ export class PersonPicker {
         this.people.listMaintained(),
         everyone ? this.graph.overview() : Promise.resolve(null),
       ]);
-      const own = maintained.people.map((profile) => this.remember(profile, true));
+      const own = maintained.people.map((profile) => this.remember(listed(profile), true));
       const ownIds = new Set(own.map((candidate) => candidate.id));
       const linked = (overview?.people ?? [])
         .filter((other) => !other.placeholder && !ownIds.has(other.id))
-        .map((other) =>
-          this.remember(
-            {
-              id: other.id,
-              firstName: other.firstName ?? '',
-              middleName: other.middleName,
-              lastName: other.lastName,
-            },
-            other.maintainedByYou,
-          ),
-        );
+        .map((other) => this.remember(listed(other), other.maintainedByYou));
       if (this.excludeId() === excludeId) {
         this.connections.set([...own, ...linked].filter((candidate) => candidate.id !== excludeId));
         this.connectionsTruncated.set(maintained.isTruncated || Boolean(overview?.isTruncated));
@@ -175,17 +227,7 @@ export class PersonPicker {
       this.found.set(
         result.people
           .filter((other) => !other.placeholder && other.id !== this.excludeId())
-          .map((other) =>
-            this.remember(
-              {
-                id: other.id,
-                firstName: other.firstName ?? '',
-                middleName: other.middleName,
-                lastName: other.lastName,
-              },
-              other.maintainedByYou,
-            ),
-          ),
+          .map((other) => this.remember(listed(other), other.maintainedByYou)),
       );
       this.foundTruncated.set(result.isTruncated);
     } catch (error) {
@@ -197,14 +239,25 @@ export class PersonPicker {
     }
   }
 
-  private remember(person: PersonName & { id: string }, maintainedByYou: boolean): Candidate {
+  private remember(person: Listed, maintainedByYou: boolean): Candidate {
     const name: PersonName = {
       firstName: person.firstName,
       middleName: person.middleName,
       lastName: person.lastName,
     };
     this.names.set(person.id, name);
-    return { id: person.id, name: fullName(name), maintainedByYou };
+    return {
+      id: person.id,
+      name: fullName(name),
+      maintainedByYou,
+      imageId: person.imageId,
+      description: person.description,
+    };
+  }
+
+  /** The name parts of a candidate, for its avatar's initials. */
+  protected avatar(candidate: Candidate): Listed {
+    return { ...this.nameParts(candidate), ...candidate };
   }
 
   private nameParts(candidate: Candidate): PersonName {
@@ -216,6 +269,25 @@ export class PersonPicker {
       }
     );
   }
+}
+
+/** A person the server lets you see by name, as the picker lists them. */
+function listed(person: {
+  id: string;
+  firstName: string | null;
+  middleName: string | null;
+  lastName: string | null;
+  imageId: string | null;
+  description: string | null;
+}): Listed {
+  return {
+    id: person.id,
+    firstName: person.firstName ?? '',
+    middleName: person.middleName,
+    lastName: person.lastName,
+    imageId: person.imageId,
+    description: person.description,
+  };
 }
 
 /** Keeps each picker's radio group apart when a page shows more than one. */

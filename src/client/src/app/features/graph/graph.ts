@@ -8,6 +8,8 @@ import { MarriageType, ParentChildType, relationWord } from '../relationships/re
 export interface GraphPerson extends PersonLabel {
   id: string;
   maintainedByYou: boolean;
+  /** Null when not set and for a placeholder (D-037). */
+  description: string | null;
 }
 
 /**
