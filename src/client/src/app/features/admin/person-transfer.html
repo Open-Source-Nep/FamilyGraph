@@ -1,0 +1,36 @@
+<section aria-labelledby="transfer-heading">
+  <h2 id="transfer-heading">Transfer to another account</h2>
+  @if (error(); as error) {
+    <p class="error" role="alert">{{ error }}</p>
+  }
+  @if (message(); as message) {
+    <p role="status">{{ message }}</p>
+  }
+  @if (accounts(); as accounts) {
+    <p class="hint">
+      As an administrator you can make another account this profile's maintainer at once, without
+      its approval. Its relationships and approvals stay as they are.
+    </p>
+    <p class="actions">
+      <select
+        aria-label="New maintainer"
+        [value]="target()"
+        (change)="target.set($any($event.target).value)"
+      >
+        <option value="">Choose an account…</option>
+        @for (account of accounts; track account.id) {
+          <option [value]="account.id">{{ accountLabel(account) }}</option>
+        }
+      </select>
+      <button type="button" class="secondary" [disabled]="busy() || !target()" (click)="transfer()">
+        Transfer
+      </button>
+    </p>
+  } @else {
+    <p>
+      <button type="button" class="secondary" [disabled]="busy()" (click)="open()">
+        Choose a new maintainer
+      </button>
+    </p>
+  }
+</section>

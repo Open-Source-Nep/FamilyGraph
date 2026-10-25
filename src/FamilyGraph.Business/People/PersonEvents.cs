@@ -35,3 +35,10 @@ public sealed record PersonDeleted(PersonId PersonId, AccountId ActorId, Profile
 /// </summary>
 public sealed record PersonHandedOver(PersonId PersonId, AccountId ActorId, AccountId PreviousMaintainerId, HandoverId HandoverId)
     : PersonEvent(PersonId, ActorId);
+
+/// <summary>
+/// An administrator made another account the maintainer, without its approval (D-035). Account IDs
+/// only, no personal data (D-015).
+/// </summary>
+public sealed record PersonTransferred(PersonId PersonId, AccountId ActorId, AccountId PreviousMaintainerId, AccountId NewMaintainerId)
+    : PersonEvent(PersonId, ActorId);

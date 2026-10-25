@@ -4,6 +4,9 @@
     <nav>
       <a routerLink="/people">People</a>
       <a routerLink="/approvals">Approvals</a>
+      @if (isAdministrator()) {
+        <a routerLink="/admin/users">Users</a>
+      }
       <a routerLink="/account">Account</a>
     </nav>
   }

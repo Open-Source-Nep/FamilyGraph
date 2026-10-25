@@ -1,5 +1,6 @@
 using FamilyGraph.Infrastructure;
 using Server.Accounts;
+using Server.Administration;
 using Server.Client;
 using Server.Errors;
 using Server.Export;
@@ -20,6 +21,7 @@ builder.Services.AddGraph(builder.Configuration);
 builder.Services.AddHandovers(builder.Configuration);
 builder.Services.AddExport();
 builder.Services.AddImport();
+builder.Services.AddAdministration(builder.Configuration);
 builder.Services.AddAntiforgery(options => options.HeaderName = "X-XSRF-TOKEN");
 builder.Services.AddControllers(options => options.Filters.Add<ValidateAntiforgeryFilter>());
 builder.Services.AddProblemDetails();

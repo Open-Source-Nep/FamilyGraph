@@ -10,5 +10,7 @@ import { AuthService } from './core/auth/auth.service';
   styleUrl: './app.css',
 })
 export class App {
-  protected readonly account = inject(AuthService).account;
+  private readonly auth = inject(AuthService);
+  protected readonly account = this.auth.account;
+  protected readonly isAdministrator = this.auth.isAdministrator;
 }

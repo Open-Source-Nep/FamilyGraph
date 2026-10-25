@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Server.Accounts;
+using Server.IntegrationTests.Administration;
 using Server.IntegrationTests.Export;
 using Server.IntegrationTests.Graph;
 using Server.IntegrationTests.Handovers;
@@ -58,6 +59,7 @@ public sealed class AccountTestFactory : WebApplicationFactory<Program>
         builder.ConfigureServices(services =>
         {
             services.AddSingleton<IAccountStore>(Store);
+            services.AddSingleton<IAccountQueries>(new InMemoryAccountQueries(Store, People));
             services.AddSingleton<IPersonStore>(People);
             services.AddSingleton<IPersonQueries>(People);
             services.AddSingleton<IProfileImageStore>(People);

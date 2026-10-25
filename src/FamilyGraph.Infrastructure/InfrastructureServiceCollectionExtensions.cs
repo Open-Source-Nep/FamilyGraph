@@ -49,6 +49,7 @@ public static class InfrastructureServiceCollectionExtensions
             .AddRoles<IdentityRole<Guid>>()
             .AddEntityFrameworkStores<FamilyGraphDbContext>();
         services.AddScoped<IAccountStore, IdentityAccountStore>();
+        services.AddScoped<IAccountQueries, EfAccountQueries>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<IAuditLog, EfAuditLog>();
         services.AddScoped<IPersonStore, EfPersonStore>();

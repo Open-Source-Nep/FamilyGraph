@@ -43,6 +43,15 @@ Define person profiles, account separation, and profile-maintainer authority.
 - A claimed profile cannot be handed over. Only an identity claim (PRD 04) changes its maintainer.
 - Creating, cancelling and accepting a link are audited, without the link's secret.
 
+## Administrator transfer
+
+- An administrator may make another account the maintainer of a profile without that account accepting anything. It is the only exception to voluntary handover.
+- An administrator may transfer one profile (from its person page) or every profile an account maintains at once (from the Users page). Deleted profiles are not transferred.
+- An administrator has a Users page listing every account with its email, whether Google verified it, whether it is an administrator, and how many profiles it maintains. Opening an account lists those profiles, Private ones with their names, each with a link and its own transfer.
+- A transfer never changes a relationship or its consent state, and each transferred profile is audited with the administrator, the previous and the new maintainer. An open handover link stops working because its creator no longer maintains the profile.
+- A claimed profile cannot be transferred. Only an identity claim (PRD 04) changes its maintainer.
+- Other users cannot see the Users page or transfer profiles.
+
 ## Account deletion and maintainer succession
 
 - When an account is deleted, every profile it maintains is assigned to **one administrator account** as maintainer: the first address on the configured administrator list that belongs to an existing account. This keeps exactly one maintainer per profile.
@@ -77,6 +86,12 @@ Define person profiles, account separation, and profile-maintainer authority.
 - `AC-01.20` The Client shrinks and re-encodes an image before upload, removing its metadata.
 - `AC-01.21` A person can be created with or without a gender, which is Male, Female or Other.
 - `AC-01.22` Only a profile's maintainer can set, change or clear its gender, and the audit history records the change without the gender.
+- `AC-01.23` An administrator can list every account with its email, verified flag, administrator flag and number of maintained profiles, and the profiles one account maintains.
+- `AC-01.24` An administrator can make another account a profile's maintainer without that account's approval.
+- `AC-01.25` An administrator can move every non-deleted profile one account maintains to another account at once.
+- `AC-01.26` A transfer leaves every relationship and its consent state unchanged and is recorded in the audit history for each profile.
+- `AC-01.27` A user who is not an administrator cannot list accounts or transfer profiles.
+- `AC-01.28` A claimed profile cannot be transferred.
 
 ## Open details
 
