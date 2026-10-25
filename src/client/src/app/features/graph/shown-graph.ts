@@ -1,3 +1,4 @@
+import { compareChildren, orderSiblings } from './child-order';
 import {
   GraphLink,
   GraphMarriage,
@@ -86,13 +87,16 @@ export interface ShownRelatives {
   spouses: { person: GraphPerson; marriage: GraphMarriage }[];
 }
 
-/** Shown people grouped by generation, oldest first, each with their shown relatives. */
+/**
+ * Shown people grouped by generation, oldest first, each with their shown relatives. Brothers and
+ * sisters, and each person's children, are in birth order (D-039).
+ */
 export function byGeneration(
   shown: ShownGraph,
 ): { generation: number; people: ShownRelatives[] }[] {
   const people = new Map(shown.people.map((row) => [row.person.id, row.person]));
   const groups = new Map<number, ShownRelatives[]>();
-  for (const row of shown.people) {
+  for (const row of orderSiblings(shown.people, shown.links)) {
     const id = row.person.id;
     const entry: ShownRelatives = {
       row,
@@ -101,7 +105,8 @@ export function byGeneration(
         .map((link) => ({ person: people.get(link.parentId)!, link })),
       children: shown.links
         .filter((link) => link.parentId === id && people.has(link.childId))
-        .map((link) => ({ person: people.get(link.childId)!, link })),
+        .map((link) => ({ person: people.get(link.childId)!, link }))
+        .sort(compareChildren),
       spouses: shown.marriages
         .filter((marriage) => marriage.firstSpouseId === id || marriage.secondSpouseId === id)
         .map((marriage) => ({

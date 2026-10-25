@@ -50,6 +50,43 @@ public class GraphEndpointTests(AccountTestFactory factory) : IClassFixture<Acco
     }
 
     [Fact]
+    [Trait("AC", "AC-02.17")]
+    public async Task Local_view_carries_birth_order_and_only_birth_dates_shown_to_others()
+    {
+        var (browser, token) = await SignInAsync(UniqueEmail());
+        var mother = await CreatePersonAsync(browser, token, "Sita");
+        var shown = await CreatePersonAsync(browser, token, new
+        {
+            firstName = "Maya",
+            birthDate = new { calendar = "Ad", year = 1990, month = 4 },
+            birthDateShown = true,
+        });
+        var hidden = await CreatePersonAsync(browser, token, new
+        {
+            firstName = "Rina",
+            birthDate = new { calendar = "Ad", year = 1980 },
+        });
+        using var shownLink = await CreateLinkAsync(browser, token, mother, shown, "Biological");
+        (await CreateLinkAsync(browser, token, mother, hidden, "Biological")).Dispose();
+        var shownLinkId = (await shownLink.Content.ReadFromJsonAsync<Dictionary<string, object>>(Cancellation))!["id"].ToString();
+        using var order = new HttpRequestMessage(HttpMethod.Put, $"/api/people/{mother}/children/order")
+        {
+            Content = JsonContent.Create(new { linkIds = new[] { shownLinkId } }),
+        };
+        order.Headers.Add("X-XSRF-TOKEN", token);
+        using var ordered = await browser.SendAsync(order, Cancellation);
+        Assert.Equal(HttpStatusCode.NoContent, ordered.StatusCode);
+
+        var view = await browser.GetFromJsonAsync<LocalViewResponse>($"/api/people/{mother}/graph", Cancellation);
+
+        Assert.Equal(1, view!.Links.Single(link => link.ChildId == shown).BirthOrder);
+        Assert.Null(view.Links.Single(link => link.ChildId == hidden).BirthOrder);
+        // The maintainer sees the hidden date on the person page, but it never orders children (D-039).
+        Assert.Equal(new DateOnly(1990, 4, 1), view.People.Single(row => row.Person.Id == shown).Person.BirthSortDate);
+        Assert.Null(view.People.Single(row => row.Person.Id == hidden).Person.BirthSortDate);
+    }
+
+    [Fact]
     [Trait("AC", "AC-05.5")]
     public async Task Local_view_leaves_out_people_reached_only_through_an_inactive_link()
     {
@@ -164,9 +201,12 @@ public class GraphEndpointTests(AccountTestFactory factory) : IClassFixture<Acco
         return (browser, await AccountTestFactory.SignInAsync(browser, email, Cancellation));
     }
 
-    private static async Task<Guid> CreatePersonAsync(HttpClient browser, string token, string firstName)
+    private static Task<Guid> CreatePersonAsync(HttpClient browser, string token, string firstName) =>
+        CreatePersonAsync(browser, token, new { firstName });
+
+    private static async Task<Guid> CreatePersonAsync(HttpClient browser, string token, object person)
     {
-        using var response = await SendAsync(browser, token, "/api/people", new { firstName });
+        using var response = await SendAsync(browser, token, "/api/people", person);
         return (await response.Content.ReadFromJsonAsync<PersonResponse>(Cancellation))!.Id;
     }
 

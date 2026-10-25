@@ -65,6 +65,7 @@ Do not add guardianship, step-parent, foster-parent, or other parent categories 
 - `AC-02.14` Either spouse's maintainer can mark a marriage former or current again, without consent, and each change is audited.
 - `AC-02.15` A former marriage stays in the graph and in paths, labelled as former.
 - `AC-02.16` A marriage between a direct parent and child is rejected, and so is a parent–child link between spouses.
+- `AC-02.17` A parent's children are listed in birth order, then the unordered ones by birth dates shown to others, then by name, on the person page and in the graph (PRD 08); a hidden birth date never changes the order.
 
 ## Open details
 

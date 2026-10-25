@@ -119,6 +119,10 @@ public sealed class InMemoryPeople
 
     public void Add(ParentChildLink link) => _addedLinks.Add(link);
 
+    /// <summary>A birth date shown to others on a profile the viewer may see, which orders children (D-039).</summary>
+    private static DateOnly? ShownBirth(PersonRecord person, Viewer viewer) =>
+        !IsHidden(person, viewer) && person.BirthDateShown ? person.BirthDate?.SortDate : null;
+
     /// <summary>Sorts people hidden from the viewer last, by ID, like the database query.</summary>
     public Task<DirectRelativesData> ListDirectRelativesAsync(
         PersonId personId, Viewer viewer, int limit, CancellationToken cancellationToken)
@@ -135,6 +139,7 @@ public sealed class InMemoryPeople
             .Where(link => link.ParentId == personId)
             .Select(link => new RelativeData(link.Id, Record(link.ChildId, viewer), link.Type, link.BirthOrder))
             .OrderBy(child => child.BirthOrder ?? int.MaxValue)
+            .ThenBy(child => ShownBirth(child.Person, viewer) ?? DateOnly.MaxValue)
             .ThenBy(child => IsHidden(child.Person, viewer))
             .ThenBy(child => IsHidden(child.Person, viewer) ? "" : child.Person.Name.FirstName, StringComparer.Ordinal)
             .ThenBy(child => child.Person.Id.Value)

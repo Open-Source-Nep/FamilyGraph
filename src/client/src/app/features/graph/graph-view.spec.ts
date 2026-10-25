@@ -50,6 +50,7 @@ const person = (id: string, firstName: string): GraphPerson => ({
   gender: null,
   maintainedByYou: false,
   description: null,
+  birthSortDate: null,
 });
 
 describe('GraphView', () => {
@@ -68,8 +69,8 @@ describe('GraphView', () => {
           { person: person('rina', 'Rina'), generation: -1, hasMore: false },
         ],
         links: [
-          { id: 'l1', parentId: 'gita', childId: 'maya', type: 'Biological' },
-          { id: 'l2', parentId: 'maya', childId: 'rina', type: 'Adoptive' },
+          { id: 'l1', parentId: 'gita', childId: 'maya', type: 'Biological', birthOrder: null },
+          { id: 'l2', parentId: 'maya', childId: 'rina', type: 'Adoptive', birthOrder: null },
         ],
         marriages: [],
         isTruncated: true,
@@ -82,8 +83,8 @@ describe('GraphView', () => {
           { person: person('maya', 'Maya'), generation: -1, hasMore: true },
         ],
         links: [
-          { id: 'l1', parentId: 'gita', childId: 'maya', type: 'Biological' },
-          { id: 'l3', parentId: 'sita', childId: 'gita', type: 'Biological' },
+          { id: 'l1', parentId: 'gita', childId: 'maya', type: 'Biological', birthOrder: null },
+          { id: 'l3', parentId: 'sita', childId: 'gita', type: 'Biological', birthOrder: null },
         ],
         marriages: [],
         isTruncated: false,
@@ -186,7 +187,9 @@ describe('GraphView', () => {
         { person: rina, generation: 0, hasMore: false },
         { person: person('kiran', 'Kiran'), generation: -1, hasMore: false },
       ],
-      links: [{ id: 'l4', parentId: 'rina', childId: 'kiran', type: 'Biological' }],
+      links: [
+        { id: 'l4', parentId: 'rina', childId: 'kiran', type: 'Biological', birthOrder: null },
+      ],
       marriages: [],
       isTruncated: false,
     };

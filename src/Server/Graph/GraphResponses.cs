@@ -10,6 +10,8 @@ namespace Server.Graph;
 /// <c>Private</c> or <c>Deleted</c> and no name or image, and stays in the graph with their links
 /// (PRD 05). <see cref="ImageId"/> names the current image, if any (D-028). <see cref="Gender"/> is
 /// null when not set or for a placeholder (D-030), and so is <see cref="Description"/> (D-037, D-038).
+/// <see cref="BirthSortDate"/> is the earliest day the birth date can mean, only when its
+/// maintainer shows it to others, so children sort the same way for every viewer (D-039).
 /// </summary>
 public sealed record GraphPersonResponse(
     Guid Id,
@@ -21,7 +23,8 @@ public sealed record GraphPersonResponse(
     bool MaintainedByYou,
     Guid? ImageId,
     string? Gender,
-    string? Description)
+    string? Description,
+    DateOnly? BirthSortDate)
 {
     internal static GraphPersonResponse From(PersonReference person) => new(
         person.Id.Value,
@@ -33,7 +36,8 @@ public sealed record GraphPersonResponse(
         person.MaintainedByViewer,
         person.ImageId?.Value,
         person.Gender?.Name,
-        person.Description);
+        person.Description,
+        person.BirthDateShown ? person.BirthDate?.SortDate : null);
 }
 
 /// <summary>
@@ -43,11 +47,14 @@ public sealed record GraphPersonResponse(
 /// </summary>
 public sealed record LocalViewPersonResponse(GraphPersonResponse Person, int Generation, bool HasMore);
 
-/// <summary>An active parent–child link, <c>Biological</c> or <c>Adoptive</c>.</summary>
-public sealed record GraphLinkResponse(Guid Id, Guid ParentId, Guid ChildId, string Type)
+/// <summary>
+/// An active parent–child link, <c>Biological</c> or <c>Adoptive</c>, with the child's place in
+/// the parent's birth order when set (D-016, D-039).
+/// </summary>
+public sealed record GraphLinkResponse(Guid Id, Guid ParentId, Guid ChildId, string Type, int? BirthOrder)
 {
     internal static GraphLinkResponse From(GraphLink link) =>
-        new(link.Id.Value, link.ParentId.Value, link.ChildId.Value, link.Type.Name);
+        new(link.Id.Value, link.ParentId.Value, link.ChildId.Value, link.Type.Name, link.BirthOrder);
 }
 
 /// <summary>An active marriage between two people in the same generation; <see cref="IsFormer"/> when it ended (D-031).</summary>

@@ -47,6 +47,27 @@ public class GraphQueriesTests(PostgresFixture postgres)
     }
 
     [Fact]
+    [Trait("AC", "AC-02.17")]
+    public async Task Local_view_links_carry_the_birth_order_and_people_their_birth_date()
+    {
+        await using var services = await NewServicesAsync();
+        var you = Person.Create(new PersonName("You"), Maintainer, birthDate: BirthDate.Ad(1960, 5, 1), birthDateShown: true);
+        var daughter = TestData.NewPerson(Maintainer, "Daughter");
+        var son = TestData.NewPerson(Maintainer, "Son");
+        var daughterLink = TestData.NewLink(you, daughter, Maintainer);
+        daughterLink.SetBirthOrder(you, Maintainer, 2);
+        await SaveAsync(services, [you, daughter, son, daughterLink, TestData.NewLink(you, son, Maintainer)]);
+
+        var view = await LocalViewAsync(services, you.Id, generations: 2, peopleLimit: 10);
+
+        Assert.Equal(2, view.Links.Single(link => link.ChildId == daughter.Id).BirthOrder);
+        Assert.Null(view.Links.Single(link => link.ChildId == son.Id).BirthOrder);
+        var centre = view.People.Single(row => row.Person.Id == you.Id).Person;
+        Assert.True(centre.BirthDateShown);
+        Assert.Equal(new DateOnly(1960, 5, 1), centre.BirthDate!.SortDate);
+    }
+
+    [Fact]
     [Trait("AC", "AC-08.5")]
     public async Task Local_view_stops_at_its_people_limit_and_flags_the_edge()
     {

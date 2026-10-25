@@ -57,6 +57,7 @@ The technical decision log, plus any unresolved choices. Do not treat recommenda
 - Linking spouses too, and choosing relatives on a new profile (D-036 below).
 - Descriptions, birth dates and setting birth order (D-037 below).
 - One people picker with avatars and descriptions, and People page rows (D-038 below).
+- Children in birth order in the graphs (D-039 below, proposed).
 - **Name length (agreed 2026-10-21):** Business puts no length cap on name parts. Any storage or input limit is set later by persistence (#9) and API validation (D-010).
 
 ## Discussion topics (all agreed)
@@ -636,3 +637,16 @@ For each major decision, record:
   - **Server:** maintained-list items carry `imageId` and `description`; graph people carry `description` (null for a placeholder).
   - **Client:** `features/people/PersonAvatar` (`app-person-avatar`) shows the photo through `imageUrl`, or the initials, in a 2.5 rem circle; a placeholder shows an empty circle. `PersonPicker` rows show the avatar, the name with "(yours)" and the description; `Candidate` gains `imageId` and `description`. "Add a new person" is on by default (`offersNewPerson`) and opens the picker's own dialog with `PersonNameForm` (every optional detail), creates the profile with `PeopleService.create`, lists and selects it and emits `created`. `AddRelatives`, `PersonRelatives`, `PersonSpouses` and `NewPersonPage` use it; `PersonRelatives` and `PersonSpouses` search everyone when you maintain the person (`searchesEveryone`), and only your profiles otherwise. The People page is a list of rows (`.person-rows`, `.person-row`) with the avatar, the name, "(private)" and the description, and a search box that filters the loaded list in the browser (every word in a name part or the description). The list is capped at `People:MaintainedListLimit` (500), which the page already says when reached, so no server search was added.
 - **Consequences:** No server rule changed. The home dots stay dots (D-028). Graph ordering by birth order (#99) is next.
+
+### D-039: Children in birth order in the graphs
+
+- **Status:** proposed (2026-10-25). Issue #99. Agreed with the user on 2026-10-25 (PRD 02, PRD 08): children are ordered by the parent's birth order, then the unordered ones by birth dates shown to others, then by name; a hidden date never orders anyone, even for its maintainer, so everyone sees one order; this holds in the tree diagram, the text view and the home dots (their starting places). The rest is proposed with the PR.
+- **Context:** Birth order lives on each link (D-016) and a birth date on the person (D-037), but graph responses carried neither, the person page's children ignored birth dates, and the diagrams placed people in the order the walk found them. dagre orders each row to reduce crossings, so brothers and sisters with the same parents, who tie, can come out in any order.
+- **Options considered:** sending the birth date itself, or only a sort key; sorting on the server, or in the Client per view; for the tree, insertion order alone, or moving siblings after dagre.
+- **Trade-offs:** A sort key (the earliest day the date can mean) is all the ordering needs and is null whenever the date is not shown, so the graph never carries a date the person page would hide. The Client already merges views around edge people (AC-08.5), so only it can order what is on screen. Insertion order alone did not survive dagre's crossing reduction in a browser check, so the tree moves siblings afterwards.
+- **Decision:**
+  - **Business:** `GraphLink` gains an optional `BirthOrder`, display only and never traversed.
+  - **Infrastructure:** the graph's link query reads `birth_order`. The person page's children sort by link birth order, then by the birth sort date when shown and not hidden from the viewer, then as before (hidden last, by name).
+  - **Server:** graph links carry `birthOrder`; graph people carry `birthSortDate` (`yyyy-mm-dd`), set only when the date is shown to others (never for a placeholder).
+  - **Client:** `features/graph/child-order.ts` has `compareChildren` (one parent's children), `siblingSets` and `orderSiblings` (each set of brothers and sisters with the same shown parents in order, kept in the places the set had; two siblings compare by birth order under each shared parent in turn) and `orderRow`. The text view lists each person's children and each generation's siblings in order. The home dots get `orderSiblings` as their starting order. The tree adds people and links in order, then `orderRow` lays each set of siblings, each with the spouses standing next to them, out again eldest on the left over the same stretch of the row, keeping the gaps; siblings with someone else between them stay where dagre put them.
+- **Consequences:** Half siblings are ordered within each set of parents, not across sets. No new endpoint, migration or dependency.

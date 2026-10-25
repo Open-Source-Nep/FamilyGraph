@@ -46,7 +46,9 @@ internal sealed class EfRelationshipQueries(FamilyGraphDbContext context) : IRel
                 join child in context.Set<Person>() on link.ChildId equals child.Id
                 let hidden = child.DeletedAt != null
                     || (!seesAll && child.Visibility == ProfileVisibility.Private && child.MaintainerId != viewerId)
-                orderby link.BirthOrder == null, link.BirthOrder, hidden, hidden ? "" : child.Name.FirstName,
+                // Only a birth date shown to others orders children, so everyone sees one order (D-039).
+                let born = !hidden && child.BirthDateShown && child.BirthDate != null ? child.BirthDate.SortDate : (DateOnly?)null
+                orderby link.BirthOrder == null, link.BirthOrder, born == null, born, hidden, hidden ? "" : child.Name.FirstName,
                     hidden ? "" : child.Name.MiddleName, hidden ? "" : child.Name.LastName, child.Id
                 select new RelativeData(
                     link.Id,

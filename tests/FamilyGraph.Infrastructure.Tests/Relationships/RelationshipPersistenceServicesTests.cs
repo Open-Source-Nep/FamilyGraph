@@ -196,6 +196,37 @@ public class RelationshipPersistenceServicesTests(PostgresFixture postgres)
     }
 
     [Fact]
+    [Trait("AC", "AC-02.17")]
+    public async Task Unordered_children_sort_by_birth_dates_shown_to_others_then_by_name()
+    {
+        await using var services = await NewServicesAsync();
+        var parent = TestData.NewPerson(Maintainer, "Hari");
+        var asha = TestData.NewPerson(Maintainer, "Asha");
+        var bina = Person.Create(new PersonName("Bina"), Maintainer, birthDate: BirthDate.Ad(1990), birthDateShown: true);
+        var chandra = Person.Create(new PersonName("Chandra"), Maintainer, birthDate: BirthDate.Ad(1985, 3), birthDateShown: true);
+        // A hidden birth date never orders children, not even for its maintainer.
+        var dipa = Person.Create(new PersonName("Dipa"), Maintainer, birthDate: BirthDate.Ad(1970), birthDateShown: false);
+        var ganga = TestData.NewPerson(Maintainer, "Ganga");
+        var gangaLink = TestData.NewLink(parent, ganga, Maintainer);
+        gangaLink.SetBirthOrder(parent, Maintainer, 1);
+        await SaveAsync(
+            services,
+            parent, asha, bina, chandra, dipa, ganga, gangaLink,
+            TestData.NewLink(parent, asha, Maintainer),
+            TestData.NewLink(parent, bina, Maintainer),
+            TestData.NewLink(parent, chandra, Maintainer),
+            TestData.NewLink(parent, dipa, Maintainer));
+
+        await using var scope = services.CreateAsyncScope();
+        var queries = scope.ServiceProvider.GetRequiredService<IRelationshipQueries>();
+        var relatives = await queries.ListDirectRelativesAsync(parent.Id, As(Maintainer), limit: 10, Cancellation);
+
+        Assert.Equal(
+            ["Ganga", "Chandra", "Bina", "Asha", "Dipa"],
+            relatives.Children.Select(relative => relative.Person.Name.FirstName));
+    }
+
+    [Fact]
     [Trait("AC", "AC-03.1")]
     [Trait("AC", "AC-03.3")]
     public async Task Approval_and_withdrawal_are_saved_with_their_audit_events()

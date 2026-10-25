@@ -27,6 +27,7 @@ const person = (id: string): GraphPerson => ({
   gender: null,
   maintainedByYou: false,
   description: null,
+  birthSortDate: null,
 });
 
 describe('HomeGraph', () => {
@@ -40,8 +41,8 @@ describe('HomeGraph', () => {
       Promise.resolve({
         people: [person('maya'), person('gita'), person('rina')],
         links: [
-          { id: 'l1', parentId: 'gita', childId: 'maya', type: 'Biological' },
-          { id: 'l2', parentId: 'maya', childId: 'rina', type: 'Adoptive' },
+          { id: 'l1', parentId: 'gita', childId: 'maya', type: 'Biological', birthOrder: null },
+          { id: 'l2', parentId: 'maya', childId: 'rina', type: 'Adoptive', birthOrder: null },
         ],
         marriages: [],
         isTruncated: false,

@@ -115,7 +115,7 @@ public sealed class InMemoryGraph(InMemoryPeople store) : IGraphQueries
     private IEnumerable<GraphLink> ActiveLinks() =>
         store.Links.Values
             .Where(link => link.IsActive)
-            .Select(link => new GraphLink(link.Id, link.ParentId, link.ChildId, link.Type));
+            .Select(link => new GraphLink(link.Id, link.ParentId, link.ChildId, link.Type, link.BirthOrder));
 
     private IEnumerable<GraphMarriage> ActiveMarriages() =>
         store.Marriages.Values
