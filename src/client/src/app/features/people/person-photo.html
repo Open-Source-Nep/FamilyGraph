@@ -1,5 +1,24 @@
 @if (url(); as url) {
-  <img class="photo" [src]="url" [alt]="alt()" width="160" height="160" />
+  <button
+    type="button"
+    class="photo-button"
+    [attr.aria-label]="enlargeLabel()"
+    aria-haspopup="dialog"
+    (click)="enlarge()"
+  >
+    <img class="photo" [src]="url" [alt]="alt()" width="160" height="160" />
+  </button>
+  <dialog
+    #enlarged
+    class="photo-dialog"
+    aria-label="Enlarged photo"
+    (click)="closeOnBackdrop($event)"
+  >
+    <div class="photo-frame">
+      <img class="enlarged" [src]="url" [alt]="alt()" width="512" height="512" />
+      <button type="button" class="secondary close" (click)="closeEnlarged()">Close</button>
+    </div>
+  </dialog>
 }
 @if (person().maintainedByYou && !person().placeholder) {
   <p class="actions">

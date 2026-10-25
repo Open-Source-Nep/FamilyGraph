@@ -281,6 +281,30 @@ describe('PersonPage', () => {
     expect(label('Change photo')).toBeUndefined();
   });
 
+  // AC-01.35: the photo opens enlarged and closes again.
+  it('enlarges the photo on click and closes it', async () => {
+    await show(false, { imageId: 'i1', gender: null });
+    const dialog = (): HTMLDialogElement =>
+      fixture.nativeElement.querySelector('dialog.photo-dialog');
+    const enlarge = (): HTMLButtonElement =>
+      fixture.nativeElement.querySelector('button.photo-button');
+    expect(enlarge().getAttribute('aria-label')).toBe('Enlarge photo of Maya Rai');
+    expect(dialog().open).toBe(false);
+
+    enlarge().click();
+    expect(dialog().open).toBe(true);
+    expect(dialog().querySelector('img')!.getAttribute('src')).toBe('/api/people/p1/image?v=i1');
+
+    button('Close')!.click();
+    expect(dialog().open).toBe(false);
+
+    enlarge().click();
+    dialog().querySelector('img')!.click();
+    expect(dialog().open).toBe(true);
+    dialog().click();
+    expect(dialog().open).toBe(false);
+  });
+
   // AC-01.18: only the maintainer changes the photo.
   it('offers adding a photo to the maintainer only', async () => {
     await show(true);
