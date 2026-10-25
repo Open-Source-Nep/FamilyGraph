@@ -48,6 +48,10 @@ internal sealed class InMemoryPeople
     public Task<Person?> FindAsync(PersonId id, CancellationToken cancellationToken) =>
         Task.FromResult(People.GetValueOrDefault(id));
 
+    public Task<IReadOnlyList<Person>> ListMaintainedByAsync(AccountId maintainerId, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<Person>>(
+            [.. People.Values.Where(person => person.IsMaintainedBy(maintainerId) && !person.IsDeleted)]);
+
     public void Add(Person person) => _added.Add(person);
 
     public Task<PersonRecord?> FindAsync(PersonId id, AccountId viewerId, CancellationToken cancellationToken) =>

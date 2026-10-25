@@ -209,6 +209,30 @@ public sealed class Person : AuditedEntity
         Record(new PersonHandedOver(Id, actorId, previousMaintainerId, handover.Id));
     }
 
+    /// <summary>
+    /// An administrator makes <paramref name="newMaintainerId"/> the maintainer, without that account
+    /// accepting anything (D-035). It is the one exception to voluntary handover (PRD 01). Links and
+    /// their consent are unchanged, and an open handover link becomes void because its creator no
+    /// longer maintains the profile.
+    /// </summary>
+    public void Transfer(AccountId newMaintainerId, AccountId actorId, bool actorIsAdministrator)
+    {
+        if (!actorIsAdministrator)
+        {
+            throw new TransferNotAdministratorException();
+        }
+
+        EnsureNotDeleted();
+        if (IsMaintainedBy(newMaintainerId))
+        {
+            throw new TransferToSameMaintainerException(Id);
+        }
+
+        var previousMaintainerId = MaintainerId;
+        MaintainerId = newMaintainerId;
+        Record(new PersonTransferred(Id, actorId, previousMaintainerId, newMaintainerId));
+    }
+
     /// <summary>A deleted profile accepts no further change, nor consent on its side of a link.</summary>
     public void EnsureNotDeleted()
     {
@@ -230,3 +254,10 @@ public sealed class ProfileHasNoImageException(PersonId personId)
 
 public sealed class ProfileVisibilityUnchangedException(PersonId personId, ProfileVisibility visibility)
     : ConflictException("person.visibility_unchanged", $"Profile {personId.Value} is already {visibility}.");
+
+/// <summary>Only an administrator may transfer a profile without the receiver accepting (D-035).</summary>
+public sealed class TransferNotAdministratorException()
+    : NotPermittedException("transfer.not_administrator", "Only an administrator can transfer profiles.");
+
+public sealed class TransferToSameMaintainerException(PersonId personId)
+    : ConflictException("transfer.same_maintainer", $"That account already maintains profile {personId.Value}.");

@@ -52,7 +52,8 @@ The technical decision log, plus any unresolved choices. Do not treat recommenda
 - Marriages (D-031 below).
 - Adding relatives from the graph, with person search (D-032 below).
 - Data import: an administrator's upload of an export file into an empty instance (D-033 below).
-- Deleting profiles from the graph (D-034 below, proposed).
+- Deleting profiles from the graph (D-034 below).
+- Administrator Users page and profile transfers (D-035 below, proposed).
 - **Name length (agreed 2026-10-21):** Business puts no length cap on name parts. Any storage or input limit is set later by persistence (#9) and API validation (D-010).
 
 ## Discussion topics (all agreed)
@@ -572,7 +573,7 @@ For each major decision, record:
 
 ### D-034: Deleting profiles from the graph
 
-- **Status:** proposed (2026-10-24). Issue #92. Agreed with the user on 2026-10-24 (PRD 08): the graph page's right-click menu offers Delete profile to the maintainer or an administrator, under the deletion rules of D-026, after a confirmation dialog. The rest is proposed with the PR.
+- **Status:** agreed (2026-10-25). Issue #92, merged in #93. Agreed with the user on 2026-10-24 (PRD 08): the graph page's right-click menu offers Delete profile to the maintainer or an administrator, under the deletion rules of D-026, after a confirmation dialog. The rest is proposed with the PR.
 - **Context:** Profiles could only be deleted from the person page (D-026). The diagram's menu (D-032) already has the person, and each graph person carries `maintainedByYou`; the Client knows whether you are an administrator from `GET /api/account`.
 - **Options considered:** a new endpoint, or the existing `DELETE /api/people/{id}`; reloading the whole view after a deletion, or replacing the one person in it.
 - **Trade-offs:** The existing endpoint already enforces who may delete and records the audit event, so the Server and the domain stay as they are. Replacing the one person with the placeholder fetched from `GET /api/people/{id}` keeps the people the viewer loaded with "load more", which a reload of the centre's view would drop; links stay as they were, because deletion leaves them active.
@@ -581,3 +582,17 @@ For each major decision, record:
   - **Server, Application, Business:** no change; the menu is only a hint, and the server decides (403 `person.not_maintainer`, 409 `person.deleted`).
   - **Accessibility:** the person page's "Delete profile" stays the keyboard and screen reader route (AC-09.2).
 - **Consequences:** Every later menu action follows the same pattern: the Client hides what you may not do, and the existing endpoint enforces it.
+
+### D-035: Administrator Users page and profile transfers
+
+- **Status:** proposed (2026-10-25). Issue #94. Agreed with the user on 2026-10-25 (PRD 01): an administrator moves one profile or all of an account's profiles to another account without its approval; the Users page shows each account's email, verified and administrator flags, number of maintained profiles and an expandable list of those profiles. The rest is proposed with the PR.
+- **Context:** Maintainers change only through voluntary handover (D-027), which the receiver accepts. An account is a Google ID, an email and a verified flag (D-018); administrators come from configuration (D-008) and already see maintainers' emails in the export (D-029).
+- **Options considered:** a new aggregate or a method on `Person`; one event for a bulk transfer or one per profile; loading the profiles of a bulk transfer or one set-based `UPDATE`; including deleted profiles in a bulk transfer.
+- **Trade-offs:** A method on `Person` keeps the rule with the profile's other maintainer changes and records its event in the profile's history. One event per profile keeps every profile's history complete at the cost of more rows; loading the profiles lets each check and record its own transfer, and an account maintains far fewer profiles than PRD 09's 10,000. Deleted profiles accept no change (D-026) and leave the maintained list, so a bulk transfer skips them.
+- **Decision:**
+  - **Business:** `Person.Transfer(newMaintainerId, actorId, actorIsAdministrator)` refuses a non-administrator (403 `transfer.not_administrator`), a deleted profile (409 `person.deleted`) and the current maintainer (409 `transfer.same_maintainer`), changes `MaintainerId` and records `PersonTransferred` (Profile family) with the previous and new maintainer IDs. Links are not touched. The claimed-profile check (AC-01.28) is added with #25.
+  - **Application:** `Accounts/AccountAdministrationService` checks the viewer is an administrator first (403 `accounts.not_administrator` for the lists, `transfer.not_administrator` for transfers), then: `ListAccountsAsync` through `IAccountQueries` (up to `Accounts:ListLimit`, default 1000, with `isTruncated`), `ListProfilesAsync` through `IPersonQueries.ListMaintainedByAsync`, `TransferProfileAsync`, and `TransferAllAsync`, which loads the non-deleted profiles with the new `IPersonStore.ListMaintainedByAsync` and saves them with their events in one transaction (409 `transfer.same_account` to itself). An unknown account is 404 `account.not_found`.
+  - **Persistence:** `Identity/EfAccountQueries` reads accounts with the administrator role and a live count of non-deleted maintained profiles in one query, sorted by email and ID. No schema change.
+  - **API:** `GET /api/admin/accounts`, `GET /api/admin/accounts/{id}/profiles`, `POST /api/admin/accounts/{id}/transfer` and `POST /api/admin/people/{id}/transfer`, both with `{ "toAccountId" }` (400 without it); the first answers `{ "transferred" }`, the second 204.
+  - **Client:** `features/admin`. The header shows **Users** to administrators; `/admin/users` (behind `adminGuard`) lists the accounts, opens one to list its profiles with links, and offers a per-profile transfer and "Transfer all profiles" after a confirmation. The person page shows administrators "Transfer to another account", which loads the accounts when opened.
+- **Consequences:** #25 must refuse transfers of claimed profiles. Account deletion (PRD 01) can reuse `Person.Transfer` when it moves profiles to an administrator. The Users page has no search; a much larger instance would need one before `Accounts:ListLimit` is reached.

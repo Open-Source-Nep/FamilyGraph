@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 
 import { AuthService } from '../../core/auth/auth.service';
 
+import { PersonTransfer } from '../admin/person-transfer';
 import { PersonHandover } from '../handovers/person-handover';
 import { PersonRelatives } from '../relationships/person-relatives';
 import { PersonSpouses } from '../relationships/person-spouses';
@@ -15,7 +16,8 @@ import { problemMessage } from './problem';
 /**
  * One profile with its photo, parents and children. Its maintainer can rename it, change its photo,
  * make it Public or Private and hand it over to another account, and its maintainer or an
- * administrator can delete it; the server enforces all of these (PRD 01, PRD 05). A Private profile hidden from you or a deleted one shows only its
+ * administrator can delete it. An administrator can also give it to another account (D-035). The
+ * server enforces all of these (PRD 01, PRD 05). A Private profile hidden from you or a deleted one shows only its
  * placeholder, with its parents and children.
  */
 @Component({
@@ -26,6 +28,7 @@ import { problemMessage } from './problem';
     PersonPhoto,
     PersonRelatives,
     PersonSpouses,
+    PersonTransfer,
     RouterLink,
   ],
   templateUrl: './person-page.html',
@@ -57,6 +60,7 @@ export class PersonPage {
       (person.maintainedByYou || this.auth.isAdministrator())
     );
   });
+  protected readonly isAdministrator = this.auth.isAdministrator;
   protected readonly confirmingDelete = signal(false);
   protected readonly editing = signal(false);
   protected readonly saving = signal(false);
@@ -116,6 +120,19 @@ export class PersonPage {
       this.error.set(problemMessage(error));
     } finally {
       this.saving.set(false);
+    }
+  }
+
+  /** After an administrator's transfer, `maintainedByYou` may have changed. */
+  protected async transferred(): Promise<void> {
+    const person = this.person();
+    if (!person) {
+      return;
+    }
+    try {
+      this.person.set(await this.people.get(person.id));
+    } catch (error) {
+      this.error.set(problemMessage(error));
     }
   }
 

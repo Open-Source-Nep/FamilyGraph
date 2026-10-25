@@ -94,6 +94,9 @@
           </p>
         }
       }
+      @if (isAdministrator() && person.placeholder !== 'Deleted') {
+        <app-person-transfer [personId]="person.id" (transferred)="transferred()" />
+      }
       <p><a [routerLink]="['/people', person.id, 'graph']">Show the family graph</a></p>
       <app-person-relatives [person]="person" />
       <app-person-spouses [person]="person" />

@@ -1,0 +1,119 @@
+<section class="panel wide">
+  <h1>Users</h1>
+  <p class="hint">
+    Every account on this instance. You can move profiles to another account without its approval.
+    Their relationships and approvals stay as they are, and each move is recorded.
+  </p>
+
+  @if (error(); as error) {
+    <p class="error" role="alert">{{ error }}</p>
+  }
+  @if (message(); as message) {
+    <p role="status">{{ message }}</p>
+  }
+
+  @if (loading()) {
+    <p class="hint">Loading…</p>
+  } @else {
+    <ul class="accounts">
+      @for (account of accounts(); track account.id) {
+        <li>
+          <details #row (toggle)="toggled(account, row.open)">
+            <summary>
+              <span class="email">{{ account.email }}</span>
+              @if (!account.emailVerified) {
+                <span class="badge">not verified</span>
+              }
+              @if (account.administrator) {
+                <span class="badge">administrator</span>
+              }
+              <span class="count">
+                {{ account.maintainedProfiles }}
+                {{ account.maintainedProfiles === 1 ? 'profile' : 'profiles' }}
+              </span>
+            </summary>
+
+            @if (profiles()[account.id]; as list) {
+              @if (list.people.length === 0) {
+                <p class="hint">This account maintains no profiles.</p>
+              } @else {
+                <ul class="profiles">
+                  @for (person of list.people; track person.id) {
+                    <li>
+                      <a [routerLink]="['/people', person.id]">{{ fullName(person) }}</a>
+                      @if (person.visibility === 'Private') {
+                        <span class="badge">private</span>
+                      }
+                      <span class="actions">
+                        <select
+                          [attr.aria-label]="'New maintainer of ' + fullName(person)"
+                          [value]="targets()[person.id] ?? ''"
+                          (change)="pick(person.id, $any($event.target).value)"
+                        >
+                          <option value="">Move to…</option>
+                          @for (receiver of receivers(account.id); track receiver.id) {
+                            <option [value]="receiver.id">{{ accountLabel(receiver) }}</option>
+                          }
+                        </select>
+                        <button
+                          type="button"
+                          class="secondary"
+                          [disabled]="busy() || !targets()[person.id]"
+                          (click)="transferProfile(account, person.id)"
+                        >
+                          Transfer
+                        </button>
+                      </span>
+                    </li>
+                  }
+                </ul>
+                @if (list.isTruncated) {
+                  <p class="hint">Only the first {{ list.people.length }} profiles are shown.</p>
+                }
+
+                <div class="actions">
+                  <select
+                    [attr.aria-label]="'New maintainer of all profiles of ' + account.email"
+                    [value]="targets()[account.id] ?? ''"
+                    (change)="pick(account.id, $any($event.target).value)"
+                  >
+                    <option value="">Move all to…</option>
+                    @for (receiver of receivers(account.id); track receiver.id) {
+                      <option [value]="receiver.id">{{ accountLabel(receiver) }}</option>
+                    }
+                  </select>
+                  @if (confirmingAll() === account.id) {
+                    <span>
+                      Move all {{ account.maintainedProfiles }} profiles to
+                      {{ byId().get(targets()[account.id])?.email }}?
+                    </span>
+                    <button type="button" [disabled]="busy()" (click)="transferAll(account)">
+                      Transfer all
+                    </button>
+                    <button type="button" class="secondary" (click)="confirmingAll.set(null)">
+                      Keep
+                    </button>
+                  } @else {
+                    <button
+                      type="button"
+                      class="secondary"
+                      [disabled]="busy() || !targets()[account.id]"
+                      (click)="confirmingAll.set(account.id)"
+                    >
+                      Transfer all profiles
+                    </button>
+                  }
+                </div>
+              }
+            } @else {
+              <p class="hint">Loading…</p>
+            }
+          </details>
+        </li>
+      }
+    </ul>
+    @if (isTruncated()) {
+      <p class="hint">Only the first {{ accounts().length }} accounts are shown.</p>
+    }
+  }
+</section>

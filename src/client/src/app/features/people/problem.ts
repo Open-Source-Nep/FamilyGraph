@@ -34,6 +34,11 @@ const messages: Record<string, string> = {
   'person.no_image': 'This profile has no photo. Reload the page.',
   'profile_image.too_large': 'This photo is too large. Choose a smaller one.',
   'profile_image.unsupported_format': 'Choose a JPEG, PNG or WebP photo.',
+  'accounts.not_administrator': 'Only an administrator can see the accounts.',
+  'account.not_found': 'This account does not exist. Reload the page.',
+  'transfer.not_administrator': 'Only an administrator can transfer profiles.',
+  'transfer.same_maintainer': 'That account already maintains this profile.',
+  'transfer.same_account': 'Choose a different account to move the profiles to.',
   'graph.timeout': 'The family graph took too long to load. Please try again.',
 };
 
