@@ -13,8 +13,18 @@
     @if (list.people.length === 0) {
       <p>You do not maintain any profiles yet.</p>
     } @else {
+      <label class="search-box">
+        Search your profiles
+        <input
+          type="search"
+          autocomplete="off"
+          placeholder="Name or description"
+          [value]="query()"
+          (input)="query.set($any($event.target).value)"
+        />
+      </label>
       <ul class="person-rows">
-        @for (person of list.people; track person.id) {
+        @for (person of shown(); track person.id) {
           <li>
             <a class="person-row" [routerLink]="['/people', person.id]">
               <app-person-avatar [person]="person" />
@@ -31,6 +41,8 @@
               </span>
             </a>
           </li>
+        } @empty {
+          <li class="hint empty">Nobody matches.</li>
         }
       </ul>
       @if (list.isTruncated) {
