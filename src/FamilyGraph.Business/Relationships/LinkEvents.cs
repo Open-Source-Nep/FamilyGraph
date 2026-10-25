@@ -25,6 +25,13 @@ public abstract record LinkEndpointEvent(LinkId LinkId, PersonId Endpoint, Accou
 public sealed record LinkEndpointApproved(LinkId LinkId, PersonId Endpoint, AccountId ActorId)
     : LinkEndpointEvent(LinkId, Endpoint, ActorId);
 
+/// <summary>
+/// Pending → approved by an administrator on behalf of <see cref="MaintainerId"/>, the endpoint's
+/// maintainer at the time (D-040). Distinct from <see cref="LinkEndpointApproved"/>.
+/// </summary>
+public sealed record LinkEndpointApprovedByAdministrator(LinkId LinkId, PersonId Endpoint, AccountId ActorId, AccountId MaintainerId)
+    : LinkEndpointEvent(LinkId, Endpoint, ActorId);
+
 /// <summary>Disagreed → approved.</summary>
 public sealed record LinkApprovalRestored(LinkId LinkId, PersonId Endpoint, AccountId ActorId)
     : LinkEndpointEvent(LinkId, Endpoint, ActorId);

@@ -11,7 +11,7 @@ Define when a parent–child relationship is active, inactive, restored, or remo
 - A claimed person can disagree with a relationship involving their own profile. This immediately makes the relationship inactive.
 - An inactive relationship is excluded from the public active graph, ordinary relationship views, graph traversal, and derived relationship calculations.
 - The disagreement and all lifecycle changes remain in audit history.
-- Administrators may investigate disputes but cannot override the mutual-consent requirement.
+- Administrators may investigate disputes but cannot override the mutual-consent requirement. The one exception: an administrator may approve a side that is still pending on behalf of its maintainer (see Administrator approval below).
 - Claiming a profile does not automatically deactivate existing relationships. They remain active unless the new maintainer disagrees.
 - Track each endpoint's approval/disagreement state independently; do not rely only on a single `Active` boolean.
 
@@ -42,7 +42,12 @@ Define when a parent–child relationship is active, inactive, restored, or remo
 - `AC-03.2` Derived relationships dependent on an inactive link are no longer shown as active.
 - `AC-03.3` Restoring approval reactivates a relationship when all required approvals are valid.
 - `AC-03.4` Historical events remain auditable after deactivation or deletion.
-- `AC-03.5` Administrators cannot force an active relationship when required consent is absent.
+- `AC-03.5` Administrators cannot force an active relationship when required consent is absent: they cannot decline, restore or override a side its maintainer declined or withdrew.
+- `AC-03.6` An administrator can approve a pending side of a parent–child link or a marriage on behalf of its maintainer; the relationship becomes active when the other side has approved.
+- `AC-03.7` An administrator cannot approve a side its maintainer declined or withdrew, and cannot decline for a maintainer.
+- `AC-03.8` An administrator approval is recorded in the audit history apart from a maintainer's own approval, with the administrator and the maintainer it stood in for.
+- `AC-03.9` Administrators see every link and marriage waiting for another maintainer on the Approvals page; other users cannot list them.
+- `AC-03.10` An administrator cannot approve on behalf of a claimed person.
 
 ## Creation decisions (agreed 2026-10-21)
 
@@ -66,6 +71,15 @@ Define when a parent–child relationship is active, inactive, restored, or remo
 - Deletion is final. Undoing it means creating the link again.
 - A deleted link accepts no further approval, disagreement or deletion.
 - See D-014 in `docs/trd/open-decisions.md`.
+
+## Administrator approval (agreed 2026-10-25)
+
+- An administrator may approve a **pending** side of a parent–child link or a marriage on behalf of its maintainer, whoever maintains it. There is no check that the maintainer is unavailable.
+- Only pending sides. Declining stays with the maintainer, and a side the maintainer declined or withdrew stays theirs to restore.
+- Not for claimed profiles: a claimed person's consent is their own. The check comes with claims (#25); until then every profile is unclaimed.
+- The audit history records it as an administrator approval, with the administrator and the maintainer at that time, distinct from the maintainer's own approval.
+- The Approvals page shows administrators every link and marriage waiting for another maintainer, each pending side with "Approve as administrator".
+- See D-040 in `docs/trd/open-decisions.md`.
 
 ## Open details
 

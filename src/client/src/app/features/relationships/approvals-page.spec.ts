@@ -1,6 +1,8 @@
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
+import { AuthService } from '../../core/auth/auth.service';
 import { ApprovalsPage } from './approvals-page';
 import { MarriagesService } from './marriages.service';
 import {
@@ -42,6 +44,9 @@ describe('ApprovalsPage', () => {
   let list: LinkConsentList;
   let marriages: MarriageConsentList;
   let calls: [string, string, LinkEndpoint | string][];
+  let administrator: boolean;
+  let pendingLinks: LinkConsentList;
+  let pendingMarriages: MarriageConsentList;
 
   const consent = (action: string) => (linkId: string, side: LinkEndpoint) => {
     calls.push([action, linkId, side]);
@@ -54,9 +59,20 @@ describe('ApprovalsPage', () => {
       providers: [
         provideRouter([]),
         {
+          provide: AuthService,
+          useValue: { load: () => Promise.resolve(null), isAdministrator: signal(administrator) },
+        },
+        {
           provide: RelationshipsService,
           useValue: {
             listInactive: () => Promise.resolve(list),
+            listPending: () =>
+              administrator ? Promise.resolve(pendingLinks) : Promise.reject(new Error('403')),
+            approveAsAdministrator: (linkId: string, side: LinkEndpoint) => {
+              calls.push(['approve as administrator', linkId, side]);
+              const found = pendingLinks.links.find((item) => item.id === linkId)!;
+              return Promise.resolve({ ...found, isActive: true });
+            },
             approve: consent('approve'),
             disagree: consent('disagree'),
             delete: (linkId: string) => {
@@ -69,6 +85,13 @@ describe('ApprovalsPage', () => {
           provide: MarriagesService,
           useValue: {
             listInactive: () => Promise.resolve(marriages),
+            listPending: () =>
+              administrator ? Promise.resolve(pendingMarriages) : Promise.reject(new Error('403')),
+            approveAsAdministrator: (marriageId: string, spouseId: string) => {
+              calls.push(['approve marriage as administrator', marriageId, spouseId]);
+              const found = pendingMarriages.marriages.find((item) => item.id === marriageId)!;
+              return Promise.resolve({ ...found, isActive: false });
+            },
             approve: (marriageId: string, spouseId: string) => {
               calls.push(['approve marriage', marriageId, spouseId]);
               const found = marriages.marriages.find((item) => item.id === marriageId)!;
@@ -102,6 +125,9 @@ describe('ApprovalsPage', () => {
 
   beforeEach(() => {
     calls = [];
+    administrator = false;
+    pendingLinks = { links: [], isTruncated: false };
+    pendingMarriages = { marriages: [], isTruncated: false };
     marriages = { marriages: [], isTruncated: false };
     list = {
       links: [
@@ -242,5 +268,76 @@ describe('ApprovalsPage', () => {
     await render();
 
     expect(text()).toContain('Nothing is waiting.');
+  });
+
+  it('shows no administrator section to other users', async () => {
+    await render();
+
+    expect(text()).not.toContain('Waiting for other maintainers');
+    expect(buttons().some((label) => label?.includes('as administrator'))).toBe(false);
+  });
+
+  it('lets an administrator approve pending sides of other maintainers (D-040)', async () => {
+    administrator = true;
+    list = { links: [], isTruncated: false };
+    pendingLinks = {
+      links: [
+        // Alice linked her Hari as a parent of Bob's Maya; Maya's side waits for Bob.
+        link(
+          'l5',
+          endpoint('p1', 'Hari', 'Approved', false),
+          endpoint('p2', 'Maya', 'Pending', false),
+        ),
+      ],
+      isTruncated: false,
+    };
+    pendingMarriages = {
+      marriages: [
+        {
+          id: 'm2',
+          first: endpoint('p3', 'Ram', 'Pending', false),
+          second: endpoint('p4', 'Sita', 'Pending', false),
+          isFormer: false,
+          isActive: false,
+        },
+      ],
+      isTruncated: false,
+    };
+    await render();
+
+    expect(text()).toContain('Waiting for other maintainers');
+    expect(buttons()).toEqual([
+      'Approve for Maya as administrator',
+      'Approve for Ram as administrator',
+      'Approve for Sita as administrator',
+    ]);
+
+    await click('Approve for Maya as administrator');
+    expect(calls).toEqual([['approve as administrator', 'l5', 'Child']]);
+    expect(text()).toContain(
+      'You approved Hari as parent of Maya as administrator. It is now active.',
+    );
+
+    await click('Approve for Sita as administrator');
+    expect(calls).toContainEqual(['approve marriage as administrator', 'm2', 'p4']);
+    expect(text()).toContain('It still waits for the other side.');
+  });
+
+  it('offers an administrator nothing for declined sides or their own profiles', async () => {
+    administrator = true;
+    list = { links: [], isTruncated: false };
+    pendingLinks = {
+      links: [
+        link(
+          'l6',
+          endpoint('p1', 'Hari', 'Pending', true),
+          endpoint('p2', 'Maya', 'Disagreed', false),
+        ),
+      ],
+      isTruncated: false,
+    };
+    await render();
+
+    expect(buttons()).toEqual([]);
   });
 });

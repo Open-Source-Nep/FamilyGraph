@@ -33,6 +33,21 @@ export class MarriagesService {
     return firstValueFrom(this.http.get<MarriageConsentList>('/api/marriages/inactive'));
   }
 
+  /** Every marriage with a side waiting for another maintainer; administrators only (D-040). */
+  listPending(): Promise<MarriageConsentList> {
+    return firstValueFrom(this.http.get<MarriageConsentList>('/api/marriages/pending'));
+  }
+
+  /** An administrator approves a spouse's pending side on behalf of its maintainer (D-040). */
+  approveAsAdministrator(marriageId: string, spouseId: string): Promise<MarriageConsent> {
+    return firstValueFrom(
+      this.http.post<MarriageConsent>(
+        `/api/marriages/${encodeURIComponent(marriageId)}/approve-as-administrator`,
+        { spouseId },
+      ),
+    );
+  }
+
   /** Approves for a spouse you maintain, from pending or after withdrawing. */
   approve(marriageId: string, spouseId: string): Promise<MarriageConsent> {
     return this.consent(marriageId, 'approve', spouseId);

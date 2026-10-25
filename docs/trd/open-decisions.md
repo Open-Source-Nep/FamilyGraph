@@ -57,7 +57,8 @@ The technical decision log, plus any unresolved choices. Do not treat recommenda
 - Linking spouses too, and choosing relatives on a new profile (D-036 below).
 - Descriptions, birth dates and setting birth order (D-037 below).
 - One people picker with avatars and descriptions, and People page rows (D-038 below).
-- Children in birth order in the graphs (D-039 below, proposed).
+- Children in birth order in the graphs (D-039 below).
+- Administrators approving pending sides on behalf of maintainers (D-040 below, proposed).
 - **Name length (agreed 2026-10-21):** Business puts no length cap on name parts. Any storage or input limit is set later by persistence (#9) and API validation (D-010).
 
 ## Discussion topics (all agreed)
@@ -640,7 +641,7 @@ For each major decision, record:
 
 ### D-039: Children in birth order in the graphs
 
-- **Status:** proposed (2026-10-25). Issue #99. Agreed with the user on 2026-10-25 (PRD 02, PRD 08): children are ordered by the parent's birth order, then the unordered ones by birth dates shown to others, then by name; a hidden date never orders anyone, even for its maintainer, so everyone sees one order; this holds in the tree diagram, the text view and the home dots (their starting places). The rest is proposed with the PR.
+- **Status:** agreed (2026-10-25). Issue #99, PR #104. Agreed with the user on 2026-10-25 (PRD 02, PRD 08): children are ordered by the parent's birth order, then the unordered ones by birth dates shown to others, then by name; a hidden date never orders anyone, even for its maintainer, so everyone sees one order; this holds in the tree diagram, the text view and the home dots (their starting places). The rest is proposed with the PR.
 - **Context:** Birth order lives on each link (D-016) and a birth date on the person (D-037), but graph responses carried neither, the person page's children ignored birth dates, and the diagrams placed people in the order the walk found them. dagre orders each row to reduce crossings, so brothers and sisters with the same parents, who tie, can come out in any order.
 - **Options considered:** sending the birth date itself, or only a sort key; sorting on the server, or in the Client per view; for the tree, insertion order alone, or moving siblings after dagre.
 - **Trade-offs:** A sort key (the earliest day the date can mean) is all the ordering needs and is null whenever the date is not shown, so the graph never carries a date the person page would hide. The Client already merges views around edge people (AC-08.5), so only it can order what is on screen. Insertion order alone did not survive dagre's crossing reduction in a browser check, so the tree moves siblings afterwards.
@@ -650,3 +651,17 @@ For each major decision, record:
   - **Server:** graph links carry `birthOrder`; graph people carry `birthSortDate` (`yyyy-mm-dd`), set only when the date is shown to others (never for a placeholder).
   - **Client:** `features/graph/child-order.ts` has `compareChildren` (one parent's children), `siblingSets` and `orderSiblings` (each set of brothers and sisters with the same shown parents in order, kept in the places the set had; two siblings compare by birth order under each shared parent in turn) and `orderRow`. The text view lists each person's children and each generation's siblings in order. The home dots get `orderSiblings` as their starting order. The tree adds people and links in order, then `orderRow` lays each set of siblings, each with the spouses standing next to them, out again eldest on the left over the same stretch of the row, keeping the gaps; siblings with someone else between them stay where dagre put them.
 - **Consequences:** Half siblings are ordered within each set of parents, not across sets. No new endpoint, migration or dependency.
+
+### D-040: Administrators approving pending sides on behalf of maintainers
+
+- **Status:** proposed (2026-10-25). Issue #105. Agreed with the user on 2026-10-25 (PRD 03): an administrator approves only a pending side, on behalf of whoever maintains it, with no "unavailable" check; declining and restoring stay with the maintainer; administrators find these on the Approvals page, in a section listing every link and marriage waiting for another maintainer. The rest is proposed with the PR.
+- **Context:** A link or marriage made with someone else's profile stays inactive until that maintainer approves (PRD 03), and an absent maintainer leaves it stuck. PRD 03 said administrators never override consent (AC-03.5); merges already let an administrator stand in for an unavailable maintainer of an unclaimed profile (PRD 06). Claims (#25) are not built, so no profile is claimed yet.
+- **Options considered:** a flag on `Approve`, or its own method; reusing `LinkEndpointApproved` with the administrator as actor, or its own event; one instance-wide list, or a filter on the inactive-links query.
+- **Trade-offs:** Its own method leaves the maintainer check of `Approve` untouched and keeps the pending-only rule in one place. Its own event, with the maintainer's ID, lets history tell an administrator's approval from the maintainer's (AC-03.8) without looking up account roles afterwards. A separate query leaves the viewer's own list (D-021) as it is; the new one is bounded by `Relationships:InactiveLinksLimit` like it.
+- **Decision:**
+  - **Business:** `ParentChildLink.ApproveAsAdministrator(endpoint, actorId, actorIsAdministrator, parentAncestors)` and `Marriage.ApproveAsAdministrator(spouse, actorId, actorIsAdministrator)` refuse a non-administrator (403 `consent.not_administrator`), a deleted link, marriage or profile (409), an approved side (409 `link.consent_unchanged` or `marriage.consent_unchanged`) and a declined or withdrawn side (409 `consent.not_pending`). The link re-runs the cycle check when it would become active. They record `LinkEndpointApprovedByAdministrator` or `MarriageSpouseApprovedByAdministrator` (RelationshipConsent family) with the endpoint, the administrator and the maintainer's account ID. The claimed-profile check (AC-03.10) is added with #25.
+  - **Application:** `RelationshipService` and `MarriageService` get `ApproveAsAdministratorAsync` and `ListPendingForAdministratorAsync`; each refuses a non-administrator before loading anything. `IRelationshipQueries.ListPendingLinksAsync` and `IMarriageQueries.ListPendingMarriagesAsync` return non-deleted rows with a pending side whose person is not deleted and is maintained by someone other than the viewer, by name, cut at the limit with `isTruncated`.
+  - **Infrastructure:** both queries in `EfRelationshipQueries` and `EfMarriageQueries`. No schema change.
+  - **Server:** `GET /api/relationships/pending`, `POST /api/relationships/{id}/approve-as-administrator` (`{ "endpoint" }`), `GET /api/marriages/pending` and `POST /api/marriages/{id}/approve-as-administrator` (`{ "spouseId" }`), answering like the existing consent endpoints.
+  - **Client:** the Approvals page loads the two lists for administrators and shows **Waiting for other maintainers**, with "Approve for <name> as administrator" on each pending side someone else maintains.
+- **Consequences:** #25 must refuse administrator approval for claimed profiles. Maintainers are not told; there are no notifications yet.

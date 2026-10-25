@@ -27,6 +27,13 @@ public interface IRelationshipQueries
     /// <paramref name="limit"/> links (D-010).
     /// </summary>
     Task<LinkConsentListData> ListInactiveLinksAsync(Viewer viewer, int limit, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Every non-deleted link with a pending endpoint whose person is not deleted and is maintained
+    /// by someone other than the viewer, by parent and child name (D-040). At most
+    /// <paramref name="limit"/> links.
+    /// </summary>
+    Task<LinkConsentListData> ListPendingLinksAsync(Viewer viewer, int limit, CancellationToken cancellationToken);
 }
 
 /// <summary>A relative before privacy is applied. <see cref="BirthOrder"/> is only set for children (D-016).</summary>

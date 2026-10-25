@@ -174,6 +174,51 @@ public sealed class ParentChildLink : AuditedEntity
     }
 
     /// <summary>
+    /// An administrator approves a pending <paramref name="endpoint"/> on behalf of its maintainer
+    /// (D-040). Only a pending side: a decline or a withdrawn approval stays the maintainer's to
+    /// undo (PRD 03). As with <see cref="Approve"/>, the cycle check runs again when this would
+    /// make the link active.
+    /// </summary>
+    /// <param name="parentAncestors">The ancestors of the parent through non-deleted links.</param>
+    public void ApproveAsAdministrator(
+        Person endpoint, AccountId actorId, bool actorIsAdministrator, AncestorSnapshot parentAncestors)
+    {
+        ArgumentNullException.ThrowIfNull(endpoint);
+        ArgumentNullException.ThrowIfNull(parentAncestors);
+
+        if (endpoint.Id != ParentId && endpoint.Id != ChildId)
+        {
+            throw new ArgumentException("The person is not an endpoint of this link.", nameof(endpoint));
+        }
+
+        if (!actorIsAdministrator)
+        {
+            throw new ApprovalNotAdministratorException();
+        }
+
+        EnsureNotDeleted();
+        endpoint.EnsureNotDeleted();
+        var isParentSide = endpoint.Id == ParentId;
+        if (ApprovalOf(isParentSide) == EndpointApproval.Approved)
+        {
+            throw new ConsentUnchangedException();
+        }
+
+        if (ApprovalOf(isParentSide) == EndpointApproval.Disagreed)
+        {
+            throw new ApprovalNotPendingException();
+        }
+
+        if (ApprovalOf(!isParentSide) == EndpointApproval.Approved)
+        {
+            LinkCycleCheck.EnsureNoCycle(ParentId, ChildId, parentAncestors);
+        }
+
+        SetApproval(isParentSide, EndpointApproval.Approved);
+        Record(new LinkEndpointApprovedByAdministrator(Id, endpoint.Id, actorId, endpoint.MaintainerId));
+    }
+
+    /// <summary>
     /// Records disagreement for <paramref name="endpoint"/>, from approved or from pending
     /// (declining). The link becomes inactive immediately. When one account maintains both
     /// endpoints it must delete the link instead (#16).

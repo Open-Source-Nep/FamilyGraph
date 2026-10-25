@@ -25,6 +25,13 @@ public abstract record MarriageSpouseEvent(LinkId MarriageId, PersonId Spouse, A
 public sealed record MarriageSpouseApproved(LinkId MarriageId, PersonId Spouse, AccountId ActorId)
     : MarriageSpouseEvent(MarriageId, Spouse, ActorId);
 
+/// <summary>
+/// Pending → approved by an administrator on behalf of <see cref="MaintainerId"/>, that spouse's
+/// maintainer at the time (D-040). Distinct from <see cref="MarriageSpouseApproved"/>.
+/// </summary>
+public sealed record MarriageSpouseApprovedByAdministrator(LinkId MarriageId, PersonId Spouse, AccountId ActorId, AccountId MaintainerId)
+    : MarriageSpouseEvent(MarriageId, Spouse, ActorId);
+
 /// <summary>Disagreed → approved.</summary>
 public sealed record MarriageApprovalRestored(LinkId MarriageId, PersonId Spouse, AccountId ActorId)
     : MarriageSpouseEvent(MarriageId, Spouse, ActorId);

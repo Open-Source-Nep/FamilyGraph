@@ -22,7 +22,7 @@ An administrator can load an export file into an instance that has no profiles y
 - Dedicated deceased-person workflow. Preserve profiles as they were left.
 - Parent relationship categories beyond biological and adoptive.
 - Automatic merging or identity resolution based solely on names.
-- Administrator override of required relationship consent.
+- Administrator override of required relationship consent. (An administrator may approve a pending side on behalf of its maintainer, PRD 03, but never against a decline or withdrawal.)
 - Selection of a database, framework, hosting provider, or graph-storage technology in this PRD pack.
 
 ## Acceptance criteria

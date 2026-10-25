@@ -66,6 +66,28 @@ public sealed class RelationshipService(
     }
 
     /// <summary>
+    /// An administrator approves a pending endpoint on behalf of its maintainer (D-040). The
+    /// domain refuses anyone else and any side that is not pending.
+    /// </summary>
+    public async Task<LinkConsentView> ApproveAsAdministratorAsync(
+        LinkId linkId,
+        LinkEndpoint endpoint,
+        Viewer actor,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(actor);
+        EnsureAdministrator(actor);
+        var (link, parent, child) = await LoadAsync(linkId, cancellationToken);
+        var parentAncestors = await links.AncestorsOfAsync(link.ParentId, cancellationToken);
+
+        link.ApproveAsAdministrator(
+            endpoint == LinkEndpoint.Parent ? parent : child, actor.AccountId, actor.IsAdministrator, parentAncestors);
+        await SaveAsync(link, cancellationToken);
+
+        return LinkConsentView.From(link, parent, child, actor);
+    }
+
+    /// <summary>
     /// Declines a pending endpoint or withdraws an approval (D-013). The link is inactive at once.
     /// </summary>
     public async Task<LinkConsentView> DisagreeAsync(
@@ -144,6 +166,19 @@ public sealed class RelationshipService(
     }
 
     /// <summary>
+    /// Every link in the instance with a side waiting for a maintainer other than the
+    /// administrator, for approval on their behalf (D-040). Administrators only.
+    /// </summary>
+    public async Task<LinkConsentList> ListPendingForAdministratorAsync(Viewer viewer, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(viewer);
+        EnsureAdministrator(viewer);
+
+        var list = await queries.ListPendingLinksAsync(viewer, limits.InactiveLinksLimit, cancellationToken);
+        return new LinkConsentList([.. list.Links.Select(link => LinkConsentView.From(link, viewer))], list.IsTruncated);
+    }
+
+    /// <summary>
     /// Any signed-in account may list them, like viewing a profile (D-019). The person and their
     /// relatives may be placeholders; the links through them are listed all the same (PRD 05).
     /// </summary>
@@ -173,6 +208,15 @@ public sealed class RelationshipService(
         var parent = await people.FindAsync(link.ParentId, cancellationToken) ?? throw new PersonNotFoundException();
         var child = await people.FindAsync(link.ChildId, cancellationToken) ?? throw new PersonNotFoundException();
         return (link, parent, child);
+    }
+
+    /// <summary>Refuses a non-administrator before anything is loaded, so nothing is revealed (D-040).</summary>
+    private static void EnsureAdministrator(Viewer viewer)
+    {
+        if (!viewer.IsAdministrator)
+        {
+            throw new ApprovalNotAdministratorException();
+        }
     }
 
     /// <summary>Saves the change and its audit events in one transaction (D-002, D-015).</summary>

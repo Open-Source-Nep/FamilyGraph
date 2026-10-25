@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
+import { AuthService } from '../../core/auth/auth.service';
 import { fullName } from '../people/person';
 import { problemMessage } from '../people/problem';
 import { MarriagesService } from './marriages.service';
@@ -30,10 +31,18 @@ interface MarriageAction {
   approve: boolean;
 }
 
+/** A side an administrator may approve on behalf of its maintainer (D-040). */
+interface AdministratorAction {
+  label: string;
+  /** The link endpoint, or the spouse's ID for a marriage. */
+  side: string;
+}
+
 /**
  * The inactive links of the profiles you maintain (PRD 03, D-021): approve or decline those
  * waiting for you, restore an approval you withdrew, delete a link whose two people you maintain
- * (D-014), and see which wait for someone else.
+ * (D-014), and see which wait for someone else. Administrators also see every link and marriage
+ * waiting for another maintainer and may approve those sides on their behalf (D-040).
  */
 @Component({
   selector: 'app-approvals-page',
@@ -43,11 +52,15 @@ interface MarriageAction {
 export class ApprovalsPage {
   private readonly relationships = inject(RelationshipsService);
   private readonly marriages = inject(MarriagesService);
+  private readonly auth = inject(AuthService);
 
   protected readonly fullName = fullName;
   protected readonly relationWord = relationWord;
   protected readonly list = signal<LinkConsentList | null>(null);
   protected readonly marriageList = signal<MarriageConsentList | null>(null);
+  /** Administrators only: links and marriages waiting for other maintainers (D-040). */
+  protected readonly pendingLinks = signal<LinkConsentList | null>(null);
+  protected readonly pendingMarriages = signal<MarriageConsentList | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly notice = signal<string | null>(null);
   protected readonly saving = signal(false);
@@ -88,6 +101,59 @@ export class ApprovalsPage {
             ...(other.maintainedByYou ? [] : [{ label: 'Decline', endpoint, approve: false }]),
           ]
         : [{ label: `Restore approval${suffix}`, endpoint, approve: true }];
+    });
+  }
+
+  /** The pending sides of a link that someone else maintains (D-040). */
+  protected administratorActions(link: LinkConsent): AdministratorAction[] {
+    const sides: [LinkEndpoint, LinkEndpointConsent][] = [
+      ['Parent', link.parent],
+      ['Child', link.child],
+    ];
+    return sides
+      .filter(([, own]) => own.approval === 'Pending' && !own.maintainedByYou && !own.placeholder)
+      .map(([endpoint, own]) => ({
+        label: `Approve for ${fullName(own)} as administrator`,
+        side: endpoint,
+      }));
+  }
+
+  /** The pending sides of a marriage that someone else maintains (D-040). */
+  protected marriageAdministratorActions(marriage: MarriageConsent): AdministratorAction[] {
+    return [marriage.first, marriage.second]
+      .filter((own) => own.approval === 'Pending' && !own.maintainedByYou && !own.placeholder)
+      .map((own) => ({ label: `Approve for ${fullName(own)} as administrator`, side: own.id }));
+  }
+
+  protected async approveAsAdministrator(
+    link: LinkConsent,
+    action: AdministratorAction,
+  ): Promise<void> {
+    await this.run(async () => {
+      const updated = await this.relationships.approveAsAdministrator(
+        link.id,
+        action.side as LinkEndpoint,
+      );
+      this.notice.set(
+        updated.isActive
+          ? `You approved ${describe(updated)} as administrator. It is now active.`
+          : `You approved ${describe(updated)} as administrator. It still waits for the other side.`,
+      );
+    });
+  }
+
+  protected async approveMarriageAsAdministrator(
+    marriage: MarriageConsent,
+    action: AdministratorAction,
+  ): Promise<void> {
+    await this.run(async () => {
+      const updated = await this.marriages.approveAsAdministrator(marriage.id, action.side);
+      const what = describeMarriage(updated);
+      this.notice.set(
+        updated.isActive
+          ? `You approved the marriage of ${what} as administrator. It is now active.`
+          : `You approved the marriage of ${what} as administrator. It still waits for the other side.`,
+      );
     });
   }
 
@@ -217,13 +283,46 @@ export class ApprovalsPage {
     }
   }
 
+  private async run(change: () => Promise<void>): Promise<void> {
+    this.saving.set(true);
+    this.error.set(null);
+    this.notice.set(null);
+    try {
+      await change();
+      this.load();
+    } catch (error) {
+      this.error.set(problemMessage(error));
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
   private load(): void {
+    this.auth.load().then(
+      () => {
+        if (this.auth.isAdministrator()) {
+          this.loadPending();
+        }
+      },
+      (error: unknown) => this.error.set(problemMessage(error)),
+    );
     this.relationships.listInactive().then(
       (list) => this.list.set(list),
       (error: unknown) => this.error.set(problemMessage(error)),
     );
     this.marriages.listInactive().then(
       (list) => this.marriageList.set(list),
+      (error: unknown) => this.error.set(problemMessage(error)),
+    );
+  }
+
+  private loadPending(): void {
+    this.relationships.listPending().then(
+      (list) => this.pendingLinks.set(list),
+      (error: unknown) => this.error.set(problemMessage(error)),
+    );
+    this.marriages.listPending().then(
+      (list) => this.pendingMarriages.set(list),
       (error: unknown) => this.error.set(problemMessage(error)),
     );
   }

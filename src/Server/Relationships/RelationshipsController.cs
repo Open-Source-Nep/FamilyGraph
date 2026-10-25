@@ -12,7 +12,8 @@ namespace Server.Relationships;
 /// Parent–child links (PRD 02, PRD 03, #14, #59, #61): create a biological or adoptive link where
 /// you maintain at least one endpoint, approve or disagree for an endpoint you maintain, delete a
 /// link whose two people you maintain, list the inactive links of your profiles, and list a
-/// person's parents and children through active links.
+/// person's parents and children through active links. Administrators also list and approve
+/// pending endpoints on behalf of their maintainers (D-040).
 /// </summary>
 [ApiController]
 [Authorize]
@@ -52,6 +53,25 @@ public sealed class RelationshipsController(RelationshipService relationships) :
     [HttpPost("{id:guid}/approve")]
     public async Task<LinkConsentResponse> Approve(Guid id, LinkConsentRequest request, CancellationToken cancellationToken) =>
         LinkConsentResponse.From(await relationships.ApproveAsync(
+            ToLinkId(id), request.ToEndpoint(), User.Viewer(), cancellationToken));
+
+    /// <summary>
+    /// Every link in the instance with a side waiting for a maintainer other than you, for an
+    /// administrator to approve on their behalf (D-040). 403 <c>consent.not_administrator</c>.
+    /// </summary>
+    [HttpGet("pending")]
+    public async Task<LinkConsentListResponse> ListPending(CancellationToken cancellationToken) =>
+        LinkConsentListResponse.From(await relationships.ListPendingForAdministratorAsync(User.Viewer(), cancellationToken));
+
+    /// <summary>
+    /// An administrator approves a pending endpoint on behalf of its maintainer (D-040). 403
+    /// <c>consent.not_administrator</c>, 404 <c>link.not_found</c>, 409 <c>link.consent_unchanged</c>
+    /// or <c>consent.not_pending</c> (declined or withdrawn), 422 when activating would form a cycle.
+    /// </summary>
+    [HttpPost("{id:guid}/approve-as-administrator")]
+    public async Task<LinkConsentResponse> ApproveAsAdministrator(
+        Guid id, LinkConsentRequest request, CancellationToken cancellationToken) =>
+        LinkConsentResponse.From(await relationships.ApproveAsAdministratorAsync(
             ToLinkId(id), request.ToEndpoint(), User.Viewer(), cancellationToken));
 
     /// <summary>

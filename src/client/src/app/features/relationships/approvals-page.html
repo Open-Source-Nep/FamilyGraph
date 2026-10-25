@@ -115,4 +115,56 @@
       }
     }
   }
+
+  @if (pendingLinks(); as pendingLinks) {
+    <h2>Waiting for other maintainers</h2>
+    <p class="hint">
+      As an administrator you can approve a side that is still waiting, on behalf of its maintainer.
+      A side its maintainer declined or withdrew stays theirs to restore.
+    </p>
+    @if (pendingLinks.links.length === 0 && pendingMarriages()?.marriages?.length === 0) {
+      <p>No link or marriage is waiting for another maintainer.</p>
+    }
+    <ul class="links">
+      @for (link of pendingLinks.links; track link.id) {
+        <li>
+          <a [routerLink]="['/people', link.parent.id]">{{ fullName(link.parent) }}</a>
+          as {{ relationWord('parent', link.parent.gender, link.type) }} of
+          <a [routerLink]="['/people', link.child.id]">{{ fullName(link.child) }}</a>
+          <div class="actions">
+            @for (action of administratorActions(link); track action.label) {
+              <button
+                type="button"
+                [disabled]="saving()"
+                (click)="approveAsAdministrator(link, action)"
+              >
+                {{ action.label }}
+              </button>
+            }
+          </div>
+        </li>
+      }
+      @for (marriage of pendingMarriages()?.marriages ?? []; track marriage.id) {
+        <li>
+          <a [routerLink]="['/people', marriage.first.id]">{{ fullName(marriage.first) }}</a>
+          married to
+          <a [routerLink]="['/people', marriage.second.id]">{{ fullName(marriage.second) }}</a>
+          <div class="actions">
+            @for (action of marriageAdministratorActions(marriage); track action.label) {
+              <button
+                type="button"
+                [disabled]="saving()"
+                (click)="approveMarriageAsAdministrator(marriage, action)"
+              >
+                {{ action.label }}
+              </button>
+            }
+          </div>
+        </li>
+      }
+    </ul>
+    @if (pendingLinks.isTruncated || pendingMarriages()?.isTruncated) {
+      <p class="hint">Only the first ones are shown. Approve some to see the rest.</p>
+    }
+  }
 </section>
