@@ -18,133 +18,86 @@
       (saved)="createPerson($event)"
       (cancelled)="creatingPerson.set(false)"
     />
-  } @else {
-    <div class="name-form">
-      <label class="search">
-        Search by name
-        <input
-          type="search"
-          autocomplete="off"
-          [value]="query()"
-          (input)="setQuery($any($event.target).value)"
-        />
-      </label>
-      <p class="hint">
-        @if (searchesEveryone()) {
-          Your profiles and the people linked to them are listed first. Type a name to search
-          everyone with a public profile.
-        } @else {
-          You do not maintain {{ name() }}, so you can only add your own profiles. The links stay
-          inactive until its maintainer approves them.
-        }
-      </p>
-
-      <fieldset class="choices">
-        <legend>{{ single() ? 'Person' : 'People' }}</legend>
-        @if (connections() === null) {
-          <p class="hint">Loading…</p>
-        } @else {
-          <div class="options">
-            @for (option of options(); track option.id) {
-              <label>
-                <input
-                  [type]="single() ? 'radio' : 'checkbox'"
-                  name="add-relatives-person"
-                  [value]="option.id"
-                  [checked]="isSelected(option.id)"
-                  (change)="toggle(option, $any($event.target).checked)"
-                />
-                {{ option.name }}
-                @if (option.maintainedByYou) {
-                  <span class="hint">(yours)</span>
-                }
-              </label>
-            } @empty {
-              @if (!searching()) {
-                <p class="hint">
-                  {{ query().trim() ? 'Nobody matches.' : 'You maintain no other profiles yet.' }}
-                </p>
-              }
-            }
-          </div>
-          @if (searching()) {
-            <p class="hint" role="status">Searching…</p>
-          }
-          @if (foundTruncated()) {
-            <p class="hint">More people match. Refine your search.</p>
-          } @else if (connectionsTruncated() && !query().trim()) {
-            <p class="hint">
-              Not everyone connected to you is listed. Search by name to find others.
-            </p>
-          }
-        }
-        <p>
-          <button type="button" class="link-button" (click)="creatingPerson.set(true)">
-            Add a new person
-          </button>
-        </p>
-      </fieldset>
-      @if (selected().length > 0) {
-        <p>Selected: {{ selectedNames() }}</p>
-      }
-      @if (selectionMissing()) {
-        <p class="error" role="alert">
-          Choose {{ single() ? 'a person' : 'at least one person' }}.
-        </p>
-      }
-
-      @if (!single()) {
-        <fieldset>
-          <legend>Relationship</legend>
-          <label>
-            <input
-              type="radio"
-              name="add-relatives-type"
-              value="Biological"
-              [checked]="type() === 'Biological'"
-              (change)="type.set('Biological')"
-            />
-            Biological
-          </label>
-          <label>
-            <input
-              type="radio"
-              name="add-relatives-type"
-              value="Adoptive"
-              [checked]="type() === 'Adoptive'"
-              (change)="type.set('Adoptive')"
-            />
-            Adoptive
-          </label>
-        </fieldset>
-      }
-
-      @if (outcomes().length > 0) {
-        <ul class="people" role="status" aria-label="People you added">
-          @for (outcome of outcomes(); track $index) {
-            @switch (outcome.state) {
-              @case ('active') {
-                <li>{{ outcome.name }}: linked.</li>
-              }
-              @case ('pending') {
-                <li>
-                  {{ outcome.name }}: saved, but not active until the other maintainer approves it.
-                </li>
-              }
-              @case ('failed') {
-                <li class="error">{{ outcome.name }}: not linked. {{ outcome.reason }}</li>
-              }
-            }
-          }
-        </ul>
-      }
-
-      <div class="actions">
-        <button type="button" [disabled]="saving()" (click)="add()">
-          {{ single() ? 'Add spouse' : selected().length > 1 ? 'Add ' + selected().length : 'Add' }}
-        </button>
-        <button type="button" class="secondary" (click)="close()">Cancel</button>
-      </div>
-    </div>
   }
+  <!-- Hidden, not removed, while adding a new person, so the list and search are kept. -->
+  <div class="name-form" [hidden]="creatingPerson()">
+    <app-person-picker
+      [excludeId]="person().id"
+      [searchesEveryone]="searchesEveryone()"
+      [single]="single()"
+      [legend]="single() ? 'Person' : 'People'"
+      [hint]="hint()"
+      [offersNewPerson]="true"
+      [(selected)]="selected"
+      (selectedChange)="selectionChanged($event)"
+      (newPersonRequested)="creatingPerson.set(true)"
+    />
+    @if (selected().length > 0) {
+      <p>Selected: {{ selectedNames() }}</p>
+    }
+    @if (selectionMissing()) {
+      <p class="error" role="alert">Choose {{ single() ? 'a person' : 'at least one person' }}.</p>
+    }
+
+    @if (!single()) {
+      <app-spouse-link-choices
+        [relation]="relation() === 'parent' ? 'parent' : 'child'"
+        [person]="target()"
+        [picked]="selected()"
+      />
+      <fieldset>
+        <legend>Relationship</legend>
+        <label>
+          <input
+            type="radio"
+            name="add-relatives-type"
+            value="Biological"
+            [checked]="type() === 'Biological'"
+            (change)="type.set('Biological')"
+          />
+          Biological
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="add-relatives-type"
+            value="Adoptive"
+            [checked]="type() === 'Adoptive'"
+            (change)="type.set('Adoptive')"
+          />
+          Adoptive
+        </label>
+      </fieldset>
+    }
+
+    @if (outcomes().length > 0) {
+      <ul class="people" role="status" aria-label="People you added">
+        @for (outcome of outcomes(); track $index) {
+          @switch (outcome.state) {
+            @case ('active') {
+              <li>{{ outcome.name }}: linked.</li>
+            }
+            @case ('pending') {
+              <li>
+                {{ outcome.name }}: saved, but not active until the other maintainer approves it.
+              </li>
+            }
+            @case ('existing') {
+              <li>{{ outcome.name }}: already linked.</li>
+            }
+            @case ('failed') {
+              <li class="error">{{ outcome.name }}: not linked. {{ outcome.reason }}</li>
+            }
+          }
+        }
+      </ul>
+    }
+
+    <div class="actions">
+      <button type="button" [disabled]="saving()" (click)="add()">
+        {{ single() ? 'Add spouse' : selected().length > 1 ? 'Add ' + selected().length : 'Add' }}
+      </button>
+      <button type="button" class="secondary" (click)="close()">Cancel</button>
+    </div>
+  </div>
 </dialog>

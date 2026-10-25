@@ -1,0 +1,20 @@
+@if (error(); as error) {
+  <p class="error" role="alert">{{ error }}</p>
+}
+@if (choices().length > 0) {
+  <fieldset class="spouse-links">
+    <legend>
+      {{ relation() === 'child' ? 'Also add them as children of' : 'Also add as parents' }}
+    </legend>
+    @for (choice of choices(); track choice.spouse.id) {
+      <label>
+        <input
+          type="checkbox"
+          [checked]="choice.checked"
+          (change)="tick(choice.spouse.id, $any($event.target).checked)"
+        />
+        {{ label(choice) }}
+      </label>
+    }
+  </fieldset>
+}
