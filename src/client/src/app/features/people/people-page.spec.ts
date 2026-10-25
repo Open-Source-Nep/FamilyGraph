@@ -58,4 +58,28 @@ describe('PeoplePage', () => {
     );
     expect(rows[1].querySelector('.person-description')).toBeNull();
   });
+
+  it('filters the list by name or description as you type', async () => {
+    const search = fixture.nativeElement.querySelector('input[type=search]') as HTMLInputElement;
+    const names = () =>
+      [...fixture.nativeElement.querySelectorAll('.person-rows .person-name')].map(
+        (name: HTMLElement) => name.textContent?.replace(/\s+/g, ' ').trim(),
+      );
+
+    search.value = 'teach RAI';
+    search.dispatchEvent(new Event('input'));
+    await fixture.whenStable();
+    expect(names()).toEqual(['Maya Rai']);
+
+    search.value = 'gurung';
+    search.dispatchEvent(new Event('input'));
+    await fixture.whenStable();
+    expect(names()).toEqual([]);
+    expect(fixture.nativeElement.textContent).toContain('Nobody matches.');
+
+    search.value = ' ';
+    search.dispatchEvent(new Event('input'));
+    await fixture.whenStable();
+    expect(names()).toEqual(['Maya Rai', 'Hari (private)']);
+  });
 });

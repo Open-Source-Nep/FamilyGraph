@@ -267,6 +267,17 @@ button.link-button.order:disabled {
   text-decoration: underline;
 }
 
+label.search-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.person-rows > li.empty {
+  padding: 0.5rem 0.25rem;
+}
+
 /* For screen readers only. */
 .visually-hidden {
   position: absolute;
