@@ -1,52 +1,72 @@
 <section class="panel">
-  <h1>Profiles you maintain</h1>
+  <h1>People</h1>
 
   <p>
     <a class="button" routerLink="/people/new">Add a person</a>
   </p>
 
-  @if (error(); as error) {
-    <p class="error" role="alert">{{ error }}</p>
-  }
+  <nav class="tabs" aria-label="People lists">
+    <a
+      routerLink="/people"
+      [class.current]="!showsAll()"
+      [attr.aria-current]="showsAll() ? null : 'page'"
+      >My profiles</a
+    >
+    <a
+      routerLink="/people"
+      [queryParams]="{ tab: 'all' }"
+      [class.current]="showsAll()"
+      [attr.aria-current]="showsAll() ? 'page' : null"
+      >All people</a
+    >
+  </nav>
 
-  @if (list(); as list) {
-    @if (list.people.length === 0) {
-      <p>You do not maintain any profiles yet.</p>
-    } @else {
-      <label class="search-box">
-        Search your profiles
-        <input
-          type="search"
-          autocomplete="off"
-          placeholder="Name or description"
-          [value]="query()"
-          (input)="query.set($any($event.target).value)"
-        />
-      </label>
-      <ul class="person-rows">
-        @for (person of shown(); track person.id) {
-          <li>
-            <a class="person-row" [routerLink]="['/people', person.id]">
-              <app-person-avatar [person]="person" />
-              <span class="person-text">
-                <span class="person-name"
-                  >{{ fullName(person) }}
-                  @if (person.visibility === 'Private') {
-                    <span class="hint">(private)</span>
+  @if (showsAll()) {
+    <app-all-people />
+  } @else {
+    @if (error(); as error) {
+      <p class="error" role="alert">{{ error }}</p>
+    }
+
+    @if (list(); as list) {
+      @if (list.people.length === 0) {
+        <p>You do not maintain any profiles yet.</p>
+      } @else {
+        <label class="search-box">
+          Search your profiles
+          <input
+            type="search"
+            autocomplete="off"
+            placeholder="Name or description"
+            [value]="query()"
+            (input)="query.set($any($event.target).value)"
+          />
+        </label>
+        <ul class="person-rows">
+          @for (person of shown(); track person.id) {
+            <li>
+              <a class="person-row" [routerLink]="['/people', person.id]">
+                <app-person-avatar [person]="person" />
+                <span class="person-text">
+                  <span class="person-name"
+                    >{{ fullName(person) }}
+                    @if (person.visibility === 'Private') {
+                      <span class="hint">(private)</span>
+                    }
+                  </span>
+                  @if (person.description; as description) {
+                    <span class="person-description">{{ description }}</span>
                   }
                 </span>
-                @if (person.description; as description) {
-                  <span class="person-description">{{ description }}</span>
-                }
-              </span>
-            </a>
-          </li>
-        } @empty {
-          <li class="hint empty">Nobody matches.</li>
+              </a>
+            </li>
+          } @empty {
+            <li class="hint empty">Nobody matches.</li>
+          }
+        </ul>
+        @if (list.isTruncated) {
+          <p class="hint">Only the first {{ list.people.length }} profiles are shown.</p>
         }
-      </ul>
-      @if (list.isTruncated) {
-        <p class="hint">Only the first {{ list.people.length }} profiles are shown.</p>
       }
     }
   }

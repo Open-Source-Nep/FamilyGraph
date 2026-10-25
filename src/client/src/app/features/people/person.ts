@@ -75,6 +75,12 @@ export interface PersonSearchResult {
   isTruncated: boolean;
 }
 
+/** One page of the All people list (D-042); `hasMore` says another page follows. */
+export interface PeoplePage {
+  people: Person[];
+  hasMore: boolean;
+}
+
 /** The person's image; the image ID in the URL changes with each new image. */
 export function imageUrl(person: { id: string; imageId: string | null }): string | null {
   return person.imageId

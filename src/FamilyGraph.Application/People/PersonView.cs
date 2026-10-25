@@ -29,6 +29,12 @@ public sealed record PersonMatches(IReadOnlyList<PersonRecord> People, bool IsTr
 /// <summary>Search results as the viewer may see them. <see cref="IsTruncated"/> says to refine the search (D-010).</summary>
 public sealed record PersonSearchResult(IReadOnlyList<PersonReference> People, bool IsTruncated);
 
+/// <summary>
+/// One page of the All people list as the viewer may see them (#22). <see cref="HasMore"/> says
+/// another page follows; ask for it with the number of people loaded so far as the offset.
+/// </summary>
+public sealed record PeoplePage(IReadOnlyList<PersonReference> People, bool HasMore);
+
 /// <summary>What a new profile may have besides its name, all optional (PRD 00, D-030, D-037).</summary>
 public sealed record PersonDetails(
     Gender? Gender = null, string? Description = null, BirthDate? BirthDate = null, bool BirthDateShown = false)

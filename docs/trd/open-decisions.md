@@ -58,7 +58,9 @@ The technical decision log, plus any unresolved choices. Do not treat recommenda
 - Descriptions, birth dates and setting birth order (D-037 below).
 - One people picker with avatars and descriptions, and People page rows (D-038 below).
 - Children in birth order in the graphs (D-039 below).
-- Administrators approving pending sides on behalf of maintainers (D-040 below, proposed).
+- Administrators approving pending sides on behalf of maintainers (D-040 below).
+- Enlarging the profile photo (D-041 below).
+- All people on the People page, paged (D-042 below, proposed).
 - **Name length (agreed 2026-10-21):** Business puts no length cap on name parts. Any storage or input limit is set later by persistence (#9) and API validation (D-010).
 
 ## Discussion topics (all agreed)
@@ -668,10 +670,23 @@ For each major decision, record:
 
 ### D-041: Enlarging the profile photo
 
-- **Status:** proposed (2026-10-25). Issue #107. Asked by the user on 2026-10-25 (PRD 01): clicking the photo on the person page opens it enlarged, with a button to close it. The rest is proposed with the PR.
+- **Status:** agreed (2026-10-25, PR #108 merged). Issue #107. Asked by the user on 2026-10-25 (PRD 01): clicking the photo on the person page opens it enlarged, with a button to close it. The rest is proposed with the PR.
 - **Context:** The person page shows the photo as a 10rem circle, though the stored photo is a 512 px square (D-028).
 - **Options considered:** a native modal `<dialog>`, or a hand-made overlay; a new route, or an overlay on the page.
 - **Trade-offs:** `showModal()` gives the backdrop, Escape, a focus trap and focus return without a dependency or extra code, as the graph dialogs already use it (D-034). A route would reload the page for a picture.
 - **Decision:**
   - **Client:** in `PersonPhoto` the photo is a button ("Enlarge photo of <name>") that opens a modal dialog with the same image square, up to 32rem and scaled to fit the screen. Its Close button, Escape or a click on the backdrop close it.
 - **Consequences:** No server change, endpoint or dependency. The graph page's avatars do not enlarge.
+
+### D-042: All people on the People page, paged
+
+- **Status:** proposed (2026-10-25). Issue #22. Agreed with the user on 2026-10-25 (PRD 08, PRD 05): the People page gets an All people tab next to My profiles, listing everyone you may see by name A to Z, 50 at a time with Show more, with a search box; administrators also see Private profiles, marked "(private)"; nobody sees deleted profiles. The rest is proposed with the PR.
+- **Context:** The People page listed only the profiles you maintain, and the person search of D-032 returns the top 20 Public matches for pickers. #22 asks for a bounded, paginated search as an entry point into the graph, and an instance can hold more than 10,000 people (PRD 09). D-010 left lists unpaginated until a real list needed it.
+- **Options considered:** search only with the top 20 (D-032); everything up to a limit; paging by offset or by a cursor on the name; one endpoint for search and browsing, or a second one.
+- **Trade-offs:** Paging is what lets the list hold everyone at any size; this is the first list that needs it, so D-010 is amended for it alone. An offset is simpler than a cursor over three nullable name parts; a profile created or deleted between pages can shift a row by one, which the Client absorbs by skipping IDs it already has. A second endpoint leaves the picker search (names only, top 20) unchanged, while browsing also matches descriptions as the My profiles box does (PRD 01).
+- **Decision:**
+  - **Application:** `PersonService.BrowseAsync(text, offset, viewer)` returns `PeoplePage` (`People`, `HasMore`), every row run through `PrivacyProjection` and placeholders dropped. `IPersonQueries.BrowseAsync(terms, viewerId, includePrivate, offset, limit)` lists non-deleted profiles that are Public, the viewer's, or any when `includePrivate` (the viewer is an administrator), each word matching a name part or the description with `ILIKE`, by first, middle and last name and ID. `PeopleLimits.PageSize` (`People:PageSize`, 1 to 100, default 50).
+  - **Infrastructure:** `EfPersonQueries.BrowseAsync`, `Skip` and `Take` one row more than a page. No schema change.
+  - **Server:** `GET /api/people?q=&offset=` answers `{ people, hasMore }` with person responses; 400 for a negative offset or a query over 302 characters.
+  - **Client:** the People page has My profiles and All people tabs (`?tab=all` keeps the choice in the URL). All people loads the first page, Show more asks for the next with the loaded count as the offset, and the search box asks the server again after a short pause. Rows are the D-038 `.person-rows` with "(yours)" and "(private)".
+- **Consequences:** D-010 lists stay unpaginated except this one. A much larger instance may want a cursor or a name index later; the picker search (D-032) is unchanged.

@@ -7,6 +7,7 @@ import {
   Gender,
   Person,
   PersonDetails,
+  PeoplePage,
   PersonName,
   PersonSearchResult,
   ProfileList,
@@ -80,6 +81,20 @@ export class PeopleService {
 
   listMaintained(): Promise<ProfileList> {
     return firstValueFrom(this.http.get<ProfileList>('/api/people/maintained'));
+  }
+
+  /**
+   * One page of everyone you may see by name, A to Z, from `offset` (D-042): Public profiles, your
+   * own and, for administrators, Private ones. Words in `text` must each appear in a name part or
+   * the description. `hasMore` says another page follows.
+   */
+  browse(text: string, offset: number): Promise<PeoplePage> {
+    const q = text.trim();
+    return firstValueFrom(
+      this.http.get<PeoplePage>('/api/people', {
+        params: q ? { q, offset } : { offset },
+      }),
+    );
   }
 
   /**

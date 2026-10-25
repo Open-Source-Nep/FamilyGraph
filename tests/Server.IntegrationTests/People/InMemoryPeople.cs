@@ -94,6 +94,24 @@ public sealed class InMemoryPeople
         return Task.FromResult(new PersonMatches(matches.Take(limit).ToList(), matches.Count > limit));
     }
 
+    public Task<PersonMatches> BrowseAsync(
+        IReadOnlyList<string> terms, AccountId viewerId, bool includePrivate, int offset, int limit, CancellationToken cancellationToken)
+    {
+        var matches = People.Values
+            .Where(person => !person.IsDeleted
+                && (includePrivate || person.Visibility == ProfileVisibility.Public || person.IsMaintainedBy(viewerId))
+                && terms.All(term => new[] { person.Name.FirstName, person.Name.MiddleName, person.Name.LastName, person.Description }
+                    .Any(part => part?.Contains(term, StringComparison.OrdinalIgnoreCase) == true)))
+            .OrderBy(person => person.Name.FirstName, StringComparer.Ordinal)
+            .ThenBy(person => person.Name.MiddleName, StringComparer.Ordinal)
+            .ThenBy(person => person.Name.LastName, StringComparer.Ordinal)
+            .ThenBy(person => person.Id.Value)
+            .Skip(offset)
+            .Select(person => PersonRecord.From(person, viewerId))
+            .ToList();
+        return Task.FromResult(new PersonMatches(matches.Take(limit).ToList(), matches.Count > limit));
+    }
+
     /// <summary>Returns the stored link itself, so changes to it are visible before saving.</summary>
     public Task<ParentChildLink?> FindAsync(LinkId id, CancellationToken cancellationToken) =>
         Task.FromResult(Links.GetValueOrDefault(id));

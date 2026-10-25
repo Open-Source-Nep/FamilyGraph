@@ -27,6 +27,7 @@ describe('PeoplePage', () => {
         {
           provide: PeopleService,
           useValue: {
+            browse: () => Promise.resolve({ people: [], hasMore: false }),
             listMaintained: () =>
               Promise.resolve({
                 people: [
@@ -81,5 +82,21 @@ describe('PeoplePage', () => {
     search.dispatchEvent(new Event('input'));
     await fixture.whenStable();
     expect(names()).toEqual(['Maya Rai', 'Hari (private)']);
+  });
+
+  // AC-08.18: the People page has My profiles and All people tabs.
+  it('shows the All people tab when the tab query parameter is all', async () => {
+    const tabs = () =>
+      [...fixture.nativeElement.querySelectorAll('nav.tabs a')] as HTMLAnchorElement[];
+    expect(tabs().map((tab) => tab.textContent?.trim())).toEqual(['My profiles', 'All people']);
+    expect(tabs()[0].getAttribute('aria-current')).toBe('page');
+    expect(tabs()[1].getAttribute('href')).toBe('/people?tab=all');
+
+    fixture.componentRef.setInput('tab', 'all');
+    await fixture.whenStable();
+
+    expect(tabs()[1].getAttribute('aria-current')).toBe('page');
+    expect(fixture.nativeElement.querySelector('app-all-people')).not.toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Search your profiles');
   });
 });

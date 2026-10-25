@@ -86,5 +86,12 @@ public sealed record PersonSearchResponse(IReadOnlyList<PersonResponse> People, 
         new([.. result.People.Select(PersonResponse.From)], result.IsTruncated);
 }
 
+/// <summary>One page of the All people list (D-042); <see cref="HasMore"/> says another page follows.</summary>
+public sealed record PeoplePageResponse(IReadOnlyList<PersonResponse> People, bool HasMore)
+{
+    internal static PeoplePageResponse From(PeoplePage page) =>
+        new([.. page.People.Select(PersonResponse.From)], page.HasMore);
+}
+
 /// <summary>The ID of the image just stored (D-028).</summary>
 public sealed record ImageResponse(Guid ImageId);

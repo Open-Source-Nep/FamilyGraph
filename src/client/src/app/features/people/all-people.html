@@ -1,0 +1,50 @@
+<label class="search-box">
+  Search everyone
+  <input
+    type="search"
+    autocomplete="off"
+    placeholder="Name or description"
+    [value]="query()"
+    (input)="search($any($event.target).value)"
+  />
+</label>
+
+@if (error(); as error) {
+  <p class="error" role="alert">{{ error }}</p>
+}
+
+@if (people(); as people) {
+  <ul class="person-rows" aria-live="polite">
+    @for (person of people; track person.id) {
+      <li>
+        <a class="person-row" [routerLink]="['/people', person.id]">
+          <app-person-avatar [person]="person" />
+          <span class="person-text">
+            <span class="person-name"
+              >{{ fullName(person) }}
+              @if (marks(person); as marks) {
+                <span class="hint">{{ marks }}</span>
+              }
+            </span>
+            @if (person.description; as description) {
+              <span class="person-description">{{ description }}</span>
+            }
+          </span>
+        </a>
+      </li>
+    } @empty {
+      @if (!loading()) {
+        <li class="hint empty">Nobody matches.</li>
+      }
+    }
+  </ul>
+  @if (hasMore()) {
+    <p>
+      <button type="button" class="secondary" [disabled]="loading()" (click)="showMore()">
+        Show more
+      </button>
+    </p>
+  }
+} @else if (loading()) {
+  <p class="hint">Loading…</p>
+}
