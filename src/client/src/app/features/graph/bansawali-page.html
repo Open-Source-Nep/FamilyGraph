@@ -41,6 +41,16 @@
     }
 
     <div class="actions no-print">
+      <label class="photo-size">
+        Photos
+        <select (change)="setPhotoSize($any($event.target).value)">
+          @for (size of photoSizes; track size.value) {
+            <option [value]="size.value" [selected]="size.value === photoSize()">
+              {{ size.label }}
+            </option>
+          }
+        </select>
+      </label>
       <button type="button" (click)="print()">Print</button>
       <a [routerLink]="['/people', root.row.person.id]">Back to the profile</a>
       <a [routerLink]="['/people', root.row.person.id, 'graph']">Family graph</a>
@@ -54,6 +64,13 @@
       <li>
         <div class="lineage-person">
           <span class="generation" aria-hidden="true">{{ entry.row.generation + 1 }}</span>
+          @if (photoSize() !== 'None') {
+            <app-person-avatar
+              class="lineage-avatar"
+              [class]="photoSize().toLowerCase()"
+              [person]="entry.row.person"
+            />
+          }
           <a [routerLink]="['/people', entry.row.person.id]">{{ fullName(entry.row.person) }}</a>
           @if (entry.relation) {
             <span class="relation">({{ entry.relation }})</span>

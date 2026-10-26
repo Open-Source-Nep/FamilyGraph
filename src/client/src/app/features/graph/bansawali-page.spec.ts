@@ -33,8 +33,8 @@ describe('BansawaliPage', () => {
       { person: person('Sita', 'Female'), generation: 1, continues: false, hasMore: false },
     ],
     links: [
-      { id: 'l1', parentId: 'Hari', childId: 'Ram', type: 'Biological', birthOrder: 1 },
       { id: 'l2', parentId: 'Hari', childId: 'Sita', type: 'Biological', birthOrder: 2 },
+      { id: 'l1', parentId: 'Hari', childId: 'Ram', type: 'Biological', birthOrder: 1 },
     ],
     spouses: [person('Gauri', 'Female')],
     marriages: [{ id: 'm1', firstSpouseId: 'Hari', secondSpouseId: 'Gauri', isFormer: false }],
@@ -76,15 +76,15 @@ describe('BansawaliPage', () => {
       [...el.children].map((child) => child.textContent!.trim()),
     );
 
-  it('shows the outline through sons with spouses and a link to continue (AC-08.21, AC-08.23)', async () => {
+  it('shows the outline through sons in birth order with spouses and a link to continue (AC-08.21, AC-08.23)', async () => {
     await render();
 
     expect(requested).toEqual([['Hari', 'Sons']]);
     expect(text('h1')).toEqual(['Neupane Bansawali']);
     expect(parts('.lineage-person')).toEqual([
-      ['1', 'Hari Neupane', 'wife Gauri'],
-      ['2', 'Ram', '(son)', 'More descendants', '(more descendants)'],
-      ['2', 'Sita', '(daughter)'],
+      ['1', 'HN', 'Hari Neupane', 'wife Gauri'],
+      ['2', 'R', 'Ram', '(son)', 'More descendants', '(more descendants)'],
+      ['2', 'S', 'Sita', '(daughter)'],
     ]);
     expect(fixture.nativeElement.textContent).toContain('stops at the most people it can show');
   });
@@ -94,6 +94,35 @@ describe('BansawaliPage', () => {
 
     expect(requested).toEqual([['Hari', 'AllChildren']]);
     expect(text('nav.tabs a.current')).toEqual(['Through every child']);
+  });
+
+  it('shows small photos or initials by default and changes their size before printing (AC-08.26)', async () => {
+    bansawali.people[1].person = { ...person('Ram', 'Male'), imageId: 'img1' };
+    await render();
+    const avatars = () =>
+      [...fixture.nativeElement.querySelectorAll('.lineage-avatar')] as HTMLElement[];
+    const choose = (size: string) => {
+      const select = fixture.nativeElement.querySelector('.photo-size select') as HTMLSelectElement;
+      select.value = size;
+      select.dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+    };
+
+    expect(avatars().map((avatar) => avatar.className)).toEqual([
+      'avatar lineage-avatar small',
+      'avatar lineage-avatar small',
+      'avatar lineage-avatar small',
+    ]);
+    expect(avatars()[1].querySelector('img')!.getAttribute('src')).toBe(
+      '/api/people/Ram/image?v=img1',
+    );
+
+    choose('Large');
+    expect(avatars().every((avatar) => avatar.classList.contains('large'))).toBe(true);
+
+    choose('None');
+    expect(avatars()).toEqual([]);
+    bansawali.people[1].person = person('Ram', 'Male');
   });
 
   it('prints from the browser (AC-08.25)', async () => {

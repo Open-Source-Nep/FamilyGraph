@@ -2,6 +2,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
+import { PersonAvatar } from '../people/person-avatar';
 import { fullName } from '../people/person';
 import { problemMessage } from '../people/problem';
 import { Bansawali, BansawaliLine, bansawaliTitle, bansawaliTree } from './bansawali';
@@ -11,12 +12,16 @@ import { GraphService } from './graph.service';
  * A person's Bansawali (PRD 08, D-043): their descendants as an outline, generation by
  * generation in birth order, through sons by default. The toggle, kept in the URL as
  * `?line=AllChildren`, follows every child. Spouses sit beside each person and never continue
- * the line. Someone whose children were cut off by the limit links to their own Bansawali. Print
- * leaves out the controls.
+ * the line. Someone whose children were cut off by the limit links to their own Bansawali. Each
+ * person has their photo or initials at the chosen size, which print keeps (D-044). Print leaves
+ * out the controls.
  */
+/** How large the photos next to each name are, on screen and in print (D-044). */
+export type BansawaliPhotoSize = 'None' | 'Small' | 'Medium' | 'Large';
+
 @Component({
   selector: 'app-bansawali-page',
-  imports: [NgTemplateOutlet, RouterLink],
+  imports: [NgTemplateOutlet, PersonAvatar, RouterLink],
   templateUrl: './bansawali-page.html',
   styleUrl: './bansawali-page.css',
 })
@@ -29,6 +34,13 @@ export class BansawaliPage {
   readonly line = input<string | undefined>();
 
   protected readonly fullName = fullName;
+  protected readonly photoSizes: readonly { value: BansawaliPhotoSize; label: string }[] = [
+    { value: 'None', label: 'None' },
+    { value: 'Small', label: 'Small' },
+    { value: 'Medium', label: 'Medium' },
+    { value: 'Large', label: 'Large' },
+  ];
+  protected readonly photoSize = signal<BansawaliPhotoSize>('Small');
   protected readonly allChildren = computed(() => this.line() === 'AllChildren');
   protected readonly bansawali = signal<Bansawali | null>(null);
   protected readonly error = signal<string | null>(null);
@@ -65,6 +77,10 @@ export class BansawaliPage {
 
   protected lineParams(allChildren: boolean): { line: BansawaliLine | null } {
     return { line: allChildren ? 'AllChildren' : null };
+  }
+
+  protected setPhotoSize(size: BansawaliPhotoSize): void {
+    this.photoSize.set(size);
   }
 
   protected print(): void {
