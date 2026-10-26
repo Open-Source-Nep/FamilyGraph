@@ -60,7 +60,9 @@ The technical decision log, plus any unresolved choices. Do not treat recommenda
 - Children in birth order in the graphs (D-039 below).
 - Administrators approving pending sides on behalf of maintainers (D-040 below).
 - Enlarging the profile photo (D-041 below).
-- All people on the People page, paged (D-042 below, proposed).
+- All people on the People page, paged (D-042 below).
+- Bansawali view (D-043 below).
+- Photos in the Bansawali (D-044 below, proposed).
 - **Name length (agreed 2026-10-21):** Business puts no length cap on name parts. Any storage or input limit is set later by persistence (#9) and API validation (D-010).
 
 ## Discussion topics (all agreed)
@@ -693,7 +695,7 @@ For each major decision, record:
 
 ### D-043: Bansawali view
 
-- **Status:** proposed (2026-10-25). Issue #112. Product rules agreed with the user on 2026-10-25 (PRD 08, Bansawali); the technical design below is proposed with the PR.
+- **Status:** agreed (2026-10-25, PR #113 merged). Issue #112. Product rules agreed with the user on 2026-10-25 (PRD 08, Bansawali); the technical design below was proposed with the PR.
 - **Context:** A Bansawali is the traditional Nepali lineage record: the chain of descendants through sons, who usually share a surname. Users want it next to the graph views. The graph already has active parent–child links with Biological/Adoptive types, genders (D-030), marriages (D-031), birth order (D-016, D-039) and the privacy projection (D-025).
 - **Options considered:** whose children continue the line (sons only, sons with a toggle for all, all children); adopted sons (continue, shown with the line stopped, left out); gender Other or not set (followed, treated like daughters, left out); surname (display only, filter, flag mismatches); spouses (all with former marked, current only, none); a Private son's line for other viewers (stops, continues); location (own page with browser print, own page only, a tab on the graph page).
 - **Trade-offs:** Sons by default matches the written record and stays compact; the toggle keeps every line reachable. Stopping at adopted sons, at unknown genders and at Private placeholders keeps the default view strict without hiding structure for good, since the toggle shows it. Surnames are free text with varying spellings, so they never filter. Browser print gives a PDF without a new dependency.
@@ -713,3 +715,13 @@ For each major decision, record:
   - **Server:** `GET /api/people/{id}/bansawali?line=Sons|AllChildren` (default `Sons`, 400 otherwise) answers `{ rootId, line, people: [{ person, generation, continues, hasMore }], links, spouses, marriages, isTruncated }` with the graph person, link and marriage responses.
   - **Client:** `features/graph/bansawali.ts` (`bansawaliTree`, `bansawaliTitle`) and `BansawaliPage` on `/people/:id/bansawali`: tabs "Through sons" and "Through every child" (`?line=AllChildren`), a nested outline with the generation number, relation word (son, daughter, adopted son), spouses ("wife Gauri", "former wife Maya") and a "More descendants" link to that person's Bansawali; Print calls the browser's print, and the print layout hides the navigation and controls. Linked from the person page, the graph page's selected person and the diagram's menu.
 - **Consequences:** No schema change. A Bansawali deeper than the limit is read in parts, from the people marked "more descendants". One query round per generation keeps privacy in `PrivacyProjection`; a very deep line costs a few more round trips.
+
+### D-044: Photos in the Bansawali
+
+- **Status:** proposed (2026-10-26). Issue #114. Asked by the user on 2026-10-26 (PRD 08, Bansawali): each person in the Bansawali shows their photo, the photo size can be changed before printing, and children stay in birth order. The rest is proposed with the PR.
+- **Context:** The Bansawali (D-043) is a text outline with children in birth order (D-039). Profiles may have a photo (D-028), and the people pickers already show a photo or initials with `PersonAvatar` (D-038). A prototype with 128 people over 7 generations kept every photo visible, one row per person; on A4 it printed on 5 pages with 24 px photos and 7 with 40 px.
+- **Options considered:** one fixed size; a size control on the page; a separate print setting; photos for spouses too; remembering the choice in the URL or the browser.
+- **Trade-offs:** One control that sets both the screen and the print keeps what you see what prints, with no print-only setting to explain. Small photos keep the outline and the page count close to the text-only view; larger ones suit printing a short line with faces. Leaving spouses out keeps each row short, since several marriages already widen it.
+- **Decision:**
+  - **Client:** `BansawaliPage` puts a `PersonAvatar` before each person's name: the photo, initials without one, an empty circle for a placeholder (whose photo `PrivacyProjection` already hides). A "Photos" select next to Print offers None, Small (1.5rem, the default), Medium (2.5rem) and Large (4rem). The print layout keeps the chosen size and hides the select. The choice is not remembered between visits. Spouses get no photo. The order of children is unchanged (`compareChildren`).
+- **Consequences:** No server change, endpoint or dependency; photos load lazily through the existing image endpoint. Larger photos print on more pages.
