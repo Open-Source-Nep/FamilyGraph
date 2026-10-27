@@ -108,3 +108,54 @@ export function bansawaliTitle(ancestor: GraphPerson): string {
     ? `${ancestor.lastName} Bansawali`
     : `Bansawali of ${fullName(ancestor)}`;
 }
+
+/** How many generations one section of the outline shows before a line continues in another (D-045). */
+export const sectionGenerations = 8;
+
+/** A numbered part of the outline, starting from the ancestor or from someone deeper in the line. */
+export interface BansawaliSection {
+  number: number;
+  entry: BansawaliEntry;
+  /** The section where this person's children say "continued in", null for the first. */
+  from: number | null;
+}
+
+/** The sections in order and, by person ID, the section where each cut-off person's children continue. */
+export interface BansawaliSections {
+  sections: BansawaliSection[];
+  continuedIn: Map<string, number>;
+}
+
+/**
+ * Splits the outline so that no section is deeper than `generations` (D-045): someone in a
+ * section's last generation who has children in the Bansawali starts a new section, numbered in
+ * the order the sections are reached, and their row points to it.
+ */
+export function bansawaliSections(
+  root: BansawaliEntry,
+  generations = sectionGenerations,
+): BansawaliSections {
+  const sections: BansawaliSection[] = [];
+  const continuedIn = new Map<string, number>();
+  const queue: { entry: BansawaliEntry; from: number | null }[] = [{ entry: root, from: null }];
+  while (queue.length) {
+    const { entry: start, from } = queue.shift()!;
+    const number = sections.length + 1;
+    sections.push({ number, entry: start, from });
+    const walk = (entry: BansawaliEntry): void => {
+      for (const child of entry.children) {
+        if (
+          child.children.length &&
+          child.row.generation - start.row.generation === generations - 1
+        ) {
+          queue.push({ entry: child, from: number });
+          continuedIn.set(child.row.person.id, sections.length + queue.length);
+        } else {
+          walk(child);
+        }
+      }
+    };
+    walk(start);
+  }
+  return { sections, continuedIn };
+}

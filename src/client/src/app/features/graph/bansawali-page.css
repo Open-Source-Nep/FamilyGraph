@@ -77,6 +77,29 @@
   margin-inline-end: 0.5rem;
 }
 
+/* A line that continues in a later section (D-045). */
+.continued {
+  margin: 0 0 0.25rem 2rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.continued .link-button,
+.lineage-section h2 .link-button {
+  margin: 0;
+  font-size: inherit;
+  font-style: inherit;
+}
+
+.lineage-section h2 {
+  margin: 1.5rem 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+.section-description {
+  font-weight: normal;
+}
+
 .print-only {
   display: none;
 }
@@ -90,9 +113,14 @@
     display: inline;
   }
 
-  .lineage a {
+  .lineage a,
+  .lineage-section .link-button {
     color: inherit;
     text-decoration: none;
+  }
+
+  .lineage-section h2 {
+    break-after: avoid;
   }
 
   .lineage-person {

@@ -125,6 +125,44 @@ describe('BansawaliPage', () => {
     bansawali.people[1].person = person('Ram', 'Male');
   });
 
+  it('continues a deep line in a numbered section and jumps to it (AC-08.27)', async () => {
+    const deep: Bansawali = {
+      ...bansawali,
+      rootId: 'p0',
+      people: Array.from({ length: 10 }, (_, g) => ({
+        person: { ...person(`p${g}`, 'Male', g ? null : 'Neupane'), description: `Elder ${g}` },
+        generation: g,
+        continues: true,
+        hasMore: false,
+      })),
+      links: Array.from({ length: 9 }, (_, g) => ({
+        id: `l${g}`,
+        parentId: `p${g}`,
+        childId: `p${g + 1}`,
+        type: 'Biological' as const,
+        birthOrder: 1,
+      })),
+      marriages: [],
+      isTruncated: false,
+    };
+    TestBed.overrideProvider(GraphService, {
+      useValue: { bansawali: () => Promise.resolve(deep) },
+    });
+    await render();
+    const scroll = vi.fn();
+    (fixture.nativeElement.querySelector('#bansawali-section-2') as HTMLElement).scrollIntoView =
+      scroll;
+
+    expect(text('.continued')).toEqual(['Children continued in section 2']);
+    expect(text('.lineage-section h2')).toEqual([
+      '2. Descendants of p7 · Elder 7 (generation 8, from section 1)',
+    ]);
+    expect(text('#bansawali-section-2 .lineage-person a')).toEqual(['p7', 'p8', 'p9']);
+
+    (fixture.nativeElement.querySelector('.continued button') as HTMLButtonElement).click();
+    expect(scroll).toHaveBeenCalled();
+  });
+
   it('prints from the browser (AC-08.25)', async () => {
     const print = vi.spyOn(window, 'print').mockImplementation(() => undefined);
     await render();
