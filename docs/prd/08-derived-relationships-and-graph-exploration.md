@@ -55,6 +55,7 @@ A Bansawali is the traditional Nepali lineage record. It is a view derived from 
 - Privacy is as on the graph page. A Private person seen by someone other than their maintainer or an administrator is a `Private` placeholder whose gender counts as not set, so the sons-only line stops there and leaks nothing; a `Deleted` profile has no gender and behaves the same.
 - The view is its own page, reached from the person page and the graph page's menu, with a print layout for the browser's print (and save as PDF).
 - Each person shows their photo, or initials without one, and the viewer can change the photo size, or turn photos off, before printing; the print uses the chosen size (agreed 2026-10-26).
+- A long Bansawali is split into numbered sections of at most 8 generations, on screen and in print. Where a line goes deeper, the person in a section's last generation says "children continued in section N", and section N starts again from them, its title giving their name, their description and which section it continues (agreed 2026-10-27).
 
 ## Relationship explanations
 
@@ -106,6 +107,7 @@ A Bansawali is the traditional Nepali lineage record. It is a view derived from 
 - `AC-08.24` A Private person in someone else's Bansawali is a `Private` placeholder whose descendants appear only with the toggle; their maintainer and administrators see the full line.
 - `AC-08.25` The Bansawali page prints as a clean list from the browser.
 - `AC-08.26` The Bansawali shows each person's photo, or initials without one, at a size the viewer chooses (none, small, medium or large), and prints at that size.
+- `AC-08.27` A Bansawali deeper than 8 generations continues each longer line in a numbered section that starts from the person whose row points to it, titled with their name and description, so no section is deeper than 8 generations; the pointer jumps to the section on screen.
 
 ## Open details
 

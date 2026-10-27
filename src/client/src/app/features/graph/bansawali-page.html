@@ -56,11 +56,42 @@
       <a [routerLink]="['/people', root.row.person.id, 'graph']">Family graph</a>
     </div>
 
-    <ol class="lineage">
-      <ng-container *ngTemplateOutlet="lineageEntry; context: { $implicit: root }" />
-    </ol>
+    @if (sections(); as split) {
+      @if (split.sections.length > 1) {
+        <p class="hint">
+          Each section shows up to {{ sectionGenerations }} generations; longer lines continue in
+          the section their last person points to.
+        </p>
+      }
+      @for (section of split.sections; track section.number) {
+        <section class="lineage-section" [id]="sectionId(section.number)">
+          @if (section.from !== null) {
+            <h2>
+              {{ section.number }}. Descendants of {{ fullName(section.entry.row.person) }}
+              @if (section.entry.row.person.description; as description) {
+                <span class="section-description">· {{ description }}{{ ' ' }}</span>
+              }
+              <span class="relation"
+                >(generation {{ section.entry.row.generation + 1 }}, from
+                <button type="button" class="link-button" (click)="showSection(section.from)">
+                  section {{ section.from }}</button
+                >)</span
+              >
+            </h2>
+          }
+          <ol class="lineage">
+            <ng-container
+              *ngTemplateOutlet="
+                lineageEntry;
+                context: { $implicit: section.entry, section: section.number }
+              "
+            />
+          </ol>
+        </section>
+      }
+    }
 
-    <ng-template #lineageEntry let-entry>
+    <ng-template #lineageEntry let-entry let-section="section">
       <li>
         <div class="lineage-person">
           <span class="generation" aria-hidden="true">{{ entry.row.generation + 1 }}</span>
@@ -88,10 +119,19 @@
             <span class="print-only">(more descendants)</span>
           }
         </div>
-        @if (entry.children.length) {
+        @if (continuedIn(entry, section); as next) {
+          <p class="continued">
+            Children continued in
+            <button type="button" class="link-button" (click)="showSection(next)">
+              section {{ next }}
+            </button>
+          </p>
+        } @else if (entry.children.length) {
           <ol>
             @for (child of entry.children; track child.row.person.id) {
-              <ng-container *ngTemplateOutlet="lineageEntry; context: { $implicit: child }" />
+              <ng-container
+                *ngTemplateOutlet="lineageEntry; context: { $implicit: child, section: section }"
+              />
             }
           </ol>
         }

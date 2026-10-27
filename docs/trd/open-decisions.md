@@ -62,7 +62,8 @@ The technical decision log, plus any unresolved choices. Do not treat recommenda
 - Enlarging the profile photo (D-041 below).
 - All people on the People page, paged (D-042 below).
 - Bansawali view (D-043 below).
-- Photos in the Bansawali (D-044 below, proposed).
+- Photos in the Bansawali (D-044 below).
+- A long Bansawali in sections (D-045 below, proposed).
 - **Name length (agreed 2026-10-21):** Business puts no length cap on name parts. Any storage or input limit is set later by persistence (#9) and API validation (D-010).
 
 ## Discussion topics (all agreed)
@@ -718,10 +719,20 @@ For each major decision, record:
 
 ### D-044: Photos in the Bansawali
 
-- **Status:** proposed (2026-10-26). Issue #114. Asked by the user on 2026-10-26 (PRD 08, Bansawali): each person in the Bansawali shows their photo, the photo size can be changed before printing, and children stay in birth order. The rest is proposed with the PR.
+- **Status:** agreed (2026-10-26, PR #115 merged). Issue #114. Asked by the user on 2026-10-26 (PRD 08, Bansawali): each person in the Bansawali shows their photo, the photo size can be changed before printing, and children stay in birth order. The rest is proposed with the PR.
 - **Context:** The Bansawali (D-043) is a text outline with children in birth order (D-039). Profiles may have a photo (D-028), and the people pickers already show a photo or initials with `PersonAvatar` (D-038). A prototype with 128 people over 7 generations kept every photo visible, one row per person; on A4 it printed on 5 pages with 24 px photos and 7 with 40 px.
 - **Options considered:** one fixed size; a size control on the page; a separate print setting; photos for spouses too; remembering the choice in the URL or the browser.
 - **Trade-offs:** One control that sets both the screen and the print keeps what you see what prints, with no print-only setting to explain. Small photos keep the outline and the page count close to the text-only view; larger ones suit printing a short line with faces. Leaving spouses out keeps each row short, since several marriages already widen it.
 - **Decision:**
   - **Client:** `BansawaliPage` puts a `PersonAvatar` before each person's name: the photo, initials without one, an empty circle for a placeholder (whose photo `PrivacyProjection` already hides). A "Photos" select next to Print offers None, Small (1.5rem, the default), Medium (2.5rem) and Large (4rem). The print layout keeps the chosen size and hides the select. The choice is not remembered between visits. Spouses get no photo. The order of children is unchanged (`compareChildren`).
 - **Consequences:** No server change, endpoint or dependency; photos load lazily through the existing image endpoint. Larger photos print on more pages.
+
+### D-045: A long Bansawali in sections
+
+- **Status:** proposed (2026-10-27). Issue #116. Asked by the user on 2026-10-27 (PRD 08, Bansawali): a real Bansawali of 32 generations pushed the deepest names off the printed page; after seeing prototypes the user chose numbered sections over capping the indent, with the person's description in each section title. The rest is proposed with the PR.
+- **Context:** The outline (D-043) indents each generation by about 28 px, so 32 generations need about 900 px, wider than an A4 page.
+- **Options considered:** a smaller indent per level; capping the indent after about 8 levels; continuing deep lines in numbered sections; a list by generation with "child of" references.
+- **Trade-offs:** A smaller indent still fails on deeper lines. A cap fits but, below it, a brother and a son look alike except for the generation number. Sections keep the tree shape everywhere at the cost of following a line across sections, as printed Bansawalis do. A list by generation loses the tree.
+- **Decision:**
+  - **Client:** `bansawaliSections(root, generations = 8)` in `features/graph/bansawali.ts` (pure): a section starts at the ancestor; anyone in a section's 8th generation with children in the Bansawali starts a new section, numbered in the order reached (breadth first), and `continuedIn` maps them to it. `BansawaliPage` renders the sections in order on screen and in print: the cut-off row says "Children continued in section N", and each later section is headed "N. Descendants of <name> · <description> (generation G, from section M)", the description only when the viewer may see one. Both references are buttons that scroll to the section; print shows them as plain text and keeps a heading with its first row. One section shows exactly as before.
+- **Consequences:** No server change. The 8 is a constant, not a setting. The person who starts a section appears twice: at the end of the earlier section and at the head of their own.
