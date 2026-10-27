@@ -1,4 +1,4 @@
-<section class="panel graph-panel">
+<section class="panel" [class.graph-panel]="!!profiles()?.length">
   @if (error(); as error) {
     <p class="error" role="alert">{{ error }}</p>
   }
