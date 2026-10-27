@@ -162,9 +162,11 @@ button.link-button.order:disabled {
   opacity: 0.5;
 }
 
+/* The home graph fills the page below the header: the header, its border and main's padding take 5.25rem. */
 .graph-panel {
-  max-width: 64rem;
-  padding: 0 1rem;
+  --dots-height: max(22rem, calc(100dvh - 5.25rem));
+  max-width: none;
+  margin: 0;
 }
 
 .name-form fieldset.choices {

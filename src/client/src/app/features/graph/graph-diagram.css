@@ -123,5 +123,5 @@
 }
 
 .dots .canvas {
-  height: 22rem;
+  height: var(--dots-height, 22rem);
 }
