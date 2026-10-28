@@ -53,10 +53,11 @@ describe('HomePage', () => {
   };
   const graph = () => fixture.debugElement.query((el) => el.name === 'app-home-graph');
 
-  it('shows the graph of everyone connected to your profiles, with no centre picker', async () => {
+  it('shows the graph of everyone connected to your profiles across the page, with no centre picker', async () => {
     await show();
 
     expect(graph()).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('section.graph-panel')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('select')).toBeNull();
   });
 
@@ -65,6 +66,7 @@ describe('HomePage', () => {
     await show();
 
     expect(graph()).toBeNull();
+    expect(fixture.nativeElement.querySelector('section.graph-panel')).toBeNull();
     expect(fixture.nativeElement.textContent).toContain('once you add a profile');
   });
 });

@@ -92,6 +92,7 @@
         [calendars]="['bs', 'ad']"
         [pick]="known()"
         [value]="picked()"
+        [initialMonth]="shownMonth()"
         [max]="today"
         (dateSelect)="pick($event)"
       />

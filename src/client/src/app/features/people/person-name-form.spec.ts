@@ -232,6 +232,21 @@ describe('PersonNameForm', () => {
     expect(cells[0].textContent).toContain(String(date.year));
   });
 
+  it('opens the calendar at the typed year while the month is still missing (AC-01.36)', async () => {
+    button('Add birth date')!.click();
+    await fixture.whenStable();
+    known('Year and month');
+    await fixture.whenStable();
+    year('2050');
+    await fixture.whenStable();
+    button('Pick on the calendar')!.click();
+    await fixture.whenStable();
+
+    expect(
+      (fixture.nativeElement.querySelector('.osn-cal__select--year') as HTMLSelectElement).value,
+    ).toBe('2050');
+  });
+
   it('starts from the given birth date and can remove it', async () => {
     fixture.componentRef.setInput('birthDate', { calendar: 'Bs', year: 2082, month: 6, day: 16 });
     fixture.componentRef.setInput('birthDateShown', true);

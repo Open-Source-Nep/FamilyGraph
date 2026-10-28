@@ -132,6 +132,35 @@ internal sealed class EfGraphQueries(FamilyGraphDbContext context, GraphLimits l
         ORDER BY marriage.id
         """;
 
+    /// <summary>Parameters: <c>@ids</c>, the parents, and <c>@row_limit</c>.</summary>
+    private static readonly string ChildLinksSql = $"""
+        SELECT link.id AS "Id", link.parent_id AS "ParentId", link.child_id AS "ChildId", link.type AS "Type",
+            link.birth_order AS "BirthOrder"
+        FROM parent_child_links AS link
+        JOIN unnest(@ids) AS parent (id) ON parent.id = link.parent_id
+        WHERE {Active}
+        ORDER BY link.parent_id, link.birth_order NULLS LAST, link.id
+        LIMIT @row_limit
+        """;
+
+    /// <summary>Parameter: <c>@ids</c>, the parents.</summary>
+    private static readonly string WithChildrenSql = $"""
+        SELECT DISTINCT link.parent_id AS "Value"
+        FROM parent_child_links AS link
+        JOIN unnest(@ids) AS parent (id) ON parent.id = link.parent_id
+        WHERE {Active}
+        """;
+
+    /// <summary>Parameters: <c>@ids</c> and <c>@row_limit</c>.</summary>
+    private static readonly string MarriagesOfSql = $"""
+        SELECT marriage.id AS "Id", marriage.first_spouse_id AS "FirstSpouseId",
+            marriage.second_spouse_id AS "SecondSpouseId", marriage.is_former AS "IsFormer"
+        FROM marriages AS marriage
+        WHERE (marriage.first_spouse_id = ANY (@ids) OR marriage.second_spouse_id = ANY (@ids)) AND {ActiveMarriage}
+        ORDER BY marriage.id
+        LIMIT @row_limit
+        """;
+
     /// <summary>
     /// The walk keeps one row per (person, distance, generation), so a person reached by many
     /// routes, or around a cycle, is bounded by the distance limit of twice the generations. The
@@ -208,6 +237,41 @@ internal sealed class EfGraphQueries(FamilyGraphDbContext context, GraphLimits l
             reached.Count > shown.Length);
     }
 
+    /// <summary>One link past the limit tells that more were found.</summary>
+    public async Task<ChildLinks> ChildLinksAsync(
+        IReadOnlyCollection<PersonId> parentIds, int limit, CancellationToken cancellationToken)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(limit);
+
+        var rows = await RunAsync(token => context.Database.SqlQueryRaw<LinkRow>(ChildLinksSql,
+            new NpgsqlParameter<Guid[]>("ids", [.. parentIds.Select(id => id.Value)]),
+            new NpgsqlParameter<int>("row_limit", limit + 1)).ToListAsync(token), cancellationToken);
+
+        return new ChildLinks([.. rows.Take(limit).Select(ToGraphLink)], rows.Count > limit);
+    }
+
+    public async Task<IReadOnlySet<PersonId>> WithChildrenAsync(
+        IReadOnlyCollection<PersonId> parentIds, CancellationToken cancellationToken)
+    {
+        var rows = await RunAsync(token => context.Database.SqlQueryRaw<Guid>(WithChildrenSql,
+            new NpgsqlParameter<Guid[]>("ids", [.. parentIds.Select(id => id.Value)])).ToListAsync(token), cancellationToken);
+
+        return rows.Select(id => new PersonId(id)).ToHashSet();
+    }
+
+    /// <summary>One marriage past the limit tells that more were found.</summary>
+    public async Task<MarriagesOf> MarriagesOfAsync(
+        IReadOnlyCollection<PersonId> personIds, int limit, CancellationToken cancellationToken)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(limit);
+
+        var rows = await RunAsync(token => context.Database.SqlQueryRaw<MarriageRow>(MarriagesOfSql,
+            new NpgsqlParameter<Guid[]>("ids", [.. personIds.Select(id => id.Value)]),
+            new NpgsqlParameter<int>("row_limit", limit + 1)).ToListAsync(token), cancellationToken);
+
+        return new MarriagesOf([.. rows.Take(limit).Select(ToGraphMarriage)], rows.Count > limit);
+    }
+
     public async Task<IReadOnlyList<PersonRecord>> PeopleAsync(
         IReadOnlyCollection<PersonId> ids, AccountId viewerId, CancellationToken cancellationToken)
     {
@@ -256,8 +320,7 @@ internal sealed class EfGraphQueries(FamilyGraphDbContext context, GraphLimits l
         var rows = await RunAsync(token => context.Database.SqlQueryRaw<LinkRow>(LinksBetweenSql,
             new NpgsqlParameter<Guid[]>("ids", ids)).ToListAsync(token), cancellationToken);
 
-        return [.. rows.Select(row => new GraphLink(
-            new LinkId(row.Id), new PersonId(row.ParentId), new PersonId(row.ChildId), ParentChildType.FromValue(row.Type), row.BirthOrder))];
+        return [.. rows.Select(ToGraphLink)];
     }
 
     private async Task<IReadOnlyList<GraphMarriage>> MarriagesBetweenAsync(Guid[] ids, CancellationToken cancellationToken)
@@ -265,9 +328,14 @@ internal sealed class EfGraphQueries(FamilyGraphDbContext context, GraphLimits l
         var rows = await RunAsync(token => context.Database.SqlQueryRaw<MarriageRow>(MarriagesBetweenSql,
             new NpgsqlParameter<Guid[]>("ids", ids)).ToListAsync(token), cancellationToken);
 
-        return [.. rows.Select(row => new GraphMarriage(
-            new LinkId(row.Id), new PersonId(row.FirstSpouseId), new PersonId(row.SecondSpouseId), row.IsFormer))];
+        return [.. rows.Select(ToGraphMarriage)];
     }
+
+    private static GraphLink ToGraphLink(LinkRow row) => new(
+        new LinkId(row.Id), new PersonId(row.ParentId), new PersonId(row.ChildId), ParentChildType.FromValue(row.Type), row.BirthOrder);
+
+    private static GraphMarriage ToGraphMarriage(MarriageRow row) => new(
+        new LinkId(row.Id), new PersonId(row.FirstSpouseId), new PersonId(row.SecondSpouseId), row.IsFormer);
 
     /// <summary>
     /// Runs one query under the graph timeout (D-009). The timeout cancels the query, which also

@@ -4,13 +4,13 @@ import { NepaliCalendarComponent } from '@opensourcenepal/nepali-calendar-angula
 
 import { BirthCalendar, BirthDate, daysIn, isValidBirthDate, monthNames } from './birth-date';
 
-/** How much of a birth date is known: the year, the year and month, or the full date (D-043). */
+/** How much of a birth date is known: the year, the year and month, or the full date (D-046). */
 export type BirthDateKnown = 'year' | 'month' | 'day';
 
 /**
  * An optional birth date in BS or AD: a year, and the month and day if known (D-037). It first
  * asks how much is known, and the Nepali calendar then picks a year, a month or a day; it reaches
- * BS 1970 to 2090 (AD 1913 to 2034), so older dates are typed (D-043). Emits the date, or null
+ * BS 1970 to 2090 (AD 1913 to 2034), so older dates are typed (D-046). Emits the date, or null
  * while it is cleared, the year is empty or a part that is known is not chosen yet.
  */
 @Component({
@@ -92,6 +92,21 @@ export class BirthDateInput {
     try {
       const parts = { year: date.year, month: date.month ?? 1, day: date.day ?? 1 };
       return date.calendar === 'Bs' ? parts : toBs(parts);
+    } catch {
+      return null;
+    }
+  });
+
+  /** The BS month the calendar opens at: the typed year and month, while a part is still missing too. */
+  protected readonly shownMonth = computed<{ year: number; month: number } | null>(() => {
+    const date = this.date();
+    if (!date || !Number.isInteger(date.year) || !this.canPick()) {
+      return null;
+    }
+    try {
+      const parts = { year: date.year, month: date.month ?? 1, day: 1 };
+      const bs = date.calendar === 'Bs' ? parts : toBs(parts);
+      return { year: bs.year, month: bs.month };
     } catch {
       return null;
     }

@@ -3,6 +3,7 @@ using FamilyGraph.Application.Graph;
 using FamilyGraph.Application.People;
 using FamilyGraph.Application.Privacy;
 using FamilyGraph.Application.Relationships;
+using FamilyGraph.Business.Graph;
 using FamilyGraph.Business.People;
 using FamilyGraph.Business.Relationships;
 using FamilyGraph.Infrastructure.Persistence;
@@ -12,7 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FamilyGraph.Infrastructure.Tests.Graph;
 
-/// <summary>The bounded local view, overview and connection search against PostgreSQL (#20, D-009, D-023).</summary>
+/// <summary>The bounded local view, overview, connection search and Bansawali against PostgreSQL (#20, D-009, D-023, D-043).</summary>
 public class GraphQueriesTests(PostgresFixture postgres)
 {
     private static readonly AccountId Maintainer = TestData.NewAccount();
@@ -263,6 +264,78 @@ public class GraphQueriesTests(PostgresFixture postgres)
         Assert.Equal(
             [PersonPlaceholder.Private, PersonPlaceholder.Deleted],
             Assert.Single(connections.Paths).Steps.Select(step => step.Person.Placeholder));
+    }
+
+    [Fact]
+    [Trait("AC", "AC-08.21")]
+    [Trait("AC", "AC-08.23")]
+    public async Task Bansawali_follows_sons_over_active_links_with_the_marriages_of_its_people()
+    {
+        await using var services = await NewServicesAsync();
+        var hari = Gendered("Hari", Gender.Male);
+        var ram = Gendered("Ram", Gender.Male);
+        var sita = Gendered("Sita", Gender.Female);
+        var shyam = Gendered("Shyam", Gender.Male);
+        var gita = Gendered("Gita", Gender.Female);
+        var gauri = Gendered("Gauri", Gender.Female);
+        var stranger = TestData.NewPerson(TestData.NewAccount(), "Pending");
+        stranger.SetGender(Gender.Male, stranger.MaintainerId);
+        var marriage = Marriage.Create(hari, gauri, Maintainer, alreadyMarried: false, directlyRelated: false);
+        await SaveAsync(services, [
+            hari, ram, sita, shyam, gita, gauri, stranger, marriage,
+            TestData.NewLink(hari, ram, Maintainer),
+            TestData.NewLink(hari, sita, Maintainer),
+            TestData.NewLink(ram, shyam, Maintainer),
+            TestData.NewLink(sita, gita, Maintainer),
+            TestData.NewLink(hari, stranger, Maintainer),
+        ]);
+
+        var bansawali = await BansawaliAsync(services, hari.Id, BansawaliLine.Sons);
+        var all = await BansawaliAsync(services, hari.Id, BansawaliLine.AllChildren);
+
+        Assert.Equal(
+            [("Hari", 0), ("Ram", 1), ("Sita", 1), ("Shyam", 2)],
+            bansawali.People.Select(row => (row.Person.Name!.FirstName, row.Generation)).OrderBy(row => row.Item2).ThenBy(row => row.Item1));
+        Assert.Equal(3, bansawali.Links.Count);
+        Assert.Equal("Gauri", Assert.Single(bansawali.Spouses).Name!.FirstName);
+        Assert.Equal(marriage.Id, Assert.Single(bansawali.Marriages).Id);
+        Assert.Equal(5, all.People.Count);
+        Assert.False(all.IsTruncated);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-08.21")]
+    public async Task Bansawali_stops_before_a_generation_past_the_limit()
+    {
+        await using var services = await NewServicesAsync();
+        var hari = Gendered("Hari", Gender.Male);
+        var ram = Gendered("Ram", Gender.Male);
+        var children = Enumerable.Range(1, 3).Select(index => Gendered($"Child {index}", Gender.Male)).ToList();
+        await SaveAsync(services, [hari, ram, .. children, TestData.NewLink(hari, ram, Maintainer),
+            .. children.Select(child => TestData.NewLink(ram, child, Maintainer))]);
+
+        var bansawali = await BansawaliAsync(services, hari.Id, BansawaliLine.Sons, bansawaliPeople: 3);
+
+        Assert.Equal([("Hari", false), ("Ram", true)], bansawali.People.Select(row => (row.Person.Name!.FirstName, row.HasMore)));
+        Assert.True(bansawali.IsTruncated);
+    }
+
+    private static Person Gendered(string firstName, Gender gender)
+    {
+        var person = TestData.NewPerson(Maintainer, firstName);
+        person.SetGender(gender, Maintainer);
+        return person;
+    }
+
+    private static async Task<Bansawali> BansawaliAsync(
+        ServiceProvider services, PersonId root, BansawaliLine line, int bansawaliPeople = GraphLimits.DefaultBansawaliPeople)
+    {
+        await using var scope = services.CreateAsyncScope();
+        var service = new GraphService(
+            scope.ServiceProvider.GetRequiredService<IPersonQueries>(),
+            scope.ServiceProvider.GetRequiredService<IGraphQueries>(),
+            new GraphLimits(bansawaliPeople: bansawaliPeople));
+        return await service.BansawaliAsync(root, line, As(Maintainer), Cancellation);
     }
 
     private static async Task<LocalView> LocalViewAsync(

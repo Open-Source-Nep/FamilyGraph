@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 
 import { Gender } from '../people/person';
+import { Bansawali } from './bansawali';
 import { Connections, GraphOverview, GraphPerson, LocalView, stepLabel } from './graph';
 import { GraphService } from './graph.service';
 
@@ -48,6 +49,24 @@ describe('GraphService', () => {
     http.expectOne({ method: 'GET', url: '/api/people/p1/connections/p2' }).flush(connections);
 
     expect(await found).toEqual(connections);
+  });
+
+  it("loads a person's Bansawali for the chosen line", async () => {
+    const bansawali: Bansawali = {
+      rootId: 'p1',
+      line: 'AllChildren',
+      people: [],
+      links: [],
+      spouses: [],
+      marriages: [],
+      isTruncated: false,
+    };
+    const loaded = service.bansawali('p1', 'AllChildren');
+    http
+      .expectOne({ method: 'GET', url: '/api/people/p1/bansawali?line=AllChildren' })
+      .flush(bansawali);
+
+    expect(await loaded).toEqual(bansawali);
   });
 });
 

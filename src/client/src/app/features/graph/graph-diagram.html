@@ -45,6 +45,7 @@
       <button type="button" role="menuitem" (click)="choose('parent')">Add parent</button>
       <button type="button" role="menuitem" (click)="choose('child')">Add children</button>
       <button type="button" role="menuitem" (click)="choose('spouse')">Add spouse</button>
+      <button type="button" role="menuitem" (click)="showBansawali()">Show the Bansawali</button>
       @if (canDelete(menu.row.person)) {
         <button type="button" role="menuitem" class="danger" (click)="chooseDelete()">
           Delete profile

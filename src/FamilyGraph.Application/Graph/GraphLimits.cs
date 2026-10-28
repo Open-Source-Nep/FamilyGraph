@@ -24,13 +24,18 @@ public sealed record GraphLimits
 
     public const int DefaultQueryTimeoutSeconds = 10;
 
+    public const int DefaultBansawaliPeople = 500;
+
+    public const int MaxBansawaliPeople = 2000;
+
     public GraphLimits(
         int viewGenerations = DefaultViewGenerations,
         int viewPeople = DefaultViewPeople,
         int pathSearchPeople = DefaultPathSearchPeople,
         int morePaths = DefaultMorePaths,
         int queryTimeoutSeconds = DefaultQueryTimeoutSeconds,
-        int overviewPeople = DefaultOverviewPeople)
+        int overviewPeople = DefaultOverviewPeople,
+        int bansawaliPeople = DefaultBansawaliPeople)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(viewGenerations, 1);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(viewGenerations, MaxViewGenerations);
@@ -41,6 +46,8 @@ public sealed record GraphLimits
         ArgumentOutOfRangeException.ThrowIfLessThan(queryTimeoutSeconds, 1);
         ArgumentOutOfRangeException.ThrowIfLessThan(overviewPeople, 1);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(overviewPeople, MaxOverviewPeople);
+        ArgumentOutOfRangeException.ThrowIfLessThan(bansawaliPeople, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(bansawaliPeople, MaxBansawaliPeople);
 
         ViewGenerations = viewGenerations;
         ViewPeople = viewPeople;
@@ -48,6 +55,7 @@ public sealed record GraphLimits
         MorePaths = morePaths;
         QueryTimeoutSeconds = queryTimeoutSeconds;
         OverviewPeople = overviewPeople;
+        BansawaliPeople = bansawaliPeople;
     }
 
     /// <summary>How many generations above and below the centre a local view reaches.</summary>
@@ -58,6 +66,9 @@ public sealed record GraphLimits
 
     /// <summary>How many people the overview of everyone connected to your profiles returns.</summary>
     public int OverviewPeople { get; }
+
+    /// <summary>How many descendants, and how many marriages, a Bansawali returns besides its ancestor (D-043).</summary>
+    public int BansawaliPeople { get; }
 
     /// <summary>How many people a search for how two people are related examines.</summary>
     public int PathSearchPeople { get; }

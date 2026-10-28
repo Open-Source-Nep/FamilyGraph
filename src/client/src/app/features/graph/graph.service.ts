@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Service, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
+import { Bansawali, BansawaliLine } from './bansawali';
 import { Connections, GraphOverview, LocalView } from './graph';
 
 /** Graph exploration requests. The server bounds every query and walks only active links. */
@@ -26,6 +27,15 @@ export class GraphService {
       this.http.get<Connections>(
         `/api/people/${encodeURIComponent(personId)}/connections/${encodeURIComponent(otherId)}`,
       ),
+    );
+  }
+
+  /** The person's Bansawali: their descendants through sons, or through every child (D-043). */
+  bansawali(personId: string, line: BansawaliLine): Promise<Bansawali> {
+    return firstValueFrom(
+      this.http.get<Bansawali>(`/api/people/${encodeURIComponent(personId)}/bansawali`, {
+        params: { line },
+      }),
     );
   }
 }

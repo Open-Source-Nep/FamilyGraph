@@ -61,7 +61,10 @@ The technical decision log, plus any unresolved choices. Do not treat recommenda
 - Administrators approving pending sides on behalf of maintainers (D-040 below).
 - Enlarging the profile photo (D-041 below).
 - All people on the People page, paged (D-042 below).
-- Picking a birth year or month on the calendar (D-043 below, proposed).
+- Bansawali view (D-043 below).
+- Photos in the Bansawali (D-044 below).
+- A long Bansawali in sections (D-045 below, proposed).
+- Picking a birth year or month on the calendar (D-046 below, proposed).
 - **Name length (agreed 2026-10-21):** Business puts no length cap on name parts. Any storage or input limit is set later by persistence (#9) and API validation (D-010).
 
 ## Discussion topics (all agreed)
@@ -681,7 +684,7 @@ For each major decision, record:
 
 ### D-042: All people on the People page, paged
 
-- **Status:** agreed (2026-10-25). Issue #22, PR #109. Agreed with the user on 2026-10-25 (PRD 08, PRD 05): the People page gets an All people tab next to My profiles, listing everyone you may see by name A to Z, 50 at a time with Show more, with a search box; administrators also see Private profiles, marked "(private)"; nobody sees deleted profiles. The rest is proposed with the PR.
+- **Status:** agreed (2026-10-25). Issue #22. Agreed with the user on 2026-10-25 (PRD 08, PRD 05): the People page gets an All people tab next to My profiles, listing everyone you may see by name A to Z, 50 at a time with Show more, with a search box; administrators also see Private profiles, marked "(private)"; nobody sees deleted profiles. The rest is proposed with the PR.
 - **Context:** The People page listed only the profiles you maintain, and the person search of D-032 returns the top 20 Public matches for pickers. #22 asks for a bounded, paginated search as an entry point into the graph, and an instance can hold more than 10,000 people (PRD 09). D-010 left lists unpaginated until a real list needed it.
 - **Options considered:** search only with the top 20 (D-032); everything up to a limit; paging by offset or by a cursor on the name; one endpoint for search and browsing, or a second one.
 - **Trade-offs:** Paging is what lets the list hold everyone at any size; this is the first list that needs it, so D-010 is amended for it alone. An offset is simpler than a cursor over three nullable name parts; a profile created or deleted between pages can shift a row by one, which the Client absorbs by skipping IDs it already has. A second endpoint leaves the picker search (names only, top 20) unchanged, while browsing also matches descriptions as the My profiles box does (PRD 01).
@@ -692,12 +695,55 @@ For each major decision, record:
   - **Client:** the People page has My profiles and All people tabs (`?tab=all` keeps the choice in the URL). All people loads the first page, Show more asks for the next with the loaded count as the offset, and the search box asks the server again after a short pause. Rows are the D-038 `.person-rows` with "(yours)" and "(private)".
 - **Consequences:** D-010 lists stay unpaginated except this one. A much larger instance may want a cursor or a name index later; the picker search (D-032) is unchanged.
 
-### D-043: Picking a birth year or month on the calendar
+### D-043: Bansawali view
+
+- **Status:** agreed (2026-10-25, PR #113 merged). Issue #112. Product rules agreed with the user on 2026-10-25 (PRD 08, Bansawali); the technical design below was proposed with the PR.
+- **Context:** A Bansawali is the traditional Nepali lineage record: the chain of descendants through sons, who usually share a surname. Users want it next to the graph views. The graph already has active parent–child links with Biological/Adoptive types, genders (D-030), marriages (D-031), birth order (D-016, D-039) and the privacy projection (D-025).
+- **Options considered:** whose children continue the line (sons only, sons with a toggle for all, all children); adopted sons (continue, shown with the line stopped, left out); gender Other or not set (followed, treated like daughters, left out); surname (display only, filter, flag mismatches); spouses (all with former marked, current only, none); a Private son's line for other viewers (stops, continues); location (own page with browser print, own page only, a tab on the graph page).
+- **Trade-offs:** Sons by default matches the written record and stays compact; the toggle keeps every line reachable. Stopping at adopted sons, at unknown genders and at Private placeholders keeps the default view strict without hiding structure for good, since the toggle shows it. Surnames are free text with varying spellings, so they never filter. Browser print gives a PDF without a new dependency.
+- **Decision (agreed rules):**
+  - A view derived from active links only; no new stored data.
+  - The line continues through sons by default; a toggle follows every child.
+  - Daughters and children whose gender is Other, not set or hidden appear under their parent, with their descendants only under the toggle.
+  - Adopted sons appear under their adoptive father, marked as adopted, with their descendants only under the toggle.
+  - The surname is display only: the title uses the ancestor's last name.
+  - Every active marriage appears beside the person, ended ones marked "former"; spouses never continue the line.
+  - Access and placeholders as on the graph page. The line decision uses the projected gender, so a Private person seen by others counts as not set and leaks nothing; a Deleted profile has no gender.
+  - Its own page `/people/:id/bansawali`, linked from the person page and the graph page's menu, bounded by the graph limits with "load more", and a Print button with a print layout.
+- **Decision (proposed with the PR):**
+  - **Business:** `BansawaliLine` (`Sons`, `AllChildren`) with the pure `Continues(type, visibleGender)`: `AllChildren` always, `Sons` only for a Biological link to a child whose visible gender is Male.
+  - **Application:** `GraphService.BansawaliAsync(rootId, line, viewer)` walks down one generation per query: the active child links of the people the line continues through, each child run through `PrivacyProjection` before `Continues` decides. The ancestor's own children are always listed. A child of two people in the line appears once, under the first parent reached. When a generation would pass `GraphLimits.BansawaliPeople` (`Graph:BansawaliPeople`, 1 to 2000, default 500), it is left out and the people with children get `HasMore`. Then the active marriages of everyone shown (same limit) and the spouses, projected. `IGraphQueries` gains `ChildLinksAsync`, `WithChildrenAsync` and `MarriagesOfAsync`.
+  - **Infrastructure:** three plain queries in `EfGraphQueries` over the active link and marriage filters, under the graph timeout. No recursive CTE, because each generation needs the projection first.
+  - **Server:** `GET /api/people/{id}/bansawali?line=Sons|AllChildren` (default `Sons`, 400 otherwise) answers `{ rootId, line, people: [{ person, generation, continues, hasMore }], links, spouses, marriages, isTruncated }` with the graph person, link and marriage responses.
+  - **Client:** `features/graph/bansawali.ts` (`bansawaliTree`, `bansawaliTitle`) and `BansawaliPage` on `/people/:id/bansawali`: tabs "Through sons" and "Through every child" (`?line=AllChildren`), a nested outline with the generation number, relation word (son, daughter, adopted son), spouses ("wife Gauri", "former wife Maya") and a "More descendants" link to that person's Bansawali; Print calls the browser's print, and the print layout hides the navigation and controls. Linked from the person page, the graph page's selected person and the diagram's menu.
+- **Consequences:** No schema change. A Bansawali deeper than the limit is read in parts, from the people marked "more descendants". One query round per generation keeps privacy in `PrivacyProjection`; a very deep line costs a few more round trips.
+
+### D-044: Photos in the Bansawali
+
+- **Status:** agreed (2026-10-26, PR #115 merged). Issue #114. Asked by the user on 2026-10-26 (PRD 08, Bansawali): each person in the Bansawali shows their photo, the photo size can be changed before printing, and children stay in birth order. The rest is proposed with the PR.
+- **Context:** The Bansawali (D-043) is a text outline with children in birth order (D-039). Profiles may have a photo (D-028), and the people pickers already show a photo or initials with `PersonAvatar` (D-038). A prototype with 128 people over 7 generations kept every photo visible, one row per person; on A4 it printed on 5 pages with 24 px photos and 7 with 40 px.
+- **Options considered:** one fixed size; a size control on the page; a separate print setting; photos for spouses too; remembering the choice in the URL or the browser.
+- **Trade-offs:** One control that sets both the screen and the print keeps what you see what prints, with no print-only setting to explain. Small photos keep the outline and the page count close to the text-only view; larger ones suit printing a short line with faces. Leaving spouses out keeps each row short, since several marriages already widen it.
+- **Decision:**
+  - **Client:** `BansawaliPage` puts a `PersonAvatar` before each person's name: the photo, initials without one, an empty circle for a placeholder (whose photo `PrivacyProjection` already hides). A "Photos" select next to Print offers None, Small (1.5rem, the default), Medium (2.5rem) and Large (4rem). The print layout keeps the chosen size and hides the select. The choice is not remembered between visits. Spouses get no photo. The order of children is unchanged (`compareChildren`).
+- **Consequences:** No server change, endpoint or dependency; photos load lazily through the existing image endpoint. Larger photos print on more pages.
+
+### D-045: A long Bansawali in sections
+
+- **Status:** proposed (2026-10-27). Issue #116. Asked by the user on 2026-10-27 (PRD 08, Bansawali): a real Bansawali of 32 generations pushed the deepest names off the printed page; after seeing prototypes the user chose numbered sections over capping the indent, with the person's description in each section title. The rest is proposed with the PR.
+- **Context:** The outline (D-043) indents each generation by about 28 px, so 32 generations need about 900 px, wider than an A4 page.
+- **Options considered:** a smaller indent per level; capping the indent after about 8 levels; continuing deep lines in numbered sections; a list by generation with "child of" references.
+- **Trade-offs:** A smaller indent still fails on deeper lines. A cap fits but, below it, a brother and a son look alike except for the generation number. Sections keep the tree shape everywhere at the cost of following a line across sections, as printed Bansawalis do. A list by generation loses the tree.
+- **Decision:**
+  - **Client:** `bansawaliSections(root, generations = 8)` in `features/graph/bansawali.ts` (pure): a section starts at the ancestor; anyone in a section's 8th generation with children in the Bansawali starts a new section, numbered in the order reached (breadth first), and `continuedIn` maps them to it. `BansawaliPage` renders the sections in order on screen and in print: the cut-off row says "Children continued in section N", and each later section is headed "N. Descendants of <name> · <description> (generation G, from section M)", the description only when the viewer may see one. Both references are buttons that scroll to the section; print shows them as plain text and keeps a heading with its first row. One section shows exactly as before.
+- **Consequences:** No server change. The 8 is a constant, not a setting. The person who starts a section appears twice: at the end of the earlier section and at the head of their own.
+
+### D-046: Picking a birth year or month on the calendar
 
 - **Status:** proposed (2026-10-25). Issue #110. Agreed with the user on 2026-10-25 (PRD 01): upgrade `@opensourcenepal/nepali-calendar-angular` and its core from 1.2.0 to 1.3.0, whose calendar can pick a whole year or month; the birth date field first asks what is known (Year only, Year and month, Full date), and the calendar opens at that level. The rest is proposed with the PR.
 - **Context:** D-037 allows a year, a year and month, or a full date, but its calendar picked only full dates, so partial dates were typed and "Not known" in the Month and Day selects meant a partial date.
 - **Options considered:** a "what is known" choice that drives the boxes and the calendar; three calendar buttons (year, month, day); the calendar level following which boxes are filled.
 - **Trade-offs:** One choice says plainly that a partial date is fine and keeps the boxes and the calendar in step. The typed boxes stay for dates the calendar does not reach (before BS 1970 or AD 1914).
 - **Decision:**
-  - **Client:** `BirthDateInput` has `known` (`year`, `month`, `day`; a new date starts at Full date, a stored one at its own level) with radio buttons after BS/AD. It shows the Month select unless only the year is known and the Day select only for a full date, each starting at "Choose"; while a known part is missing it says "Choose the month and day, or change what is known." and the form does not save. The calendar gets `[pick]="known()"` and `[calendars]="['bs', 'ad']"`; a picked year or month arrives as its first day, of which only the known parts are kept, in the calendar the date is entered in.
+  - **Client:** `BirthDateInput` has `known` (`year`, `month`, `day`; a new date starts at Full date, a stored one at its own level) with radio buttons after BS/AD. It shows the Month select unless only the year is known and the Day select only for a full date, each starting at "Choose"; while a known part is missing it says "Choose the month and day, or change what is known." and the form does not save. The calendar gets `[pick]="known()"`, `[calendars]="['bs', 'ad']"` and `[initialMonth]` from the typed year and month, so it opens there while a part is still missing; a picked year or month arrives as its first day, of which only the known parts are kept, in the calendar the date is entered in.
 - **Consequences:** No server change, endpoint or new dependency; D-037's dependency moves to `^1.3.0`. Nepal Sambat, new in 1.3.0, is not offered.

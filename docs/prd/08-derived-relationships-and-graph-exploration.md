@@ -22,6 +22,7 @@ Enable people to explore a large interconnected family graph without treating de
 - The related people are the ones nearest to the centre person in any direction, closest first: parents and children, then siblings, grandparents and grandchildren, and so on, within a limited number of generations above and below.
 - Adoptive links are drawn differently from biological links (e.g. dashed) with a legend. The exact styling is a UI decision.
 - Active marriages are a step in any direction, like parents and children: local views, the overview and paths walk them. Spouses are in the same generation, drawn side by side with a distinct line, and a former marriage is labelled as former.
+- **Home graph size (agreed 2026-10-27):** the home page's dots fill the whole page below the header, at any screen size, without scrolling the page.
 - **Children in birth order (agreed 2026-10-25):** the graph page's tree diagram and text view, and the home page's dots, place each family's children in the order of PRD 02: birth order, then birth dates shown to others, then name. The tree places brothers and sisters with the same parents eldest on the left; the home dots start in that order before they settle. Half siblings are ordered within each set of parents.
 
 ## Finding people (agreed 2026-10-25)
@@ -41,6 +42,21 @@ Enable people to explore a large interconnected family graph without treating de
 - **Linking spouses too (agreed 2026-10-25):** adding children to a person lists each of that person's spouses through an active marriage, "Also add them as children of", and adding parents lists each picked parent's spouses, "Also add as parents". A current spouse starts ticked and a former spouse unticked. The extra links have the type you picked. A deleted spouse is never listed, nor one where you maintain neither person of the link. The person page's form does the same. Nothing is linked automatically: a box left unticked links nothing.
 - **One people picker (agreed 2026-10-25):** every place that picks people uses the same list: this dialog, the person page's forms for parents and children and for a spouse, and the Add a person page. Each row shows the person's photo (or initials), name, "(yours)" for your profiles, and description, so people with the same name can be told apart. Each offers **Add a new person**, which also takes the optional details of PRD 01. The person page's forms follow the rules above: for a person you maintain the list starts with your connections and searches every Public profile; otherwise it holds only your own profiles.
 - Each link or marriage is created on its own under the usual rules: a side maintained by someone else starts pending and stays out of the graph until they approve (PRD 03), and cycles, duplicates and marriages between a parent and child are rejected (PRD 02).
+
+## Bansawali (agreed 2026-10-25)
+
+A Bansawali is the traditional Nepali lineage record. It is a view derived from active links, not separate data.
+
+- It starts from a chosen ancestor and lists descendants generation by generation, children in birth order.
+- By default the line continues through sons only. A toggle follows every child's line instead.
+- Daughters, and children whose gender is Other, not set or hidden, appear under their parent; their descendants appear only with the toggle.
+- An adopted son appears under his adoptive father, marked as adopted, but his descendants are not followed in the sons-only view.
+- The surname does not decide who appears. The title names the ancestor's last name, for example "Neupane Bansawali".
+- Each person's active marriages appear beside them, ended ones marked "former". Spouses never continue the line.
+- Privacy is as on the graph page. A Private person seen by someone other than their maintainer or an administrator is a `Private` placeholder whose gender counts as not set, so the sons-only line stops there and leaks nothing; a `Deleted` profile has no gender and behaves the same.
+- The view is its own page, reached from the person page and the graph page's menu, with a print layout for the browser's print (and save as PDF).
+- Each person shows their photo, or initials without one, and the viewer can change the photo size, or turn photos off, before printing; the print uses the chosen size (agreed 2026-10-26).
+- A long Bansawali is split into numbered sections of at most 8 generations, on screen and in print. Where a line goes deeper, the person in a section's last generation says "children continued in section N", and section N starts again from them, its title giving their name, their description and which section it continues (agreed 2026-10-27).
 
 ## Relationship explanations
 
@@ -86,6 +102,13 @@ Enable people to explore a large interconnected family graph without treating de
 - `AC-08.18` The People page's All people tab lists every Public profile and your own, A to Z, 50 at a time with Show more; a Private profile of someone else and a deleted profile are never listed or found by their hidden name or description.
 - `AC-08.19` An administrator's All people tab also lists every Private profile, marked "(private)".
 - `AC-08.20` The All people search box shows only people whose name parts or description contain every typed word.
+- `AC-08.21` The Bansawali of a person lists their descendants by generation in birth order, continuing only through sons by default and through every child with the toggle.
+- `AC-08.22` In the sons-only Bansawali, daughters, children whose gender is Other, not set or hidden, and adopted sons appear under their parent without their descendants; adopted sons are marked as adopted.
+- `AC-08.23` The Bansawali shows each person's active marriages, ended ones marked "former", and never follows a spouse's line.
+- `AC-08.24` A Private person in someone else's Bansawali is a `Private` placeholder whose descendants appear only with the toggle; their maintainer and administrators see the full line.
+- `AC-08.25` The Bansawali page prints as a clean list from the browser.
+- `AC-08.26` The Bansawali shows each person's photo, or initials without one, at a size the viewer chooses (none, small, medium or large), and prints at that size.
+- `AC-08.27` A Bansawali deeper than 8 generations continues each longer line in a numbered section that starts from the person whose row points to it, titled with their name and description, so no section is deeper than 8 generations; the pointer jumps to the section on screen.
 
 ## Open details
 
