@@ -64,6 +64,7 @@ The technical decision log, plus any unresolved choices. Do not treat recommenda
 - Bansawali view (D-043 below).
 - Photos in the Bansawali (D-044 below).
 - A long Bansawali in sections (D-045 below, proposed).
+- Picking a birth year or month on the calendar (D-046 below, proposed).
 - **Name length (agreed 2026-10-21):** Business puts no length cap on name parts. Any storage or input limit is set later by persistence (#9) and API validation (D-010).
 
 ## Discussion topics (all agreed)
@@ -736,3 +737,13 @@ For each major decision, record:
 - **Decision:**
   - **Client:** `bansawaliSections(root, generations = 8)` in `features/graph/bansawali.ts` (pure): a section starts at the ancestor; anyone in a section's 8th generation with children in the Bansawali starts a new section, numbered in the order reached (breadth first), and `continuedIn` maps them to it. `BansawaliPage` renders the sections in order on screen and in print: the cut-off row says "Children continued in section N", and each later section is headed "N. Descendants of <name> · <description> (generation G, from section M)", the description only when the viewer may see one. Both references are buttons that scroll to the section; print shows them as plain text and keeps a heading with its first row. One section shows exactly as before.
 - **Consequences:** No server change. The 8 is a constant, not a setting. The person who starts a section appears twice: at the end of the earlier section and at the head of their own.
+
+### D-046: Picking a birth year or month on the calendar
+
+- **Status:** proposed (2026-10-25). Issue #110. Agreed with the user on 2026-10-25 (PRD 01): upgrade `@opensourcenepal/nepali-calendar-angular` and its core from 1.2.0 to 1.3.0, whose calendar can pick a whole year or month; the birth date field first asks what is known (Year only, Year and month, Full date), and the calendar opens at that level. The rest is proposed with the PR.
+- **Context:** D-037 allows a year, a year and month, or a full date, but its calendar picked only full dates, so partial dates were typed and "Not known" in the Month and Day selects meant a partial date.
+- **Options considered:** a "what is known" choice that drives the boxes and the calendar; three calendar buttons (year, month, day); the calendar level following which boxes are filled.
+- **Trade-offs:** One choice says plainly that a partial date is fine and keeps the boxes and the calendar in step. The typed boxes stay for dates the calendar does not reach (before BS 1970 or AD 1914).
+- **Decision:**
+  - **Client:** `BirthDateInput` has `known` (`year`, `month`, `day`; a new date starts at Full date, a stored one at its own level) with radio buttons after BS/AD. It shows the Month select unless only the year is known and the Day select only for a full date, each starting at "Choose"; while a known part is missing it says "Choose the month and day, or change what is known." and the form does not save. The calendar gets `[pick]="known()"`, `[calendars]="['bs', 'ad']"` and `[initialMonth]` from the typed year and month, so it opens there while a part is still missing; a picked year or month arrives as its first day, of which only the known parts are kept, in the calendar the date is entered in.
+- **Consequences:** No server change, endpoint or new dependency; D-037's dependency moves to `^1.3.0`. Nepal Sambat, new in 1.3.0, is not offered.

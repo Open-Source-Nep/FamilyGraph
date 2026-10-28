@@ -108,6 +108,7 @@ Define person profiles, account separation, and profile-maintainer authority.
 - `AC-01.33` The People page shows each profile you maintain with its photo or initials, name and description.
 - `AC-01.34` The People page's search box shows only the profiles whose name parts or description contain every typed word.
 - `AC-01.35` Clicking the photo on the person page opens it enlarged until the viewer closes it with its Close button, Escape or a click outside it.
+- `AC-01.36` Entering a birth date first asks whether the year, the year and month, or the full date is known; only those parts are asked for and saved, and the calendar picks a year, a month or a day to match.
 - `AC-01.29` Adding a person can optionally link chosen parents and children; each link follows the usual consent rules, and links that are not active are reported.
 
 ## Open details
