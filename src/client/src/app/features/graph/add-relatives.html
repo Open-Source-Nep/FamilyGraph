@@ -14,16 +14,25 @@
       [excludeId]="person().id"
       [searchesEveryone]="searchesEveryone()"
       [single]="single()"
-      [legend]="single() ? 'Person' : 'People'"
+      [legend]="legend()"
       [hint]="hint()"
       [(selected)]="selected"
       (selectedChange)="selectionChanged($event)"
     />
     @if (selected().length > 0) {
-      <p>Selected: {{ selectedNames() }}</p>
+      <p i18n="@@addRelatives.selected">
+        Selected:
+        {{ selectedNames() }}
+      </p>
     }
     @if (selectionMissing()) {
-      <p class="error" role="alert">Choose {{ single() ? 'a person' : 'at least one person' }}.</p>
+      <p class="error" role="alert">
+        @if (single()) {
+          <ng-container i18n="@@addRelatives.chooseOne">Choose a person.</ng-container>
+        } @else {
+          <ng-container i18n="@@relatives.chooseSomeone">Choose at least one person.</ng-container>
+        }
+      </p>
     }
 
     @if (!single()) {
@@ -33,7 +42,7 @@
         [picked]="selected()"
       />
       <fieldset>
-        <legend>Relationship</legend>
+        <legend i18n="@@relatives.relationship">Relationship</legend>
         <label>
           <input
             type="radio"
@@ -42,7 +51,7 @@
             [checked]="type() === 'Biological'"
             (change)="type.set('Biological')"
           />
-          Biological
+          <ng-container i18n="@@linkType.biological">Biological</ng-container>
         </label>
         <label>
           <input
@@ -52,28 +61,36 @@
             [checked]="type() === 'Adoptive'"
             (change)="type.set('Adoptive')"
           />
-          Adoptive
+          <ng-container i18n="@@linkType.adoptive">Adoptive</ng-container>
         </label>
       </fieldset>
     }
 
     @if (outcomes().length > 0) {
-      <ul class="people" role="status" aria-label="People you added">
+      <ul
+        class="people"
+        role="status"
+        aria-label="People you added"
+        i18n-aria-label="@@addRelatives.peopleAdded"
+      >
         @for (outcome of outcomes(); track $index) {
           @switch (outcome.state) {
             @case ('active') {
-              <li>{{ outcome.name }}: linked.</li>
+              <li i18n="@@linkOutcome.active">{{ outcome.name }}: linked.</li>
             }
             @case ('pending') {
-              <li>
+              <li i18n="@@linkOutcome.pending">
                 {{ outcome.name }}: saved, but not active until the other maintainer approves it.
               </li>
             }
             @case ('existing') {
-              <li>{{ outcome.name }}: already linked.</li>
+              <li i18n="@@linkOutcome.existing">{{ outcome.name }}: already linked.</li>
             }
             @case ('failed') {
-              <li class="error">{{ outcome.name }}: not linked. {{ outcome.reason }}</li>
+              <li class="error" i18n="@@linkOutcome.failed">
+                {{ outcome.name }}: not linked.
+                {{ outcome.reason }}
+              </li>
             }
           }
         }
@@ -82,9 +99,19 @@
 
     <div class="actions">
       <button type="button" [disabled]="saving()" (click)="add()">
-        {{ single() ? 'Add spouse' : selected().length > 1 ? 'Add ' + selected().length : 'Add' }}
+        @if (single()) {
+          <ng-container i18n="@@diagram.addSpouse">Add spouse</ng-container>
+        } @else if (selected().length > 1) {
+          <ng-container i18n="@@addRelatives.addCount"
+            >Add {{ selected().length | digits }}</ng-container
+          >
+        } @else {
+          <ng-container i18n="@@addRelatives.add">Add</ng-container>
+        }
       </button>
-      <button type="button" class="secondary" (click)="close()">Cancel</button>
+      <button type="button" class="secondary" (click)="close()">
+        <ng-container i18n="@@common.cancel">Cancel</ng-container>
+      </button>
     </div>
   </div>
 </dialog>

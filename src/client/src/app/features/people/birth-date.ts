@@ -5,9 +5,13 @@ import {
   isSupportedYear,
   isValidBsDate,
   monthName,
+  Script,
   toAd,
   toBs,
 } from '@opensourcenepal/nepali-calendar';
+
+import { currentLanguage } from '../../core/i18n/language';
+import { localNumber } from '../../core/i18n/local-format';
 
 /** The calendar a birth date was entered in: Bikram Sambat or Gregorian (D-037). */
 export type BirthCalendar = 'Bs' | 'Ad';
@@ -20,11 +24,17 @@ export interface BirthDate {
   day: number | null;
 }
 
+/** Month names and digits in Devanagari when the page is in Nepali, else romanised (D-047). */
+export function calendarScript(language: string = currentLanguage()): Script {
+  return language === 'ne' ? 'nepali' : 'roman';
+}
+
 /** The month names of a calendar, first month first. */
 export function monthNames(calendar: BirthCalendar): readonly string[] {
+  const script = calendarScript();
   return calendar === 'Bs'
-    ? Array.from({ length: 12 }, (_, index) => monthName(index + 1, 'roman'))
-    : FULL_AD_MONTH_NAMES.roman;
+    ? Array.from({ length: 12 }, (_, index) => monthName(index + 1, script))
+    : FULL_AD_MONTH_NAMES[script];
 }
 
 /** How many days the month has. BS months outside the conversion table may have up to 32. */
@@ -68,9 +78,19 @@ export function formatBirthDate(date: BirthDate): string {
 }
 
 function formatOwn({ calendar, year, month, day }: BirthDate): string {
-  const suffix = calendar === 'Bs' ? ' BS' : '';
-  const parts = [day, month !== null ? monthNames(calendar)[month - 1] : null, year];
-  return parts.filter((part) => part !== null).join(' ') + suffix;
+  const parts = [
+    day !== null ? localNumber(day) : null,
+    month !== null ? monthNames(calendar)[month - 1] : null,
+    localNumber(year),
+  ];
+  return inCalendar(calendar, parts.filter((part) => part !== null).join(' '));
+}
+
+/** "4 March 1952" as it is, "15 Shrawan 2081 BS" with its calendar named. */
+function inCalendar(calendar: BirthCalendar, date: string): string {
+  return calendar === 'Bs'
+    ? $localize`:@@birthDate.bs:${date}:date: BS`
+    : $localize`:@@birthDate.ad:${date}:date:`;
 }
 
 function otherCalendar({ calendar, year, month, day }: BirthDate): string | null {
@@ -79,7 +99,10 @@ function otherCalendar({ calendar, year, month, day }: BirthDate): string | null
       const ad = toAd({ year, month: month!, day: day! });
       return formatOwn({ calendar: 'Ad', ...ad });
     }
-    return `${formatBs(toBs({ year, month: month!, day: day! }), 'D', 'roman')} BS`;
+    return inCalendar(
+      'Bs',
+      formatBs(toBs({ year, month: month!, day: day! }), 'D', calendarScript()),
+    );
   } catch {
     return null;
   }

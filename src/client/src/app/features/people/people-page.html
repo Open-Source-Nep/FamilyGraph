@@ -1,15 +1,16 @@
 <section class="panel">
-  <h1>People</h1>
+  <h1 i18n="@@people.title">People</h1>
 
   <p>
-    <a class="button" routerLink="/people/new">Add a person</a>
+    <a class="button" routerLink="/people/new" i18n="@@home.addPerson">Add a person</a>
   </p>
 
-  <nav class="tabs" aria-label="People lists">
+  <nav class="tabs" aria-label="People lists" i18n-aria-label="@@people.lists">
     <a
       routerLink="/people"
       [class.current]="!showsAll()"
       [attr.aria-current]="showsAll() ? null : 'page'"
+      i18n="@@people.myProfiles"
       >My profiles</a
     >
     <a
@@ -17,6 +18,7 @@
       [queryParams]="{ tab: 'all' }"
       [class.current]="showsAll()"
       [attr.aria-current]="showsAll() ? 'page' : null"
+      i18n="@@people.allPeople"
       >All people</a
     >
   </nav>
@@ -30,14 +32,15 @@
 
     @if (list(); as list) {
       @if (list.people.length === 0) {
-        <p>You do not maintain any profiles yet.</p>
+        <p i18n="@@people.noProfiles">You do not maintain any profiles yet.</p>
       } @else {
         <label class="search-box">
-          Search your profiles
+          <ng-container i18n="@@people.searchYours">Search your profiles</ng-container>
           <input
             type="search"
             autocomplete="off"
             placeholder="Name or description"
+            i18n-placeholder="@@people.searchPlaceholder"
             [value]="query()"
             (input)="query.set($any($event.target).value)"
           />
@@ -51,7 +54,7 @@
                   <span class="person-name"
                     >{{ fullName(person) }}
                     @if (person.visibility === 'Private') {
-                      <span class="hint">(private)</span>
+                      <span class="hint" i18n="@@people.privateMark">(private)</span>
                     }
                   </span>
                   @if (person.description; as description) {
@@ -61,11 +64,13 @@
               </a>
             </li>
           } @empty {
-            <li class="hint empty">Nobody matches.</li>
+            <li class="hint empty" i18n="@@people.nobodyMatches">Nobody matches.</li>
           }
         </ul>
         @if (list.isTruncated) {
-          <p class="hint">Only the first {{ list.people.length }} profiles are shown.</p>
+          <p class="hint" i18n="@@users.profilesTruncated">
+            Only the first {{ list.people.length | digits }} profiles are shown.
+          </p>
         }
       }
     }

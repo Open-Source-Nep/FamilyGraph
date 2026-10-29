@@ -7,6 +7,7 @@ using Server.Export;
 using Server.Graph;
 using Server.Handovers;
 using Server.Import;
+using Server.Localization;
 using Server.People;
 using Server.Relationships;
 
@@ -22,6 +23,7 @@ builder.Services.AddHandovers(builder.Configuration);
 builder.Services.AddExport();
 builder.Services.AddImport();
 builder.Services.AddAdministration(builder.Configuration);
+builder.Services.AddTranslations(builder.Configuration);
 builder.Services.AddAntiforgery(options => options.HeaderName = "X-XSRF-TOKEN");
 builder.Services.AddControllers(options => options.Filters.Add<ValidateAntiforgeryFilter>());
 builder.Services.AddProblemDetails();

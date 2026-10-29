@@ -6,40 +6,78 @@ export type ParentChildType = 'Biological' | 'Adoptive';
 /** A marriage, current or ended (D-031). */
 export type MarriageType = 'Marriage' | 'FormerMarriage';
 
+type Relation = 'parent' | 'child' | 'spouse';
+
+/**
+ * Every wording as a whole phrase, so that a translation may order or inflect the words as its
+ * language needs (D-047). `Other` also stands for a gender not set or hidden.
+ */
+const relationWords: Record<Relation, Record<'plain' | 'marked', Record<Gender, string>>> = {
+  parent: {
+    plain: {
+      Male: $localize`:@@relation.father:father`,
+      Female: $localize`:@@relation.mother:mother`,
+      Other: $localize`:@@relation.parent:parent`,
+    },
+    marked: {
+      Male: $localize`:@@relation.adoptiveFather:adoptive father`,
+      Female: $localize`:@@relation.adoptiveMother:adoptive mother`,
+      Other: $localize`:@@relation.adoptiveParent:adoptive parent`,
+    },
+  },
+  child: {
+    plain: {
+      Male: $localize`:@@relation.son:son`,
+      Female: $localize`:@@relation.daughter:daughter`,
+      Other: $localize`:@@relation.child:child`,
+    },
+    marked: {
+      Male: $localize`:@@relation.adoptedSon:adopted son`,
+      Female: $localize`:@@relation.adoptedDaughter:adopted daughter`,
+      Other: $localize`:@@relation.adoptedChild:adopted child`,
+    },
+  },
+  spouse: {
+    plain: {
+      Male: $localize`:@@relation.husband:husband`,
+      Female: $localize`:@@relation.wife:wife`,
+      Other: $localize`:@@relation.spouse:spouse`,
+    },
+    marked: {
+      Male: $localize`:@@relation.formerHusband:former husband`,
+      Female: $localize`:@@relation.formerWife:former wife`,
+      Other: $localize`:@@relation.formerSpouse:former spouse`,
+    },
+  },
+};
+
+/** Adoption marks a parent or child, a former marriage a spouse (AC-08.7). */
+function isMarked(relation: Relation, type: ParentChildType | MarriageType): boolean {
+  return relation === 'spouse' ? type === 'FormerMarriage' : type === 'Adoptive';
+}
+
 /**
  * How a parent, child or spouse is named: "mother", "adopted son", "former wife", or "parent",
  * "child" and "spouse" when the gender is Other, not set or hidden (D-030, D-031). Adoption and a
  * former marriage are always named (AC-08.7).
  */
 export function relationWord(
-  relation: 'parent' | 'child' | 'spouse',
+  relation: Relation,
   gender: Gender | null,
   type: ParentChildType | MarriageType,
 ): string {
-  const words = {
-    parent: { Male: 'father', Female: 'mother', Other: 'parent' },
-    child: { Male: 'son', Female: 'daughter', Other: 'child' },
-    spouse: { Male: 'husband', Female: 'wife', Other: 'spouse' },
-  }[relation];
-  const word = words[gender ?? 'Other'];
-  switch (type) {
-    case 'Adoptive':
-      return relation === 'parent' ? `adoptive ${word}` : `adopted ${word}`;
-    case 'FormerMarriage':
-      return `former ${word}`;
-    default:
-      return word;
-  }
+  return relationWords[relation][isMarked(relation, type) ? 'marked' : 'plain'][gender ?? 'Other'];
 }
 
 /** The wording in brackets after a relative's name; nothing for a plain "parent", "child" or "spouse". */
 export function relationHint(
-  relation: 'parent' | 'child' | 'spouse',
+  relation: Relation,
   gender: Gender | null,
   type: ParentChildType | MarriageType,
 ): string | null {
-  const word = relationWord(relation, gender, type);
-  return word === relation ? null : word;
+  return (gender ?? 'Other') === 'Other' && !isMarked(relation, type)
+    ? null
+    : relationWord(relation, gender, type);
 }
 
 export interface NewLink {

@@ -6,13 +6,15 @@ import { ClientConfiguration } from '../../core/config/client-configuration';
 import { ConfigurationService } from '../../core/config/configuration.service';
 import { SignInPage } from './sign-in-page';
 
+const languages = { default: 'en', available: [{ code: 'en', name: 'English' }] };
+
 describe('SignInPage', () => {
   const configuration = signal<ClientConfiguration | null>(null);
   let fixture: ComponentFixture<SignInPage>;
   let started: [string, string] | undefined;
 
   beforeEach(() => {
-    configuration.set({ google: { enabled: true, clientId: 'client-id' } });
+    configuration.set({ google: { enabled: true, clientId: 'client-id' }, languages });
     started = undefined;
     TestBed.configureTestingModule({
       providers: [
@@ -62,7 +64,7 @@ describe('SignInPage', () => {
   });
 
   it('says when Google sign-in is not set up on this instance', async () => {
-    configuration.set({ google: { enabled: false, clientId: null } });
+    configuration.set({ google: { enabled: false, clientId: null }, languages });
     await fixture.whenStable();
 
     expect(button()).toBeNull();

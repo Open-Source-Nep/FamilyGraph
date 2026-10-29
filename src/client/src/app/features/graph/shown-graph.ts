@@ -1,3 +1,5 @@
+import { localNumber } from '../../core/i18n/local-format';
+
 import { compareChildren, orderSiblings } from './child-order';
 import {
   GraphLink,
@@ -128,9 +130,17 @@ export function byGeneration(
 
 /** "2 generations above", "Same generation", "1 generation below". */
 export function generationLabel(generation: number): string {
+  const count = localNumber(Math.abs(generation));
   if (generation === 0) {
-    return 'Same generation';
+    return $localize`:@@graph.sameGeneration:Same generation`;
   }
-  const count = Math.abs(generation);
-  return `${count} generation${count === 1 ? '' : 's'} ${generation > 0 ? 'above' : 'below'}`;
+  if (generation === 1) {
+    return $localize`:@@graph.oneGenerationAbove:1 generation above`;
+  }
+  if (generation === -1) {
+    return $localize`:@@graph.oneGenerationBelow:1 generation below`;
+  }
+  return generation > 0
+    ? $localize`:@@graph.generationsAbove:${count}:count: generations above`
+    : $localize`:@@graph.generationsBelow:${count}:count: generations below`;
 }

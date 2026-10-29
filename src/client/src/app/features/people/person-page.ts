@@ -9,7 +9,7 @@ import { PersonRelatives } from '../relationships/person-relatives';
 import { PersonSpouses } from '../relationships/person-spouses';
 import { PeopleService } from './people.service';
 import { BirthDate, formatBirthDate } from './birth-date';
-import { Person, PersonDetails, PersonName, Visibility, fullName } from './person';
+import { Person, PersonDetails, PersonName, Visibility, fullName, genderLabel } from './person';
 import { PersonNameForm } from './person-name-form';
 import { PersonPhoto } from './person-photo';
 import { problemMessage } from './problem';
@@ -62,6 +62,7 @@ export class PersonPage {
     );
   });
   protected readonly isAdministrator = this.auth.isAdministrator;
+  protected readonly genderLabel = genderLabel;
   protected readonly birthDate = computed(() => {
     const date = this.person()?.birthDate;
     return date ? formatBirthDate(date) : null;

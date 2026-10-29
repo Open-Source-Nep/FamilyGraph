@@ -5,7 +5,7 @@
 
   @if (person(); as person) {
     @if (editing()) {
-      <h1>Edit details</h1>
+      <h1 i18n="@@person.editDetails">Edit details</h1>
       <app-person-name-form
         [name]="editableName()"
         [gender]="person.gender"
@@ -23,50 +23,57 @@
       }
       <app-person-photo [person]="person" (changed)="photoChanged($event)" />
       @if (person.placeholder === 'Deleted') {
-        <p class="hint">This profile was deleted. Its name and details were erased.</p>
+        <p class="hint" i18n="@@person.deletedHint">
+          This profile was deleted. Its name and details were erased.
+        </p>
       } @else if (person.placeholder) {
-        <p class="hint">This profile is private. Its name and details are hidden.</p>
+        <p class="hint" i18n="@@person.privateHint">
+          This profile is private. Its name and details are hidden.
+        </p>
       } @else {
         <dl>
-          <dt>First name</dt>
+          <dt i18n="@@nameForm.firstName">First name</dt>
           <dd>{{ person.firstName }}</dd>
           @if (person.middleName) {
-            <dt>Middle name</dt>
+            <dt i18n="@@nameForm.middleName">Middle name</dt>
             <dd>{{ person.middleName }}</dd>
           }
           @if (person.lastName) {
-            <dt>Last name</dt>
+            <dt i18n="@@nameForm.lastName">Last name</dt>
             <dd>{{ person.lastName }}</dd>
           }
           @if (person.gender) {
-            <dt>Gender</dt>
-            <dd>{{ person.gender }}</dd>
+            <dt i18n="@@nameForm.gender">Gender</dt>
+            <dd>{{ genderLabel(person.gender) }}</dd>
           }
           @if (birthDate(); as birthDate) {
-            <dt>Born</dt>
+            <dt i18n="@@person.born">Born</dt>
             <dd>
               {{ birthDate }}
               @if (!person.birthDateShown) {
-                <span class="hint">(hidden from others)</span>
+                <span class="hint" i18n="@@person.hiddenFromOthers">(hidden from others)</span>
               }
             </dd>
           }
           @if (person.visibility === 'Private') {
-            <dt>Visibility</dt>
-            <dd>Private: others see only “Private”.</dd>
+            <dt i18n="@@person.visibility">Visibility</dt>
+            <dd i18n="@@person.visibilityPrivate">Private: others see only “Private”.</dd>
           }
         </dl>
       }
       @if (person.maintainedByYou) {
-        <p class="hint">You maintain this profile.</p>
+        <p class="hint" i18n="@@person.youMaintain">You maintain this profile.</p>
         <p class="actions">
-          <button type="button" (click)="editing.set(true)">Edit details</button>
+          <button type="button" (click)="editing.set(true)">
+            <ng-container i18n="@@person.editDetails">Edit details</ng-container>
+          </button>
           @if (person.visibility === 'Public') {
             <button
               type="button"
               class="secondary"
               [disabled]="saving()"
               (click)="setVisibility('Private')"
+              i18n="@@person.makePrivate"
             >
               Make private
             </button>
@@ -76,12 +83,13 @@
               class="secondary"
               [disabled]="saving()"
               (click)="setVisibility('Public')"
+              i18n="@@person.makePublic"
             >
               Make public
             </button>
           }
         </p>
-        <p class="hint">
+        <p class="hint" i18n="@@person.privateExplain">
           A private profile shows as “Private” to everyone but you and administrators. Its
           relationships stay in the family graph.
         </p>
@@ -92,18 +100,35 @@
       @if (canDelete()) {
         @if (confirmingDelete()) {
           <div class="actions">
-            <span
+            <span i18n="@@person.confirmDelete"
               >Delete this profile? Its name is erased for good and it stays as “Deleted”, with its
               links. This cannot be undone.</span
             >
-            <button type="button" [disabled]="saving()" (click)="deleteProfile()">Delete</button>
-            <button type="button" class="secondary" (click)="confirmingDelete.set(false)">
+            <button
+              type="button"
+              [disabled]="saving()"
+              (click)="deleteProfile()"
+              i18n="@@common.delete"
+            >
+              Delete
+            </button>
+            <button
+              type="button"
+              class="secondary"
+              (click)="confirmingDelete.set(false)"
+              i18n="@@users.keep"
+            >
               Keep
             </button>
           </div>
         } @else {
           <p>
-            <button type="button" class="secondary" (click)="confirmingDelete.set(true)">
+            <button
+              type="button"
+              class="secondary"
+              (click)="confirmingDelete.set(true)"
+              i18n="@@person.deleteProfile"
+            >
               Delete profile
             </button>
           </p>
@@ -112,12 +137,20 @@
       @if (isAdministrator() && person.placeholder !== 'Deleted') {
         <app-person-transfer [personId]="person.id" (transferred)="transferred()" />
       }
-      <p><a [routerLink]="['/people', person.id, 'graph']">Show the family graph</a></p>
-      <p><a [routerLink]="['/people', person.id, 'bansawali']">Show the Bansawali</a></p>
+      <p>
+        <a [routerLink]="['/people', person.id, 'graph']" i18n="@@person.showGraph"
+          >Show the family graph</a
+        >
+      </p>
+      <p>
+        <a [routerLink]="['/people', person.id, 'bansawali']" i18n="@@person.showBansawali"
+          >Show the Bansawali</a
+        >
+      </p>
       <app-person-relatives [person]="person" />
       <app-person-spouses [person]="person" />
     }
   }
 
-  <p><a routerLink="/people">Back to your profiles</a></p>
+  <p><a routerLink="/people" i18n="@@handover.backToProfiles">Back to your profiles</a></p>
 </section>

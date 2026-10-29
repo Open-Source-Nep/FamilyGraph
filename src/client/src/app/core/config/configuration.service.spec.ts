@@ -1,38 +1,21 @@
-import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 
-import { ConfigurationService } from './configuration.service';
+import { ConfigurationService, STARTUP_CONFIGURATION } from './configuration.service';
 
 describe('ConfigurationService', () => {
-  let service: ConfigurationService;
-  let http: HttpTestingController;
-
-  beforeEach(() => {
+  it('holds the instance settings loaded at startup', () => {
+    const settings = {
+      google: { enabled: true, clientId: 'client-id' },
+      languages: { default: 'en', available: [{ code: 'en', name: 'English' }] },
+    };
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [{ provide: STARTUP_CONFIGURATION, useValue: settings }],
     });
-    service = TestBed.inject(ConfigurationService);
-    http = TestBed.inject(HttpTestingController);
+
+    expect(TestBed.inject(ConfigurationService).configuration()).toEqual(settings);
   });
 
-  afterEach(() => http.verify());
-
-  it('loads the instance settings from the API', async () => {
-    const loading = service.load();
-    http
-      .expectOne('/api/configuration')
-      .flush({ google: { enabled: true, clientId: 'client-id' } });
-    await loading;
-
-    expect(service.configuration()).toEqual({ google: { enabled: true, clientId: 'client-id' } });
-  });
-
-  it('starts without settings when the server cannot be reached', async () => {
-    const loading = service.load();
-    http.expectOne('/api/configuration').flush(null, { status: 502, statusText: 'Bad Gateway' });
-    await loading;
-
-    expect(service.configuration()).toBeNull();
+  it('has no settings when the server could not be reached', () => {
+    expect(TestBed.inject(ConfigurationService).configuration()).toBeNull();
   });
 });

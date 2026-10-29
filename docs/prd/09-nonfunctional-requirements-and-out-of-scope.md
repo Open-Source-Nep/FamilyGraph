@@ -17,6 +17,10 @@ An administrator can download the whole instance as one file that a later import
 
 An administrator can load an export file into an instance that has no profiles yet, for example to move to a new server or restore one. Every profile, relationship and marriage comes back as it was in the file, with its consent, visibility, gender, description, birth date and birth order. Each profile's maintainer is the account here with the same verified email; when there is no such account, the administrator who imports becomes its maintainer. A file with any problem is refused whole and nothing is saved, and the administrator is shown the problems. Other users cannot import, and an instance that already has profiles refuses an import. Each import is recorded in the audit history once, with the administrator and the time; the imported rows get no history entries of their own.
 
+## Languages
+
+The whole interface is offered in English and Nepali. Each instance chooses the language it starts in. Anyone may switch the language from the page header; the choice is remembered in that browser only and is not part of the account. Names, descriptions and other text people enter are shown as entered, never translated. In Nepali, numbers and dates use Devanagari digits, and the app brings its own Devanagari font so that text looks the same on every device and in print. Relationship words such as "adopted son" or "former wife" are translated as whole phrases, so each language can word them in its own order. Kinship terms that depend on culture (such as different words for a father's elder and younger brother) are not part of this and come later.
+
 ## Initial release exclusions
 
 - Dedicated deceased-person workflow. Preserve profiles as they were left.
@@ -39,3 +43,8 @@ An administrator can load an export file into an instance that has no profiles y
 - `AC-09.10` An imported profile is maintained by the account with its maintainer's verified email, or by the importing administrator when there is none.
 - `AC-09.11` A file with any problem is refused whole, nothing is saved, and the problems are listed.
 - `AC-09.12` Each import is recorded once in the audit history with the administrator and the time.
+- `AC-09.13` Every screen of one build can be shown in English or Nepali, and a message without a translation falls back to English.
+- `AC-09.14` The instance configuration sets the language the app starts in for anyone who has not chosen one.
+- `AC-09.15` Anyone can switch the language from the page header; the choice is remembered in that browser only, not in the account.
+- `AC-09.16` In Nepali, numbers and dates use Devanagari digits on screen and in print, with a bundled Devanagari font.
+- `AC-09.17` Relationship words (such as "adopted son" or "former wife") are translated as whole phrases.

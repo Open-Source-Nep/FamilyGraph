@@ -33,8 +33,12 @@ export class PersonPhoto {
   readonly changed = output<string | null>();
 
   protected readonly url = computed(() => imageUrl(this.person()));
-  protected readonly alt = computed(() => `Photo of ${fullName(this.person())}`);
-  protected readonly enlargeLabel = computed(() => `Enlarge photo of ${fullName(this.person())}`);
+  protected readonly alt = computed(
+    () => $localize`:@@photo.alt:Photo of ${fullName(this.person())}:name:`,
+  );
+  protected readonly enlargeLabel = computed(
+    () => $localize`:@@photo.enlarge:Enlarge photo of ${fullName(this.person())}:name:`,
+  );
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);
 
@@ -86,7 +90,9 @@ export class PersonPhoto {
       try {
         photo = await preparePhoto(file);
       } catch {
-        this.error.set('This file could not be read as a photo. Choose a JPEG, PNG or WebP image.');
+        this.error.set(
+          $localize`:@@photo.unreadable:This file could not be read as a photo. Choose a JPEG, PNG or WebP image.`,
+        );
         return;
       }
       this.changed.emit(await this.people.setImage(this.person().id, photo));

@@ -1,14 +1,16 @@
 <section class="sign-in" aria-labelledby="sign-in-title">
   <p class="product">FamilyGraph</p>
-  <h1 id="sign-in-title">Sign in</h1>
-  <p class="lead">Explore and maintain your family's graph.</p>
+  <h1 id="sign-in-title" i18n="@@signIn.title">Sign in</h1>
+  <p class="lead" i18n="@@signIn.lead">Explore and maintain your family's graph.</p>
 
   @if (failed()) {
-    <p role="alert" class="error">Sign-in did not complete. Please try again.</p>
+    <p role="alert" class="error" i18n="@@signIn.failed">
+      Sign-in did not complete. Please try again.
+    </p>
   }
 
   @if (unreachable()) {
-    <p role="alert" class="error">
+    <p role="alert" class="error" i18n="@@signIn.unreachable">
       FamilyGraph could not be reached. Reload the page to try again.
     </p>
   } @else if (clientId(); as clientId) {
@@ -31,21 +33,21 @@
           d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
         />
       </svg>
-      <span>Sign in with Google</span>
+      <span i18n="@@signIn.withGoogle">Sign in with Google</span>
     </button>
   } @else {
-    <p role="status" class="notice">
+    <p role="status" class="notice" i18n="@@signIn.notConfigured">
       Google sign-in is not set up on this FamilyGraph instance yet. Ask the person who runs it to
       configure it.
     </p>
   }
 
   <div class="about">
-    <p>
+    <p i18n="@@signIn.aboutGoogle">
       FamilyGraph uses your Google account to sign you in. The first time you sign in, we create
       your FamilyGraph account.
     </p>
-    <p>
+    <p i18n="@@signIn.aboutAccount">
       Your account keeps only your Google email address. It does not add you to the family graph;
       you can claim or create profiles later.
     </p>

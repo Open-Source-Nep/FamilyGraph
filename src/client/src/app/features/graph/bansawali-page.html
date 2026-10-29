@@ -6,17 +6,34 @@
   @if (tree(); as root) {
     <h1>{{ title() }}</h1>
     <p class="hint">
-      Descendants of {{ fullName(root.row.person) }}
-      {{ allChildren() ? 'through every child' : 'through sons' }}, {{ generations() }}
-      {{ generations() === 1 ? 'generation' : 'generations' }}, children in birth order.
+      @if (allChildren()) {
+        <ng-container i18n="@@bansawali.summaryEveryChild"
+          >Descendants of
+          {{ fullName(root.row.person) }}
+          through every child,
+          {{ generationCount() }}, children in birth order.</ng-container
+        >
+      } @else {
+        <ng-container i18n="@@bansawali.summarySons"
+          >Descendants of
+          {{ fullName(root.row.person) }}
+          through sons,
+          {{ generationCount() }}, children in birth order.</ng-container
+        >
+      }
     </p>
 
-    <nav class="tabs no-print" aria-label="Whose children to follow">
+    <nav
+      class="tabs no-print"
+      aria-label="Whose children to follow"
+      i18n-aria-label="@@bansawali.whoseChildren"
+    >
       <a
         [routerLink]="[]"
         [queryParams]="lineParams(false)"
         [class.current]="!allChildren()"
         [attr.aria-current]="allChildren() ? null : 'page'"
+        i18n="@@bansawali.throughSons"
         >Through sons</a
       >
       <a
@@ -24,17 +41,18 @@
         [queryParams]="lineParams(true)"
         [class.current]="allChildren()"
         [attr.aria-current]="allChildren() ? 'page' : null"
+        i18n="@@bansawali.throughEveryChild"
         >Through every child</a
       >
     </nav>
     @if (!allChildren()) {
-      <p class="hint no-print">
+      <p class="hint no-print" i18n="@@bansawali.sonsHint">
         Daughters, adopted sons and children whose gender is not known are listed without their
         descendants. Choose "Through every child" to follow them too.
       </p>
     }
     @if (bansawali()?.isTruncated) {
-      <p class="hint" role="status">
+      <p class="hint" role="status" i18n="@@bansawali.truncated">
         This Bansawali stops at the most people it can show. People marked "more descendants" have
         descendants not listed here; open their own Bansawali to continue.
       </p>
@@ -42,7 +60,7 @@
 
     <div class="actions no-print">
       <label class="photo-size">
-        Photos
+        <ng-container i18n="@@bansawali.photos">Photos</ng-container>
         <select (change)="setPhotoSize($any($event.target).value)">
           @for (size of photoSizes; track size.value) {
             <option [value]="size.value" [selected]="size.value === photoSize()">
@@ -51,30 +69,39 @@
           }
         </select>
       </label>
-      <button type="button" (click)="print()">Print</button>
-      <a [routerLink]="['/people', root.row.person.id]">Back to the profile</a>
-      <a [routerLink]="['/people', root.row.person.id, 'graph']">Family graph</a>
+      <button type="button" (click)="print()" i18n="@@bansawali.print">Print</button>
+      <a [routerLink]="['/people', root.row.person.id]" i18n="@@graph.backToProfile"
+        >Back to the profile</a
+      >
+      <a [routerLink]="['/people', root.row.person.id, 'graph']" i18n="@@graph.familyGraph"
+        >Family graph</a
+      >
     </div>
 
     @if (sections(); as split) {
       @if (split.sections.length > 1) {
-        <p class="hint">
-          Each section shows up to {{ sectionGenerations }} generations; longer lines continue in
-          the section their last person points to.
+        <p class="hint" i18n="@@bansawali.sectionsHint">
+          Each section shows up to
+          {{ sectionGenerations | digits }}
+          generations; longer lines continue in the section their last person points to.
         </p>
       }
       @for (section of split.sections; track section.number) {
         <section class="lineage-section" [id]="sectionId(section.number)">
           @if (section.from !== null) {
             <h2>
-              {{ section.number }}. Descendants of {{ fullName(section.entry.row.person) }}
+              <ng-container i18n="@@bansawali.sectionTitle"
+                >{{ section.number | digits }}. Descendants of
+                {{ fullName(section.entry.row.person) }}</ng-container
+              >{{ ' ' }}
               @if (section.entry.row.person.description; as description) {
                 <span class="section-description">· {{ description }}{{ ' ' }}</span>
               }
-              <span class="relation"
-                >(generation {{ section.entry.row.generation + 1 }}, from
+              <span class="relation" i18n="@@bansawali.sectionFrom"
+                >(generation {{ section.entry.row.generation + 1 | digits }}, from
                 <button type="button" class="link-button" (click)="showSection(section.from)">
-                  section {{ section.from }}</button
+                  section
+                  {{ section.from | digits }}</button
                 >)</span
               >
             </h2>
@@ -94,7 +121,7 @@
     <ng-template #lineageEntry let-entry let-section="section">
       <li>
         <div class="lineage-person">
-          <span class="generation" aria-hidden="true">{{ entry.row.generation + 1 }}</span>
+          <span class="generation" aria-hidden="true">{{ entry.row.generation + 1 | digits }}</span>
           @if (photoSize() !== 'None') {
             <app-person-avatar
               class="lineage-avatar"
@@ -114,16 +141,20 @@
               class="no-print"
               [routerLink]="['/people', entry.row.person.id, 'bansawali']"
               [queryParams]="lineParams(allChildren())"
+              i18n="@@bansawali.moreDescendants"
               >More descendants</a
             >
-            <span class="print-only">(more descendants)</span>
+            <span class="print-only" i18n="@@bansawali.moreDescendantsPrint"
+              >(more descendants)</span
+            >
           }
         </div>
         @if (continuedIn(entry, section); as next) {
-          <p class="continued">
+          <p class="continued" i18n="@@bansawali.continuedIn">
             Children continued in
             <button type="button" class="link-button" (click)="showSection(next)">
-              section {{ next }}
+              section
+              {{ next | digits }}
             </button>
           </p>
         } @else if (entry.children.length) {
@@ -138,6 +169,6 @@
       </li>
     </ng-template>
   } @else if (!error()) {
-    <p class="hint">Loading the Bansawali…</p>
+    <p class="hint" i18n="@@bansawali.loading">Loading the Bansawali…</p>
   }
 </section>

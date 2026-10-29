@@ -10,10 +10,12 @@ import {
   viewChild,
 } from '@angular/core';
 
+import { localNumber } from '../../core/i18n/local-format';
+import { DigitsPipe } from '../../core/i18n/local-format.pipes';
 import { fullName } from '../people/person';
 import { problemMessage } from '../people/problem';
 import { MarriagesService } from '../relationships/marriages.service';
-import { Candidate, PersonPicker } from '../relationships/person-picker';
+import { Candidate, PersonPicker, pickerHintEveryone } from '../relationships/person-picker';
 import { ParentChildType } from '../relationships/relationship';
 import { RelationshipsService } from '../relationships/relationships.service';
 import {
@@ -45,7 +47,7 @@ export interface AddRelativesResult {
  */
 @Component({
   selector: 'app-add-relatives',
-  imports: [PersonPicker, SpouseLinkChoices],
+  imports: [DigitsPipe, PersonPicker, SpouseLinkChoices],
   templateUrl: './add-relatives.html',
 })
 export class AddRelatives {
@@ -60,12 +62,18 @@ export class AddRelatives {
   protected readonly name = computed(() => fullName(this.person()));
   protected readonly title = computed(() => {
     const name = this.name();
-    return {
-      parent: `Add parents of ${name}`,
-      child: `Add children of ${name}`,
-      spouse: `Add a spouse of ${name}`,
-    }[this.relation()];
+    switch (this.relation()) {
+      case 'parent':
+        return $localize`:@@addRelatives.titleParents:Add parents of ${name}:name:`;
+      case 'child':
+        return $localize`:@@addRelatives.titleChildren:Add children of ${name}:name:`;
+      default:
+        return $localize`:@@addRelatives.titleSpouse:Add a spouse of ${name}:name:`;
+    }
   });
+  protected readonly legend = computed(() =>
+    this.single() ? $localize`:@@addRelatives.person:Person` : $localize`:@@people.title:People`,
+  );
   /** The people to add, in the order they were picked, kept while the list is filtered. */
   protected readonly selected = signal<Candidate[]>([]);
   protected readonly type = signal<ParentChildType>('Biological');
@@ -84,8 +92,8 @@ export class AddRelatives {
   }));
   protected readonly hint = computed(() =>
     this.searchesEveryone()
-      ? 'Your profiles and the people linked to them are listed first. Type a name to search everyone with a public profile.'
-      : `You do not maintain ${this.name()}, so you can only add your own profiles. The links stay inactive until its maintainer approves them.`,
+      ? pickerHintEveryone()
+      : $localize`:@@addRelatives.hintOwn:You do not maintain ${this.name()}:name:, so you can only add your own profiles. The links stay inactive until its maintainer approves them.`,
   );
 
   private readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('dialog');
@@ -114,7 +122,7 @@ export class AddRelatives {
   protected selectedNames(): string {
     return this.selected()
       .map((candidate) => candidate.name)
-      .join(', ');
+      .join($localize`:@@common.listSeparator:, `);
   }
 
   /**
@@ -203,20 +211,24 @@ export class AddRelatives {
     const spouseLinks = spouseOutcomes.filter((outcome) => outcome.state !== 'existing').length;
     const parts = [];
     if (active > 0) {
-      parts.push(`Linked ${active} ${active === 1 ? 'person' : 'people'} to ${this.name()}.`);
+      parts.push(
+        active === 1
+          ? $localize`:@@addRelatives.linkedOne:Linked 1 person to ${this.name()}:name:.`
+          : $localize`:@@addRelatives.linkedMany:Linked ${localNumber(active)}:count: people to ${this.name()}:name:.`,
+      );
     }
     if (spouseLinks > 0) {
       parts.push(
         spouseLinks === 1
-          ? 'Also added one link to a spouse.'
-          : `Also added ${spouseLinks} links to spouses.`,
+          ? $localize`:@@addRelatives.spouseLinkOne:Also added one link to a spouse.`
+          : $localize`:@@addRelatives.spouseLinksMany:Also added ${localNumber(spouseLinks)}:count: links to spouses.`,
       );
     }
     if (pending > 0) {
       parts.push(
         pending === 1
-          ? 'One link is saved but not active until the other maintainer approves it.'
-          : `${pending} links are saved but not active until the other maintainers approve them.`,
+          ? $localize`:@@addRelatives.pendingOne:One link is saved but not active until the other maintainer approves it.`
+          : $localize`:@@addRelatives.pendingMany:${localNumber(pending)}:count: links are saved but not active until the other maintainers approve them.`,
       );
     }
     return parts.join(' ');

@@ -1,10 +1,11 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
+import { DigitsPipe } from '../../core/i18n/local-format.pipes';
 import { Person, fullName } from '../people/person';
 import { problemMessage } from '../people/problem';
 import { MarriagesService } from './marriages.service';
-import { Candidate, PersonPicker } from './person-picker';
+import { Candidate, PersonPicker, pickerHintEveryone } from './person-picker';
 import { Spouse, SpouseList, relationHint } from './relationship';
 
 /** How you can remove a marriage: withdraw your side's approval, or delete it when you maintain both. */
@@ -19,7 +20,7 @@ type Removal = { kind: 'withdraw'; spouseId: string } | { kind: 'delete' };
  */
 @Component({
   selector: 'app-person-spouses',
-  imports: [PersonPicker, RouterLink],
+  imports: [DigitsPipe, PersonPicker, RouterLink],
   templateUrl: './person-spouses.html',
 })
 export class PersonSpouses {
@@ -29,6 +30,8 @@ export class PersonSpouses {
 
   protected readonly fullName = fullName;
   protected readonly relationHint = relationHint;
+  protected readonly deleteMarriageLabel = $localize`:@@spouses.deleteMarriage:Delete marriage`;
+  protected readonly withdrawApprovalLabel = $localize`:@@relatives.withdrawApproval:Withdraw approval`;
   protected readonly spouses = signal<SpouseList | null>(null);
   protected readonly adding = signal(false);
   /** The spouse to add, at most one. */
@@ -42,8 +45,8 @@ export class PersonSpouses {
   protected readonly personId = computed(() => this.person().id);
   protected readonly hint = computed(() =>
     this.person().maintainedByYou
-      ? 'Your profiles and the people linked to them are listed first. Type a name to search everyone with a public profile.'
-      : `You do not maintain ${this.name()}, so you can only pick your own profiles. The marriage stays inactive until its maintainer approves it.`,
+      ? pickerHintEveryone()
+      : $localize`:@@spouses.pickerHintOwn:You do not maintain ${this.name()}:name:, so you can only pick your own profiles. The marriage stays inactive until its maintainer approves it.`,
   );
 
   constructor() {
@@ -83,8 +86,8 @@ export class PersonSpouses {
       await this.marriages.setFormer(spouse.marriageId, isFormer);
       this.notice.set(
         isFormer
-          ? `The marriage to ${fullName(spouse)} is now shown as former.`
-          : `The marriage to ${fullName(spouse)} is now shown as current.`,
+          ? $localize`:@@spouses.nowFormer:The marriage to ${fullName(spouse)}:name: is now shown as former.`
+          : $localize`:@@spouses.nowCurrent:The marriage to ${fullName(spouse)}:name: is now shown as current.`,
       );
     });
   }
@@ -93,11 +96,13 @@ export class PersonSpouses {
     await this.act(async () => {
       if (removal.kind === 'delete') {
         await this.marriages.delete(spouse.marriageId);
-        this.notice.set(`You deleted the marriage to ${fullName(spouse)}.`);
+        this.notice.set(
+          $localize`:@@spouses.deleted:You deleted the marriage to ${fullName(spouse)}:name:.`,
+        );
       } else {
         await this.marriages.disagree(spouse.marriageId, removal.spouseId);
         this.notice.set(
-          `You withdrew your approval, so the marriage to ${fullName(spouse)} is no longer active. You can restore it on the Approvals page.`,
+          $localize`:@@spouses.withdrawn:You withdrew your approval, so the marriage to ${fullName(spouse)}:name: is no longer active. You can restore it on the Approvals page.`,
         );
       }
       this.confirming.set(null);
@@ -114,7 +119,7 @@ export class PersonSpouses {
   protected async add(): Promise<void> {
     const [spouse] = this.selected();
     if (!spouse) {
-      this.error.set('Choose the spouse.');
+      this.error.set($localize`:@@spouses.chooseSpouse:Choose the spouse.`);
       return;
     }
     await this.act(async () => {
@@ -125,7 +130,7 @@ export class PersonSpouses {
       this.adding.set(false);
       if (!marriage.isActive) {
         this.notice.set(
-          'The marriage is saved but not active yet. It becomes active when the maintainer of the other profile approves it.',
+          $localize`:@@spouses.savedPending:The marriage is saved but not active yet. It becomes active when the maintainer of the other profile approves it.`,
         );
       }
     });

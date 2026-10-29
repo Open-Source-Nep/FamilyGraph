@@ -35,6 +35,11 @@ type Listed = PersonName & { id: string; imageId: string | null; description: st
 const minSearchLength = 2;
 const searchDelayMs = 300;
 
+/** The picker hint when everyone with a public profile can be found. */
+export function pickerHintEveryone(): string {
+  return $localize`:@@picker.hintEveryone:Your profiles and the people linked to them are listed first. Type a name to search everyone with a public profile.`;
+}
+
 /** Every word of the text appears in the first, middle or last name, ignoring case, like the server's search. */
 export function matchesName(name: PersonName, text: string): boolean {
   const parts = [name.firstName, name.middleName, name.lastName]
@@ -73,7 +78,7 @@ export class PersonPicker {
   readonly searchesEveryone = input.required<boolean>();
   /** One person (radio buttons) instead of several (checkboxes). */
   readonly single = input(false);
-  readonly legend = input('People');
+  readonly legend = input($localize`:@@people.title:People`);
   readonly hint = input('');
   /** Shows "Add a new person". */
   readonly offersNewPerson = input(true);
