@@ -25,6 +25,11 @@
         </PackageReference>
     </ItemGroup>
 
+    <!-- The Client's translations (D-047), read at startup from the output folder. -->
+    <ItemGroup>
+        <Content Update="Translations\*.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest"/>
+    </ItemGroup>
+
     <ItemGroup>
         <ProjectReference Include="..\FamilyGraph.Application\FamilyGraph.Application.csproj"/>
         <ProjectReference Include="..\FamilyGraph.Infrastructure\FamilyGraph.Infrastructure.csproj"/>

@@ -94,10 +94,29 @@ export const maxDescriptionLength = 200;
 /** The longest name part the server accepts. */
 export const maxNamePartLength = 100;
 
+/** "Male", "Female" or "Other" in the page's language. */
+export function genderLabel(gender: Gender): string {
+  switch (gender) {
+    case 'Male':
+      return $localize`:@@person.gender.male:Male`;
+    case 'Female':
+      return $localize`:@@person.gender.female:Female`;
+    default:
+      return $localize`:@@person.gender.other:Other`;
+  }
+}
+
+/** The word shown instead of a hidden or deleted profile's name (PRD 05). */
+export function placeholderLabel(placeholder: Placeholder): string {
+  return placeholder === 'Private'
+    ? $localize`:@@person.placeholder.private:Private`
+    : $localize`:@@person.placeholder.deleted:Deleted`;
+}
+
 /** The person's name, or the placeholder shown instead of it. */
 export function fullName(name: PersonName | PersonLabel): string {
   if ('placeholder' in name && name.placeholder) {
-    return name.placeholder;
+    return placeholderLabel(name.placeholder);
   }
   return [name.firstName, name.middleName, name.lastName].filter(Boolean).join(' ');
 }

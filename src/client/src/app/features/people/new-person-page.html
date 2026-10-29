@@ -1,33 +1,41 @@
 <section class="panel">
-  <h1>Add a person</h1>
+  <h1 i18n="@@home.addPerson">Add a person</h1>
 
   @if (created(); as created) {
-    <p role="status">{{ created.name }} was added.</p>
-    <ul class="people" aria-label="Links you added">
+    <p role="status" i18n="@@newPerson.added">
+      {{ created.name }}
+      was added.
+    </p>
+    <ul class="people" aria-label="Links you added" i18n-aria-label="@@newPerson.linksAdded">
       @for (outcome of created.outcomes; track $index) {
         @switch (outcome.state) {
           @case ('active') {
-            <li>{{ outcome.name }}: linked.</li>
+            <li i18n="@@linkOutcome.active">{{ outcome.name }}: linked.</li>
           }
           @case ('pending') {
-            <li>
+            <li i18n="@@linkOutcome.pending">
               {{ outcome.name }}: saved, but not active until the other maintainer approves it.
             </li>
           }
           @case ('existing') {
-            <li>{{ outcome.name }}: already linked.</li>
+            <li i18n="@@linkOutcome.existing">{{ outcome.name }}: already linked.</li>
           }
           @case ('failed') {
-            <li class="error">{{ outcome.name }}: not linked. {{ outcome.reason }}</li>
+            <li class="error" i18n="@@linkOutcome.failed">
+              {{ outcome.name }}: not linked.
+              {{ outcome.reason }}
+            </li>
           }
         }
       }
     </ul>
     <p>
-      <a [routerLink]="['/people', created.id]">Open {{ created.name }}'s profile</a>
+      <a [routerLink]="['/people', created.id]" i18n="@@newPerson.openProfile"
+        >Open {{ created.name }}'s profile</a
+      >
     </p>
   } @else {
-    <p>
+    <p i18n="@@newPerson.intro">
       Only a first name is needed. You will maintain this profile until the person claims it. Adding
       someone does not connect them to your own account.
     </p>
@@ -38,25 +46,37 @@
 
     <app-person-name-form
       submitLabel="Add person"
+      i18n-submitLabel="@@newPerson.submit"
       [busy]="saving()"
       (saved)="create($event)"
       (cancelled)="cancel()"
     >
-      <h2>Parents and children <span class="hint">(optional)</span></h2>
-      <p class="hint">
+      <h2>
+        <ng-container i18n="@@newPerson.parentsAndChildren">Parents and children</ng-container>
+        <span class="hint" i18n="@@common.optional">(optional)</span>
+      </h2>
+      <p class="hint" i18n="@@newPerson.pickerHint">
         Your profiles and the people linked to them are listed first. Type a name to search everyone
         with a public profile. A link to someone else's profile stays inactive until its maintainer
         approves it.
       </p>
 
       @if (choosingParents()) {
-        <app-person-picker legend="Parents" [searchesEveryone]="true" [(selected)]="parents" />
+        <app-person-picker
+          legend="Parents"
+          i18n-legend="@@relatives.parents"
+          [searchesEveryone]="true"
+          [(selected)]="parents"
+        />
         @if (parents().length > 0) {
-          <p>Parents: {{ parentNames() }}</p>
+          <p i18n="@@newPerson.parentNames">
+            Parents:
+            {{ parentNames() }}
+          </p>
         }
         <app-spouse-link-choices relation="parent" [person]="target()" [picked]="parents()" />
         <fieldset>
-          <legend>Parents' relationship</legend>
+          <legend i18n="@@newPerson.parentType">Parents' relationship</legend>
           <label>
             <input
               type="radio"
@@ -64,7 +84,7 @@
               [checked]="parentType() === 'Biological'"
               (change)="parentType.set('Biological')"
             />
-            Biological
+            <ng-container i18n="@@linkType.biological">Biological</ng-container>
           </label>
           <label>
             <input
@@ -73,24 +93,37 @@
               [checked]="parentType() === 'Adoptive'"
               (change)="parentType.set('Adoptive')"
             />
-            Adoptive
+            <ng-container i18n="@@linkType.adoptive">Adoptive</ng-container>
           </label>
         </fieldset>
       } @else {
         <p>
-          <button type="button" class="secondary" (click)="choosingParents.set(true)">
+          <button
+            type="button"
+            class="secondary"
+            (click)="choosingParents.set(true)"
+            i18n="@@newPerson.chooseParents"
+          >
             Choose parents
           </button>
         </p>
       }
 
       @if (choosingChildren()) {
-        <app-person-picker legend="Children" [searchesEveryone]="true" [(selected)]="children" />
+        <app-person-picker
+          legend="Children"
+          i18n-legend="@@relatives.children"
+          [searchesEveryone]="true"
+          [(selected)]="children"
+        />
         @if (children().length > 0) {
-          <p>Children: {{ childNames() }}</p>
+          <p i18n="@@newPerson.childNames">
+            Children:
+            {{ childNames() }}
+          </p>
         }
         <fieldset>
-          <legend>Children's relationship</legend>
+          <legend i18n="@@newPerson.childType">Children's relationship</legend>
           <label>
             <input
               type="radio"
@@ -98,7 +131,7 @@
               [checked]="childType() === 'Biological'"
               (change)="childType.set('Biological')"
             />
-            Biological
+            <ng-container i18n="@@linkType.biological">Biological</ng-container>
           </label>
           <label>
             <input
@@ -107,12 +140,17 @@
               [checked]="childType() === 'Adoptive'"
               (change)="childType.set('Adoptive')"
             />
-            Adoptive
+            <ng-container i18n="@@linkType.adoptive">Adoptive</ng-container>
           </label>
         </fieldset>
       } @else {
         <p>
-          <button type="button" class="secondary" (click)="choosingChildren.set(true)">
+          <button
+            type="button"
+            class="secondary"
+            (click)="choosingChildren.set(true)"
+            i18n="@@newPerson.chooseChildren"
+          >
             Choose children
           </button>
         </p>

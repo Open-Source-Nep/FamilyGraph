@@ -4,7 +4,13 @@
 @if (choices().length > 0) {
   <fieldset class="spouse-links">
     <legend>
-      {{ relation() === 'child' ? 'Also add them as children of' : 'Also add as parents' }}
+      @if (relation() === 'child') {
+        <ng-container i18n="@@spouseLinks.alsoChildrenOf"
+          >Also add them as children of</ng-container
+        >
+      } @else {
+        <ng-container i18n="@@spouseLinks.alsoParents">Also add as parents</ng-container>
+      }
     </legend>
     @for (choice of choices(); track choice.spouse.id) {
       <label>

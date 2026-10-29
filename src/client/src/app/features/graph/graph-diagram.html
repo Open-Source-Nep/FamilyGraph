@@ -1,13 +1,30 @@
 @if (!dots()) {
   <div class="toolbar">
-    <ul class="legend" aria-label="Legend">
-      <li><span class="swatch biological"></span> Biological</li>
-      <li><span class="swatch adoptive"></span> Adoptive</li>
-      <li><span class="swatch marriage"></span> Married</li>
-      <li><span class="swatch former-marriage"></span> Formerly married</li>
-      <li><span class="swatch more"></span> Has relatives not shown</li>
+    <ul class="legend" aria-label="Legend" i18n-aria-label="@@diagram.legend">
+      <li>
+        <span class="swatch biological"></span>
+        <ng-container i18n="@@linkType.biological">Biological</ng-container>
+      </li>
+      <li>
+        <span class="swatch adoptive"></span>
+        <ng-container i18n="@@linkType.adoptive">Adoptive</ng-container>
+      </li>
+      <li>
+        <span class="swatch marriage"></span>
+        <ng-container i18n="@@diagram.married">Married</ng-container>
+      </li>
+      <li>
+        <span class="swatch former-marriage"></span>
+        <ng-container i18n="@@diagram.formerlyMarried">Formerly married</ng-container>
+      </li>
+      <li>
+        <span class="swatch more"></span>
+        <ng-container i18n="@@diagram.hasMore">Has relatives not shown</ng-container>
+      </li>
     </ul>
-    <button type="button" class="secondary" (click)="fit()">Fit to screen</button>
+    <button type="button" class="secondary" (click)="fit()" i18n="@@diagram.fit">
+      Fit to screen
+    </button>
   </div>
 }
 <div class="stage" [class.dots]="dots()">
@@ -18,16 +35,16 @@
       @if (!dots()) {
         <span>
           @if (hovered.row.person.id === graph().centreId) {
-            Centre of the graph
+            <ng-container i18n="@@diagram.centre">Centre of the graph</ng-container>
           } @else {
             {{ generationLabel(hovered.row.generation) }}
           }
         </span>
         @if (hovered.row.person.maintainedByYou) {
-          <span>Maintained by you</span>
+          <span i18n="@@diagram.maintainedByYou">Maintained by you</span>
         }
         @if (hovered.row.hasMore) {
-          <span>Has relatives not shown</span>
+          <span i18n="@@diagram.hasMore">Has relatives not shown</span>
         }
       }
     </div>
@@ -37,17 +54,31 @@
       #menu
       class="menu"
       role="menu"
-      [attr.aria-label]="'Actions for ' + fullName(menu.row.person)"
+      [attr.aria-label]="menuLabel(menu.row.person)"
       [style.left.px]="menu.x"
       [style.top.px]="menu.y"
       (keydown.escape)="closeMenu()"
     >
-      <button type="button" role="menuitem" (click)="choose('parent')">Add parent</button>
-      <button type="button" role="menuitem" (click)="choose('child')">Add children</button>
-      <button type="button" role="menuitem" (click)="choose('spouse')">Add spouse</button>
-      <button type="button" role="menuitem" (click)="showBansawali()">Show the Bansawali</button>
+      <button type="button" role="menuitem" (click)="choose('parent')" i18n="@@diagram.addParent">
+        Add parent
+      </button>
+      <button type="button" role="menuitem" (click)="choose('child')" i18n="@@diagram.addChildren">
+        Add children
+      </button>
+      <button type="button" role="menuitem" (click)="choose('spouse')">
+        <ng-container i18n="@@diagram.addSpouse">Add spouse</ng-container>
+      </button>
+      <button type="button" role="menuitem" (click)="showBansawali()">
+        <ng-container i18n="@@person.showBansawali">Show the Bansawali</ng-container>
+      </button>
       @if (canDelete(menu.row.person)) {
-        <button type="button" role="menuitem" class="danger" (click)="chooseDelete()">
+        <button
+          type="button"
+          role="menuitem"
+          class="danger"
+          (click)="chooseDelete()"
+          i18n="@@person.deleteProfile"
+        >
           Delete profile
         </button>
       }

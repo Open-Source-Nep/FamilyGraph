@@ -1,6 +1,7 @@
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
+import { DigitsPipe } from '../../core/i18n/local-format.pipes';
 import { AllPeople } from './all-people';
 import { PeopleService } from './people.service';
 import { PersonSummary, ProfileList, fullName } from './person';
@@ -16,7 +17,7 @@ import { problemMessage } from './problem';
  */
 @Component({
   selector: 'app-people-page',
-  imports: [AllPeople, PersonAvatar, RouterLink],
+  imports: [AllPeople, DigitsPipe, PersonAvatar, RouterLink],
   templateUrl: './people-page.html',
 })
 export class PeoplePage {

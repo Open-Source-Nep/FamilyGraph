@@ -1,6 +1,6 @@
 <section class="panel wide">
-  <h1>Users</h1>
-  <p class="hint">
+  <h1 i18n="@@users.title">Users</h1>
+  <p class="hint" i18n="@@users.intro">
     Every account on this instance. You can move profiles to another account without its approval.
     Their relationships and approvals stay as they are, and each move is recorded.
   </p>
@@ -13,7 +13,7 @@
   }
 
   @if (loading()) {
-    <p class="hint">Loading…</p>
+    <p class="hint" i18n="@@common.loading">Loading…</p>
   } @else {
     <ul class="accounts">
       @for (account of accounts(); track account.id) {
@@ -22,35 +22,35 @@
             <summary>
               <span class="email">{{ account.email }}</span>
               @if (!account.emailVerified) {
-                <span class="badge">not verified</span>
+                <span class="badge" i18n="@@users.notVerified">not verified</span>
               }
               @if (account.administrator) {
-                <span class="badge">administrator</span>
+                <span class="badge" i18n="@@users.administrator">administrator</span>
               }
-              <span class="count">
-                {{ account.maintainedProfiles }}
-                {{ account.maintainedProfiles === 1 ? 'profile' : 'profiles' }}
-              </span>
+              <span class="count" i18n="@@users.profileCount">{account.maintainedProfiles, plural,
+                =1 {{{ account.maintainedProfiles | digits }} profile}
+                other {{{ account.maintainedProfiles | digits }} profiles}
+              }</span>
             </summary>
 
             @if (profiles()[account.id]; as list) {
               @if (list.people.length === 0) {
-                <p class="hint">This account maintains no profiles.</p>
+                <p class="hint" i18n="@@users.noProfiles">This account maintains no profiles.</p>
               } @else {
                 <ul class="profiles">
                   @for (person of list.people; track person.id) {
                     <li>
                       <a [routerLink]="['/people', person.id]">{{ fullName(person) }}</a>
                       @if (person.visibility === 'Private') {
-                        <span class="badge">private</span>
+                        <span class="badge" i18n="@@users.private">private</span>
                       }
                       <span class="actions">
                         <select
-                          [attr.aria-label]="'New maintainer of ' + fullName(person)"
+                          [attr.aria-label]="newMaintainerOf(fullName(person))"
                           [value]="targets()[person.id] ?? ''"
                           (change)="pick(person.id, $any($event.target).value)"
                         >
-                          <option value="">Move to…</option>
+                          <option value="" i18n="@@users.moveTo">Move to…</option>
                           @for (receiver of receivers(account.id); track receiver.id) {
                             <option [value]="receiver.id">{{ accountLabel(receiver) }}</option>
                           }
@@ -60,6 +60,7 @@
                           class="secondary"
                           [disabled]="busy() || !targets()[person.id]"
                           (click)="transferProfile(account, person.id)"
+                          i18n="@@transfer.transfer"
                         >
                           Transfer
                         </button>
@@ -68,29 +69,43 @@
                   }
                 </ul>
                 @if (list.isTruncated) {
-                  <p class="hint">Only the first {{ list.people.length }} profiles are shown.</p>
+                  <p class="hint" i18n="@@users.profilesTruncated">
+                    Only the first {{ list.people.length | digits }} profiles are shown.
+                  </p>
                 }
 
                 <div class="actions">
                   <select
-                    [attr.aria-label]="'New maintainer of all profiles of ' + account.email"
+                    [attr.aria-label]="newMaintainerOfAll(account.email)"
                     [value]="targets()[account.id] ?? ''"
                     (change)="pick(account.id, $any($event.target).value)"
                   >
-                    <option value="">Move all to…</option>
+                    <option value="" i18n="@@users.moveAllTo">Move all to…</option>
                     @for (receiver of receivers(account.id); track receiver.id) {
                       <option [value]="receiver.id">{{ accountLabel(receiver) }}</option>
                     }
                   </select>
                   @if (confirmingAll() === account.id) {
-                    <span>
-                      Move all {{ account.maintainedProfiles }} profiles to
-                      {{ byId().get(targets()[account.id])?.email }}?
-                    </span>
-                    <button type="button" [disabled]="busy()" (click)="transferAll(account)">
+                    <span i18n="@@users.confirmMoveAll"
+                      >Move all
+                      {{ account.maintainedProfiles | digits }}
+                      profiles to
+                      {{ byId().get(targets()[account.id])?.email }}?</span
+                    >
+                    <button
+                      type="button"
+                      [disabled]="busy()"
+                      (click)="transferAll(account)"
+                      i18n="@@users.transferAll"
+                    >
                       Transfer all
                     </button>
-                    <button type="button" class="secondary" (click)="confirmingAll.set(null)">
+                    <button
+                      type="button"
+                      class="secondary"
+                      (click)="confirmingAll.set(null)"
+                      i18n="@@users.keep"
+                    >
                       Keep
                     </button>
                   } @else {
@@ -99,6 +114,7 @@
                       class="secondary"
                       [disabled]="busy() || !targets()[account.id]"
                       (click)="confirmingAll.set(account.id)"
+                      i18n="@@users.transferAllProfiles"
                     >
                       Transfer all profiles
                     </button>
@@ -106,14 +122,16 @@
                 </div>
               }
             } @else {
-              <p class="hint">Loading…</p>
+              <p class="hint" i18n="@@common.loading">Loading…</p>
             }
           </details>
         </li>
       }
     </ul>
     @if (isTruncated()) {
-      <p class="hint">Only the first {{ accounts().length }} accounts are shown.</p>
+      <p class="hint" i18n="@@users.accountsTruncated">
+        Only the first {{ accounts().length | digits }} accounts are shown.
+      </p>
     }
   }
 </section>

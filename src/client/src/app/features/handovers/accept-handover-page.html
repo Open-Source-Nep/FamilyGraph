@@ -1,23 +1,29 @@
 <section class="panel">
-  <h1>Profile handover</h1>
+  <h1 i18n="@@handover.acceptTitle">Profile handover</h1>
   @if (error(); as error) {
     <p class="error" role="alert">{{ error }}</p>
   }
   @if (preview(); as preview) {
-    <p>
-      You have been offered the profile <strong>{{ fullName(preview.person) }}</strong> to maintain.
+    <p i18n="@@handover.offered">
+      You have been offered the profile
+      <strong>{{ fullName(preview.person) }}</strong>
+      to maintain.
     </p>
     @if (preview.person.placeholder) {
-      <p class="hint">This profile is private. You will see its name once you accept.</p>
+      <p class="hint" i18n="@@handover.privatePreview">
+        This profile is private. You will see its name once you accept.
+      </p>
     }
-    <p class="hint">
+    <p class="hint" i18n="@@handover.acceptExplain">
       If you accept, you become its only maintainer: you can change its name and privacy and approve
       its relationships. Its relationships and their approvals stay as they are. The link expires
-      {{ preview.expiresAt | date: 'medium' }}.
+      {{ preview.expiresAt | localDateTime }}.
     </p>
     <p class="actions">
-      <button type="button" [disabled]="busy()" (click)="accept()">Accept the profile</button>
+      <button type="button" [disabled]="busy()" (click)="accept()" i18n="@@handover.accept">
+        Accept the profile
+      </button>
     </p>
   }
-  <p><a routerLink="/people">Back to your profiles</a></p>
+  <p><a routerLink="/people" i18n="@@handover.backToProfiles">Back to your profiles</a></p>
 </section>

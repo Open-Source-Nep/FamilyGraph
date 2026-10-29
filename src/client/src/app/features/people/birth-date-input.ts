@@ -2,7 +2,15 @@ import { Component, computed, effect, input, output, signal, untracked } from '@
 import { AdDate, BsDate, isSupportedYear, toBs, todayBs } from '@opensourcenepal/nepali-calendar';
 import { NepaliCalendarComponent } from '@opensourcenepal/nepali-calendar-angular';
 
-import { BirthCalendar, BirthDate, daysIn, isValidBirthDate, monthNames } from './birth-date';
+import { DigitsPipe } from '../../core/i18n/local-format.pipes';
+import {
+  BirthCalendar,
+  BirthDate,
+  calendarScript,
+  daysIn,
+  isValidBirthDate,
+  monthNames,
+} from './birth-date';
 
 /** How much of a birth date is known: the year, the year and month, or the full date (D-046). */
 export type BirthDateKnown = 'year' | 'month' | 'day';
@@ -15,7 +23,7 @@ export type BirthDateKnown = 'year' | 'month' | 'day';
  */
 @Component({
   selector: 'app-birth-date-input',
-  imports: [NepaliCalendarComponent],
+  imports: [DigitsPipe, NepaliCalendarComponent],
   templateUrl: './birth-date-input.html',
 })
 export class BirthDateInput {
@@ -31,10 +39,11 @@ export class BirthDateInput {
   protected readonly picking = signal(false);
   protected readonly today = todayBs();
   protected readonly knownChoices: readonly { value: BirthDateKnown; label: string }[] = [
-    { value: 'year', label: 'Year only' },
-    { value: 'month', label: 'Year and month' },
-    { value: 'day', label: 'Full date' },
+    { value: 'year', label: $localize`:@@birthDate.knownYear:Year only` },
+    { value: 'month', label: $localize`:@@birthDate.knownMonth:Year and month` },
+    { value: 'day', label: $localize`:@@birthDate.knownDay:Full date` },
   ];
+  protected readonly script = calendarScript();
 
   protected readonly months = computed(() => monthNames(this.calendar()));
   protected readonly days = computed(() => {
@@ -55,16 +64,23 @@ export class BirthDateInput {
         }
       : null,
   );
-  /** The known parts still to choose, such as "month and day", or null when none are missing. */
+  /** Which known parts are still to choose, or null when none are missing. */
   protected readonly missing = computed(() => {
     if (this.date() === null) {
       return null;
     }
-    const parts = [
-      this.known() !== 'year' && this.month() === null ? 'month' : null,
-      this.known() === 'day' && this.day() === null ? 'day' : null,
-    ].filter((part) => part !== null);
-    return parts.length > 0 ? parts.join(' and ') : null;
+    const month = this.known() !== 'year' && this.month() === null;
+    const day = this.known() === 'day' && this.day() === null;
+    if (month && day) {
+      return $localize`:@@birthDate.missingMonthAndDay:Choose the month and day, or change what is known.`;
+    }
+    if (month) {
+      return $localize`:@@birthDate.missingMonth:Choose the month, or change what is known.`;
+    }
+    if (day) {
+      return $localize`:@@birthDate.missingDay:Choose the day, or change what is known.`;
+    }
+    return null;
   });
   /**
    * True while a known part is not chosen or the parts are not a date that exists; the parent does

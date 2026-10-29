@@ -42,7 +42,7 @@ export class PersonTransfer {
     }
     await this.run(async () => {
       await this.admin.transferProfile(this.personId(), to.id);
-      this.message.set(`This profile now belongs to ${to.email}.`);
+      this.message.set($localize`:@@transfer.done:This profile now belongs to ${to.email}:email:.`);
       this.target.set('');
       this.transferred.emit();
     });

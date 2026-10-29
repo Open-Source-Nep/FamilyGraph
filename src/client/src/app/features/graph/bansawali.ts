@@ -105,8 +105,8 @@ export function bansawaliTree(bansawali: Bansawali): BansawaliEntry | null {
 /** "Neupane Bansawali" from the ancestor's last name, or "Bansawali of Hari" without one. */
 export function bansawaliTitle(ancestor: GraphPerson): string {
   return ancestor.lastName && !ancestor.placeholder
-    ? `${ancestor.lastName} Bansawali`
-    : `Bansawali of ${fullName(ancestor)}`;
+    ? $localize`:@@bansawali.titleFamily:${ancestor.lastName}:lastName: Bansawali`
+    : $localize`:@@bansawali.titleOf:Bansawali of ${fullName(ancestor)}:name:`;
 }
 
 /** How many generations one section of the outline shows before a line continues in another (D-045). */

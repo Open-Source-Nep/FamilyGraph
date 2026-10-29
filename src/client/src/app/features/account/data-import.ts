@@ -1,20 +1,22 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 
+import { DigitsPipe } from '../../core/i18n/local-format.pipes';
+import { somethingWentWrong } from '../people/problem';
 import { DataImportService, ImportProblem, ImportResult } from './data-import.service';
 
 /** Wording for the import's refusals (D-033). */
 const messages: Record<string, string> = {
-  'import.not_administrator': 'Only an administrator can import data.',
-  'import.instance_not_empty':
-    'This instance already has profiles. Data can only be imported into an empty instance.',
-  'import.invalid_file': 'The file cannot be imported. Nothing was saved.',
+  'import.not_administrator': $localize`:@@import.notAdministrator:Only an administrator can import data.`,
+  'import.instance_not_empty': $localize`:@@import.instanceNotEmpty:This instance already has profiles. Data can only be imported into an empty instance.`,
+  'import.invalid_file': $localize`:@@import.invalidFile:The file cannot be imported. Nothing was saved.`,
 };
 
 /** The account page's "Data import" box for administrators: upload an export file (D-033). */
 @Component({
   selector: 'app-data-import',
   templateUrl: './data-import.html',
+  imports: [DigitsPipe],
 })
 export class DataImport {
   private readonly imports = inject(DataImportService);
@@ -56,7 +58,7 @@ export class DataImport {
   private showError(error: unknown): void {
     if (error instanceof HttpErrorResponse) {
       if (error.status === 413) {
-        this.error.set('This file is too large to import.');
+        this.error.set($localize`:@@import.tooLarge:This file is too large to import.`);
         return;
       }
       const code: unknown = error.error?.code;
@@ -67,6 +69,6 @@ export class DataImport {
         return;
       }
     }
-    this.error.set('Something went wrong. Please try again.');
+    this.error.set(somethingWentWrong());
   }
 }

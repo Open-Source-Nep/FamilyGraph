@@ -12,9 +12,15 @@ header {
   color: inherit;
 }
 
-nav {
+nav,
+.end {
   display: flex;
+  align-items: center;
   gap: 1rem;
+}
+
+.end select {
+  padding: 0.25rem;
 }
 
 main {

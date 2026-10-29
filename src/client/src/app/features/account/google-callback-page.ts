@@ -11,7 +11,7 @@ import { GoogleSignInService } from '../../core/auth/google-sign-in.service';
  */
 @Component({
   selector: 'app-google-callback-page',
-  template: '<p role="status">Signing you in…</p>',
+  template: '<p role="status" i18n="@@signIn.signingIn">Signing you in…</p>',
 })
 export class GoogleCallbackPage implements OnInit {
   private readonly auth = inject(AuthService);

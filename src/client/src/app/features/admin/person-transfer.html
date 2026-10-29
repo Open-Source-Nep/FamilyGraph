@@ -1,5 +1,5 @@
 <section aria-labelledby="transfer-heading">
-  <h2 id="transfer-heading">Transfer to another account</h2>
+  <h2 id="transfer-heading" i18n="@@transfer.title">Transfer to another account</h2>
   @if (error(); as error) {
     <p class="error" role="alert">{{ error }}</p>
   }
@@ -7,28 +7,41 @@
     <p role="status">{{ message }}</p>
   }
   @if (accounts(); as accounts) {
-    <p class="hint">
+    <p class="hint" i18n="@@transfer.intro">
       As an administrator you can make another account this profile's maintainer at once, without
       its approval. Its relationships and approvals stay as they are.
     </p>
     <p class="actions">
       <select
         aria-label="New maintainer"
+        i18n-aria-label="@@transfer.newMaintainer"
         [value]="target()"
         (change)="target.set($any($event.target).value)"
       >
-        <option value="">Choose an account…</option>
+        <option value="" i18n="@@transfer.chooseAccount">Choose an account…</option>
         @for (account of accounts; track account.id) {
           <option [value]="account.id">{{ accountLabel(account) }}</option>
         }
       </select>
-      <button type="button" class="secondary" [disabled]="busy() || !target()" (click)="transfer()">
+      <button
+        type="button"
+        class="secondary"
+        [disabled]="busy() || !target()"
+        (click)="transfer()"
+        i18n="@@transfer.transfer"
+      >
         Transfer
       </button>
     </p>
   } @else {
     <p>
-      <button type="button" class="secondary" [disabled]="busy()" (click)="open()">
+      <button
+        type="button"
+        class="secondary"
+        [disabled]="busy()"
+        (click)="open()"
+        i18n="@@transfer.chooseMaintainer"
+      >
         Choose a new maintainer
       </button>
     </p>

@@ -1,6 +1,8 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
+import { localNumber } from '../../core/i18n/local-format';
+import { DigitsPipe } from '../../core/i18n/local-format.pipes';
 import { ProfileList, fullName } from '../people/person';
 import { problemMessage } from '../people/problem';
 import { AccountSummary, accountLabel } from './admin';
@@ -14,7 +16,7 @@ import { AdminService } from './admin.service';
  */
 @Component({
   selector: 'app-users-page',
-  imports: [RouterLink],
+  imports: [DigitsPipe, RouterLink],
   templateUrl: './users-page.html',
   styleUrl: './users-page.css',
 })
@@ -44,6 +46,14 @@ export class UsersPage {
     void this.reload();
   }
 
+  protected newMaintainerOf(name: string): string {
+    return $localize`:@@users.newMaintainerOf:New maintainer of ${name}:name:`;
+  }
+
+  protected newMaintainerOfAll(email: string): string {
+    return $localize`:@@users.newMaintainerOfAll:New maintainer of all profiles of ${email}:email:`;
+  }
+
   /** Every account except `accountId`, which already maintains the profiles. */
   protected receivers(accountId: string): AccountSummary[] {
     return this.accounts().filter((account) => account.id !== accountId);
@@ -70,7 +80,11 @@ export class UsersPage {
     await this.run(async () => {
       await this.admin.transferProfile(personId, to.id);
       const moved = this.profiles()[owner.id]?.people.find((person) => person.id === personId);
-      this.message.set(`${moved ? fullName(moved) : 'The profile'} now belongs to ${to.email}.`);
+      this.message.set(
+        moved
+          ? $localize`:@@users.movedProfile:${fullName(moved)}:name: now belongs to ${to.email}:email:.`
+          : $localize`:@@users.movedTheProfile:The profile now belongs to ${to.email}:email:.`,
+      );
       await this.refresh([owner.id, to.id]);
     });
   }
@@ -83,8 +97,11 @@ export class UsersPage {
     await this.run(async () => {
       const { transferred } = await this.admin.transferAll(owner.id, to.id);
       this.confirmingAll.set(null);
+      const count = localNumber(transferred);
       this.message.set(
-        `${transferred} ${transferred === 1 ? 'profile' : 'profiles'} moved from ${owner.email} to ${to.email}.`,
+        transferred === 1
+          ? $localize`:@@users.movedOne:${count}:count: profile moved from ${owner.email}:from: to ${to.email}:to:.`
+          : $localize`:@@users.movedMany:${count}:count: profiles moved from ${owner.email}:from: to ${to.email}:to:.`,
       );
       await this.refresh([owner.id, to.id]);
     });
