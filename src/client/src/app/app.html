@@ -1,15 +1,18 @@
 <header>
   <a routerLink="/" class="brand">FamilyGraph</a>
-  @if (account()) {
-    <nav>
-      <a routerLink="/people">People</a>
-      <a routerLink="/approvals">Approvals</a>
-      @if (isAdministrator()) {
-        <a routerLink="/admin/users">Users</a>
-      }
-      <a routerLink="/account">Account</a>
-    </nav>
-  }
+  <div class="end">
+    @if (account()) {
+      <nav>
+        <a routerLink="/people" i18n="@@header.people">People</a>
+        <a routerLink="/approvals" i18n="@@header.approvals">Approvals</a>
+        @if (isAdministrator()) {
+          <a routerLink="/admin/users" i18n="@@header.users">Users</a>
+        }
+        <a routerLink="/account" i18n="@@header.account">Account</a>
+      </nav>
+    }
+    <app-language-switch />
+  </div>
 </header>
 
 <main>

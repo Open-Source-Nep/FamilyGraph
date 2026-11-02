@@ -7,6 +7,7 @@ import {
   Gender,
   PersonDetails,
   PersonName,
+  genderLabel,
   genders,
   maxDescriptionLength,
   maxNamePartLength,
@@ -28,13 +29,14 @@ export class PersonNameForm {
   readonly description = input<string | null>(null);
   readonly birthDate = input<BirthDate | null>(null);
   readonly birthDateShown = input(false);
-  readonly submitLabel = input('Save');
+  readonly submitLabel = input($localize`:@@common.save:Save`);
   readonly busy = input(false);
   readonly saved = output<PersonDetails>();
   readonly cancelled = output<void>();
 
   protected readonly maxLength = maxNamePartLength;
   protected readonly genders = genders;
+  protected readonly genderLabel = genderLabel;
   protected readonly maxDescriptionLength = maxDescriptionLength;
   protected readonly date = signal<BirthDate | null>(null);
   private readonly dateInput = viewChild(BirthDateInput);

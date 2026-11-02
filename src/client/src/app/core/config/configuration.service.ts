@@ -1,29 +1,19 @@
-import { HttpClient } from '@angular/common/http';
-import { Service, inject, signal } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
+import { InjectionToken, Service, inject, signal } from '@angular/core';
 
 import { ClientConfiguration } from './client-configuration';
 
+/** The instance settings `main.ts` loaded before the app started; `null` when unreachable. */
+export const STARTUP_CONFIGURATION = new InjectionToken<ClientConfiguration | null>(
+  'STARTUP_CONFIGURATION',
+  { factory: () => null },
+);
+
 /**
- * The instance settings, loaded once while the app starts (`provideAppInitializer`). The server
- * reads them from its configuration, including the public Google client ID.
+ * The instance settings, loaded once before the app starts, because they choose the language
+ * (D-047). The server reads them from its configuration, including the public Google client ID.
  */
 @Service()
 export class ConfigurationService {
-  private readonly http = inject(HttpClient);
-  private readonly current = signal<ClientConfiguration | null>(null);
-
-  /** `null` until loaded, and when the server could not be reached. */
-  readonly configuration = this.current.asReadonly();
-
-  async load(): Promise<void> {
-    try {
-      this.current.set(
-        await firstValueFrom(this.http.get<ClientConfiguration>('/api/configuration')),
-      );
-    } catch {
-      // The app still starts; pages that need the settings say the server is unreachable.
-      this.current.set(null);
-    }
-  }
+  /** `null` when the server could not be reached; pages that need it say so. */
+  readonly configuration = signal(inject(STARTUP_CONFIGURATION)).asReadonly();
 }

@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { AuthService } from '../../core/auth/auth.service';
+import { DigitsPipe } from '../../core/i18n/local-format.pipes';
 import { fullName } from '../people/person';
 import { problemMessage } from '../people/problem';
 import { MarriagesService } from './marriages.service';
@@ -46,7 +47,7 @@ interface AdministratorAction {
  */
 @Component({
   selector: 'app-approvals-page',
-  imports: [RouterLink],
+  imports: [DigitsPipe, RouterLink],
   templateUrl: './approvals-page.html',
 })
 export class ApprovalsPage {
@@ -74,9 +75,21 @@ export class ApprovalsPage {
     const withdrawn = links.filter((link) => !hasOwn(link, 'Pending') && hasOwn(link, 'Disagreed'));
     const others = links.filter((link) => !hasOwn(link, 'Pending') && !hasOwn(link, 'Disagreed'));
     return [
-      { title: 'Waiting for your approval', links: pending, yours: true },
-      { title: 'Declined or withdrawn by you', links: withdrawn, yours: true },
-      { title: 'Waiting for others', links: others, yours: false },
+      {
+        title: $localize`:@@approvals.waitingForYou:Waiting for your approval`,
+        links: pending,
+        yours: true,
+      },
+      {
+        title: $localize`:@@approvals.withdrawnByYou:Declined or withdrawn by you`,
+        links: withdrawn,
+        yours: true,
+      },
+      {
+        title: $localize`:@@approvals.waitingForOthers:Waiting for others`,
+        links: others,
+        yours: false,
+      },
     ].filter((section) => section.links.length > 0);
   });
 
@@ -94,13 +107,13 @@ export class ApprovalsPage {
         return [];
       }
       // Someone who maintains both people deletes the link instead of declining it (D-013).
-      const suffix = other.maintainedByYou ? ` for ${fullName(own)}` : '';
+      const labels = consentLabels(own, other);
       return own.approval === 'Pending'
         ? [
-            { label: `Approve${suffix}`, endpoint, approve: true },
-            ...(other.maintainedByYou ? [] : [{ label: 'Decline', endpoint, approve: false }]),
+            { label: labels.approve, endpoint, approve: true },
+            ...(other.maintainedByYou ? [] : [{ label: labels.decline, endpoint, approve: false }]),
           ]
-        : [{ label: `Restore approval${suffix}`, endpoint, approve: true }];
+        : [{ label: labels.restore, endpoint, approve: true }];
     });
   }
 
@@ -112,17 +125,14 @@ export class ApprovalsPage {
     ];
     return sides
       .filter(([, own]) => own.approval === 'Pending' && !own.maintainedByYou && !own.placeholder)
-      .map(([endpoint, own]) => ({
-        label: `Approve for ${fullName(own)} as administrator`,
-        side: endpoint,
-      }));
+      .map(([endpoint, own]) => ({ label: approveAsAdministratorLabel(own), side: endpoint }));
   }
 
   /** The pending sides of a marriage that someone else maintains (D-040). */
   protected marriageAdministratorActions(marriage: MarriageConsent): AdministratorAction[] {
     return [marriage.first, marriage.second]
       .filter((own) => own.approval === 'Pending' && !own.maintainedByYou && !own.placeholder)
-      .map((own) => ({ label: `Approve for ${fullName(own)} as administrator`, side: own.id }));
+      .map((own) => ({ label: approveAsAdministratorLabel(own), side: own.id }));
   }
 
   protected async approveAsAdministrator(
@@ -134,10 +144,11 @@ export class ApprovalsPage {
         link.id,
         action.side as LinkEndpoint,
       );
+      const what = describe(updated);
       this.notice.set(
         updated.isActive
-          ? `You approved ${describe(updated)} as administrator. It is now active.`
-          : `You approved ${describe(updated)} as administrator. It still waits for the other side.`,
+          ? $localize`:@@approvals.adminApprovedActive:You approved ${what}:link: as administrator. It is now active.`
+          : $localize`:@@approvals.adminApprovedWaiting:You approved ${what}:link: as administrator. It still waits for the other side.`,
       );
     });
   }
@@ -151,8 +162,8 @@ export class ApprovalsPage {
       const what = describeMarriage(updated);
       this.notice.set(
         updated.isActive
-          ? `You approved the marriage of ${what} as administrator. It is now active.`
-          : `You approved the marriage of ${what} as administrator. It still waits for the other side.`,
+          ? $localize`:@@approvals.adminApprovedMarriageActive:You approved the marriage of ${what}:spouses: as administrator. It is now active.`
+          : $localize`:@@approvals.adminApprovedMarriageWaiting:You approved the marriage of ${what}:spouses: as administrator. It still waits for the other side.`,
       );
     });
   }
@@ -164,10 +175,7 @@ export class ApprovalsPage {
 
   /** Why a link with no action for you is inactive. */
   protected status(link: LinkConsent): string {
-    const other = link.parent.maintainedByYou ? link.child : link.parent;
-    return other.approval === 'Disagreed'
-      ? `The maintainer of ${fullName(other)} declined or withdrew approval.`
-      : `Waiting for the maintainer of ${fullName(other)} to approve.`;
+    return waitingStatus(link.parent.maintainedByYou ? link.child : link.parent);
   }
 
   protected async act(link: LinkConsent, action: ConsentAction): Promise<void> {
@@ -178,12 +186,13 @@ export class ApprovalsPage {
       const updated = action.approve
         ? await this.relationships.approve(link.id, action.endpoint)
         : await this.relationships.disagree(link.id, action.endpoint);
+      const what = describe(updated);
       this.notice.set(
         updated.isActive
-          ? `${describe(updated)} is now active.`
+          ? $localize`:@@approvals.linkActive:${what}:link: is now active.`
           : action.approve
-            ? `You approved ${describe(updated)}. It becomes active when the other maintainer approves.`
-            : `You declined ${describe(updated)}. You can restore your approval later.`,
+            ? $localize`:@@approvals.approvedLink:You approved ${what}:link:. It becomes active when the other maintainer approves.`
+            : $localize`:@@approvals.declinedLink:You declined ${what}:link:. You can restore your approval later.`,
       );
       this.load();
     } catch (error) {
@@ -200,7 +209,7 @@ export class ApprovalsPage {
     try {
       await this.relationships.delete(link.id);
       this.confirming.set(null);
-      this.notice.set(`You deleted ${describe(link)}.`);
+      this.notice.set($localize`:@@approvals.deletedLink:You deleted ${describe(link)}:link:.`);
       this.load();
     } catch (error) {
       this.error.set(problemMessage(error));
@@ -219,15 +228,15 @@ export class ApprovalsPage {
       if (!own.maintainedByYou || own.approval === 'Approved') {
         return [];
       }
-      const suffix = other.maintainedByYou ? ` for ${fullName(own)}` : '';
+      const labels = consentLabels(own, other);
       return own.approval === 'Pending'
         ? [
-            { label: `Approve${suffix}`, spouseId: own.id, approve: true },
+            { label: labels.approve, spouseId: own.id, approve: true },
             ...(other.maintainedByYou
               ? []
-              : [{ label: 'Decline', spouseId: own.id, approve: false }]),
+              : [{ label: labels.decline, spouseId: own.id, approve: false }]),
           ]
-        : [{ label: `Restore approval${suffix}`, spouseId: own.id, approve: true }];
+        : [{ label: labels.restore, spouseId: own.id, approve: true }];
     });
   }
 
@@ -237,10 +246,7 @@ export class ApprovalsPage {
 
   /** Why a marriage with no action for you is inactive. */
   protected marriageStatus(marriage: MarriageConsent): string {
-    const other = marriage.first.maintainedByYou ? marriage.second : marriage.first;
-    return other.approval === 'Disagreed'
-      ? `The maintainer of ${fullName(other)} declined or withdrew approval.`
-      : `Waiting for the maintainer of ${fullName(other)} to approve.`;
+    return waitingStatus(marriage.first.maintainedByYou ? marriage.second : marriage.first);
   }
 
   protected async actOnMarriage(marriage: MarriageConsent, action: MarriageAction): Promise<void> {
@@ -254,10 +260,10 @@ export class ApprovalsPage {
       const what = describeMarriage(updated);
       this.notice.set(
         updated.isActive
-          ? `The marriage of ${what} is now active.`
+          ? $localize`:@@approvals.marriageActive:The marriage of ${what}:spouses: is now active.`
           : action.approve
-            ? `You approved the marriage of ${what}. It becomes active when the other maintainer approves.`
-            : `You declined the marriage of ${what}. You can restore your approval later.`,
+            ? $localize`:@@approvals.approvedMarriage:You approved the marriage of ${what}:spouses:. It becomes active when the other maintainer approves.`
+            : $localize`:@@approvals.declinedMarriage:You declined the marriage of ${what}:spouses:. You can restore your approval later.`,
       );
       this.load();
     } catch (error) {
@@ -274,7 +280,9 @@ export class ApprovalsPage {
     try {
       await this.marriages.delete(marriage.id);
       this.confirming.set(null);
-      this.notice.set(`You deleted the marriage of ${describeMarriage(marriage)}.`);
+      this.notice.set(
+        $localize`:@@approvals.deletedMarriage:You deleted the marriage of ${describeMarriage(marriage)}:spouses:.`,
+      );
       this.load();
     } catch (error) {
       this.error.set(problemMessage(error));
@@ -330,7 +338,39 @@ export class ApprovalsPage {
 
 /** "Ram and Sita", for messages. */
 function describeMarriage(marriage: MarriageConsent): string {
-  return `${fullName(marriage.first)} and ${fullName(marriage.second)}`;
+  return $localize`:@@approvals.spouses:${fullName(marriage.first)}:first: and ${fullName(marriage.second)}:second:`;
+}
+
+/**
+ * The button labels for your side. When you maintain both people, each side's buttons name whose
+ * side they are for.
+ */
+function consentLabels(
+  own: LinkEndpointConsent,
+  other: LinkEndpointConsent,
+): { approve: string; decline: string; restore: string } {
+  const name = fullName(own);
+  return {
+    approve: other.maintainedByYou
+      ? $localize`:@@approvals.approveFor:Approve for ${name}:name:`
+      : $localize`:@@approvals.approve:Approve`,
+    decline: $localize`:@@approvals.decline:Decline`,
+    restore: other.maintainedByYou
+      ? $localize`:@@approvals.restoreFor:Restore approval for ${name}:name:`
+      : $localize`:@@approvals.restore:Restore approval`,
+  };
+}
+
+function approveAsAdministratorLabel(own: LinkEndpointConsent): string {
+  return $localize`:@@approvals.approveAsAdministrator:Approve for ${fullName(own)}:name: as administrator`;
+}
+
+/** Why a link or marriage with no action for you is inactive. */
+function waitingStatus(other: LinkEndpointConsent): string {
+  const name = fullName(other);
+  return other.approval === 'Disagreed'
+    ? $localize`:@@approvals.otherDeclined:The maintainer of ${name}:name: declined or withdrew approval.`
+    : $localize`:@@approvals.waitingForMaintainer:Waiting for the maintainer of ${name}:name: to approve.`;
 }
 
 function hasOwn(link: LinkConsent, approval: EndpointApproval): boolean {
@@ -342,5 +382,5 @@ function hasOwn(link: LinkConsent, approval: EndpointApproval): boolean {
 /** "Hari as adoptive father of Maya", for messages and list items. */
 function describe(link: LinkConsent): string {
   const role = relationWord('parent', link.parent.gender, link.type);
-  return `${fullName(link.parent)} as ${role} of ${fullName(link.child)}`;
+  return $localize`:@@approvals.describeLink:${fullName(link.parent)}:parent: as ${role}:role: of ${fullName(link.child)}:child:`;
 }

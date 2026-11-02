@@ -144,7 +144,7 @@ export class SpouseLinkChoices {
       spouse.gender,
       spouse.isFormer ? 'FormerMarriage' : 'Marriage',
     );
-    return `${fullName(spouse)}, ${word} of ${of.name}`;
+    return $localize`:@@spouseLinks.choice:${fullName(spouse)}:spouse:, ${word}:role: of ${of.name}:name:`;
   }
 
   protected tick(spouseId: string, checked: boolean): void {
@@ -170,14 +170,14 @@ export class SpouseLinkChoices {
           links.push({
             parentId: spouse.id,
             childId: child.id,
-            label: `${child.name} as a child of ${spouseName}`,
+            label: $localize`:@@spouseLinks.asChildOf:${child.name}:child: as a child of ${spouseName}:parent:`,
           });
         }
       } else if (linkedIds.has(of.id)) {
         links.push({
           parentId: spouse.id,
           childId: personId,
-          label: `${spouseName} as a parent of ${personName}`,
+          label: $localize`:@@spouseLinks.asParentOf:${spouseName}:parent: as a parent of ${personName}:child:`,
         });
       }
     }

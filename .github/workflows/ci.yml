@@ -61,3 +61,8 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Check extracted messages
+        run: |
+          npm run extract-i18n
+          git diff --exit-code -- src/locale/messages.json

@@ -3,6 +3,8 @@ import { Component, computed, effect, inject, input, output, signal } from '@ang
 import { RouterLink } from '@angular/router';
 
 import { AuthService } from '../../core/auth/auth.service';
+import { localNumber } from '../../core/i18n/local-format';
+import { DigitsPipe } from '../../core/i18n/local-format.pipes';
 import { PeopleService } from '../people/people.service';
 import { PersonSummary, fullName } from '../people/person';
 import { relationHint } from '../relationships/relationship';
@@ -32,7 +34,7 @@ import {
  */
 @Component({
   selector: 'app-graph-view',
-  imports: [AddRelatives, DeletePerson, GraphDiagram, PersonConnections, RouterLink],
+  imports: [AddRelatives, DeletePerson, DigitsPipe, GraphDiagram, PersonConnections, RouterLink],
   templateUrl: './graph-view.html',
   styleUrl: './graph-view.css',
 })
@@ -50,6 +52,7 @@ export class GraphView {
   protected readonly relationHint = relationHint;
   protected readonly generationLabel = generationLabel;
   protected readonly maxShownPeople = maxShownPeople;
+  protected readonly separator = $localize`:@@common.listSeparator:, `;
   protected readonly shown = signal<ShownGraph | null>(null);
   /** The first view stopped at the server's limit (D-023). */
   protected readonly truncated = signal(false);
@@ -128,8 +131,10 @@ export class GraphView {
       this.shown.set(graph);
       this.notice.set(
         added === 0
-          ? `Everyone near ${name} is already shown.`
-          : `Added ${added} ${added === 1 ? 'person' : 'people'} near ${name}.`,
+          ? $localize`:@@graph.everyoneShown:Everyone near ${name}:name: is already shown.`
+          : added === 1
+            ? $localize`:@@graph.addedOne:Added 1 person near ${name}:name:.`
+            : $localize`:@@graph.addedMany:Added ${localNumber(added)}:count: people near ${name}:name:.`,
       );
     } catch (error) {
       this.error.set(problemMessage(error));
@@ -194,7 +199,9 @@ export class GraphView {
           ),
         });
       }
-      this.notice.set(`Deleted ${name}. They stay in the graph as “Deleted”, with their links.`);
+      this.notice.set(
+        $localize`:@@graph.deleted:Deleted ${name}:name:. They stay in the graph as “Deleted”, with their links.`,
+      );
     } catch (error) {
       this.error.set(problemMessage(error));
     }

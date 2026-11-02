@@ -1,38 +1,43 @@
 <form [formGroup]="form" (ngSubmit)="submit()" class="name-form">
   <label>
-    First name
+    <ng-container i18n="@@nameForm.firstName">First name</ng-container>
     <input formControlName="firstName" autocomplete="off" [attr.maxlength]="maxLength" required />
   </label>
   @if (form.controls.firstName.touched && form.controls.firstName.invalid) {
-    <p class="error" role="alert">Enter a first name.</p>
+    <p class="error" role="alert" i18n="@@problem.person.firstNameRequired">Enter a first name.</p>
   }
 
   <label>
-    Middle name <span class="hint">(optional)</span>
+    <ng-container i18n="@@nameForm.middleName">Middle name</ng-container>
+    <span class="hint" i18n="@@common.optional">(optional)</span>
     <input formControlName="middleName" autocomplete="off" [attr.maxlength]="maxLength" />
   </label>
 
   <label>
-    Last name <span class="hint">(optional)</span>
+    <ng-container i18n="@@nameForm.lastName">Last name</ng-container>
+    <span class="hint" i18n="@@common.optional">(optional)</span>
     <input formControlName="lastName" autocomplete="off" [attr.maxlength]="maxLength" />
   </label>
 
   <label>
-    Gender <span class="hint">(optional)</span>
+    <ng-container i18n="@@nameForm.gender">Gender</ng-container>
+    <span class="hint" i18n="@@common.optional">(optional)</span>
     <select formControlName="gender">
-      <option [ngValue]="null">Not set</option>
+      <option [ngValue]="null" i18n="@@nameForm.genderNotSet">Not set</option>
       @for (gender of genders; track gender) {
-        <option [ngValue]="gender">{{ gender }}</option>
+        <option [ngValue]="gender">{{ genderLabel(gender) }}</option>
       }
     </select>
   </label>
 
   <label>
-    Description <span class="hint">(optional, one line)</span>
+    <ng-container i18n="@@nameForm.description">Description</ng-container>
+    <span class="hint" i18n="@@nameForm.optionalOneLine">(optional, one line)</span>
     <input
       formControlName="description"
       autocomplete="off"
       placeholder="For example: Teacher, lives in Pokhara"
+      i18n-placeholder="@@nameForm.descriptionExample"
       [attr.maxlength]="maxDescriptionLength"
     />
   </label>
@@ -41,8 +46,10 @@
   @if (date()) {
     <label class="check">
       <input type="checkbox" formControlName="birthDateShown" />
-      Show the birth date to others
-      <span class="hint">(otherwise only you and administrators see it)</span>
+      <ng-container i18n="@@nameForm.showBirthDate">Show the birth date to others</ng-container>
+      <span class="hint" i18n="@@nameForm.showBirthDateHint"
+        >(otherwise only you and administrators see it)</span
+      >
     </label>
   }
 
@@ -50,6 +57,8 @@
 
   <div class="actions">
     <button type="submit" [disabled]="busy()">{{ submitLabel() }}</button>
-    <button type="button" class="secondary" (click)="cancelled.emit()">Cancel</button>
+    <button type="button" class="secondary" (click)="cancelled.emit()">
+      <ng-container i18n="@@common.cancel">Cancel</ng-container>
+    </button>
   </div>
 </form>

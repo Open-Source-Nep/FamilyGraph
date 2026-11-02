@@ -7,14 +7,14 @@ import { signedOutGuard } from './core/auth/signed-out.guard';
 export const routes: Routes = [
   {
     path: 'sign-in',
-    title: 'Sign in',
+    title: $localize`:@@signIn.title:Sign in`,
     canActivate: [signedOutGuard],
     loadComponent: () => import('./features/account/sign-in-page').then((m) => m.SignInPage),
   },
   {
     // Google's redirect URI; the page passes the result to the API (docs/authentication.md).
     path: 'google-callback',
-    title: 'Signing in',
+    title: $localize`:@@routes.signingIn:Signing in`,
     loadComponent: () =>
       import('./features/account/google-callback-page').then((m) => m.GoogleCallbackPage),
   },
@@ -29,52 +29,52 @@ export const routes: Routes = [
       },
       {
         path: 'people',
-        title: 'People',
+        title: $localize`:@@people.title:People`,
         loadComponent: () => import('./features/people/people-page').then((m) => m.PeoplePage),
       },
       {
         path: 'people/new',
-        title: 'Add a person',
+        title: $localize`:@@home.addPerson:Add a person`,
         loadComponent: () =>
           import('./features/people/new-person-page').then((m) => m.NewPersonPage),
       },
       {
         path: 'people/:id',
-        title: 'Person',
+        title: $localize`:@@routes.person:Person`,
         loadComponent: () => import('./features/people/person-page').then((m) => m.PersonPage),
       },
       {
         path: 'people/:id/graph',
-        title: 'Family graph',
+        title: $localize`:@@graph.familyGraph:Family graph`,
         loadComponent: () => import('./features/graph/graph-page').then((m) => m.GraphPage),
       },
       {
         path: 'people/:id/bansawali',
-        title: 'Bansawali',
+        title: $localize`:@@bansawali.title:Bansawali`,
         loadComponent: () => import('./features/graph/bansawali-page').then((m) => m.BansawaliPage),
       },
       {
         path: 'approvals',
-        title: 'Link approvals',
+        title: $localize`:@@approvals.title:Link approvals`,
         loadComponent: () =>
           import('./features/relationships/approvals-page').then((m) => m.ApprovalsPage),
       },
       {
         // A handover link; its secret is the fragment (PRD 01).
         path: 'handover',
-        title: 'Profile handover',
+        title: $localize`:@@handover.acceptTitle:Profile handover`,
         loadComponent: () =>
           import('./features/handovers/accept-handover-page').then((m) => m.AcceptHandoverPage),
       },
       {
         path: 'admin/users',
-        title: 'Users',
+        title: $localize`:@@users.title:Users`,
         canActivate: [adminGuard],
         loadComponent: () => import('./features/admin/users-page').then((m) => m.UsersPage),
       },
       {
         path: 'account',
-        title: 'Your account',
+        title: $localize`:@@account.title:Your account`,
         loadComponent: () => import('./features/account/account-page').then((m) => m.AccountPage),
       },
     ],

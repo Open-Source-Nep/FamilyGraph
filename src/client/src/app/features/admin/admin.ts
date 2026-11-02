@@ -20,5 +20,7 @@ export interface TransferredProfiles {
 
 /** The account's email, marked when Google has not verified it. */
 export function accountLabel(account: AccountSummary): string {
-  return account.emailVerified ? account.email : `${account.email} (not verified)`;
+  return account.emailVerified
+    ? account.email
+    : $localize`:@@users.accountNotVerified:${account.email}:email: (not verified)`;
 }

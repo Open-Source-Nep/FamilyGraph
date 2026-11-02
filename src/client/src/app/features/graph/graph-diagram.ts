@@ -15,6 +15,7 @@ import { Router } from '@angular/router';
 import cytoscape, { Core, ElementDefinition } from 'cytoscape';
 import dagre, { DagreLayoutOptions } from 'cytoscape-dagre';
 
+import { localNumber } from '../../core/i18n/local-format';
 import { fullName, initials } from '../people/person';
 import { PhotoLoader } from '../people/photo-loader.service';
 import { compareChildren, orderRow, orderSiblings, siblingSets } from './child-order';
@@ -144,10 +145,13 @@ export class GraphDiagram {
 
   protected readonly summary = computed(() => {
     const count = this.graph().people.length;
-    const diagram = `Family diagram of ${count} ${count === 1 ? 'person' : 'people'}.`;
+    const diagram =
+      count === 1
+        ? $localize`:@@diagram.summaryOne:Family diagram of 1 person.`
+        : $localize`:@@diagram.summaryMany:Family diagram of ${localNumber(count)}:count: people.`;
     return this.dots()
       ? diagram
-      : `${diagram} The list of people below has the same relationships.`;
+      : $localize`:@@diagram.summaryWithList:${diagram}:diagram: The list of people below has the same relationships.`;
   });
 
   private readonly canvas = viewChild.required<ElementRef<HTMLElement>>('canvas');
@@ -259,6 +263,10 @@ export class GraphDiagram {
   }
 
   /** The server decides; this only leaves the item out for people you could not delete. */
+  protected menuLabel(person: GraphPerson): string {
+    return $localize`:@@diagram.actionsFor:Actions for ${fullName(person)}:name:`;
+  }
+
   protected canDelete(person: GraphPerson): boolean {
     return person.maintainedByYou || this.administrator();
   }

@@ -51,7 +51,7 @@ export class NewPersonPage {
   /** The profile does not exist yet, so it has no spouses; you will maintain it. */
   protected readonly target = signal<LinkTarget>({
     id: null,
-    name: 'the new person',
+    name: $localize`:@@newPerson.theNewPerson:the new person`,
     maintainedByYou: true,
   });
   protected readonly parentNames = computed(() => names(this.parents()));
@@ -93,7 +93,7 @@ export class NewPersonPage {
         parent.id,
         id,
         parentType,
-        `${parent.name} as a parent`,
+        $localize`:@@newPerson.asParent:${parent.name}:name: as a parent`,
       );
       outcomes.push(outcome);
       if (outcome.state !== 'failed') {
@@ -104,7 +104,14 @@ export class NewPersonPage {
     outcomes.push(...(await createSpouseLinks(this.relationships, spouseLinks, parentType)));
     const childType = this.childType();
     for (const child of this.choosingChildren() ? this.children() : []) {
-      outcomes.push(await this.createLink(id, child.id, childType, `${child.name} as a child`));
+      outcomes.push(
+        await this.createLink(
+          id,
+          child.id,
+          childType,
+          $localize`:@@newPerson.asChild:${child.name}:name: as a child`,
+        ),
+      );
     }
     return outcomes;
   }
@@ -125,5 +132,5 @@ export class NewPersonPage {
 }
 
 function names(people: readonly Candidate[]): string {
-  return people.map((person) => person.name).join(', ');
+  return people.map((person) => person.name).join($localize`:@@common.listSeparator:, `);
 }

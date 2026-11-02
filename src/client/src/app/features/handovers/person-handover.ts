@@ -1,6 +1,7 @@
-import { DOCUMENT, DatePipe } from '@angular/common';
+import { DOCUMENT } from '@angular/common';
 import { Component, effect, inject, input, signal } from '@angular/core';
 
+import { LocalDateTimePipe } from '../../core/i18n/local-format.pipes';
 import { problemMessage } from '../people/problem';
 import { OpenHandover, handoverUrl } from './handover';
 import { HandoversService } from './handovers.service';
@@ -12,7 +13,7 @@ import { HandoversService } from './handovers.service';
  */
 @Component({
   selector: 'app-person-handover',
-  imports: [DatePipe],
+  imports: [LocalDateTimePipe],
   templateUrl: './person-handover.html',
 })
 export class PersonHandover {
@@ -68,7 +69,7 @@ export class PersonHandover {
       await navigator.clipboard.writeText(link);
       this.copied.set(true);
     } catch {
-      this.error.set('Copy the link from the box instead.');
+      this.error.set($localize`:@@handover.copyFailed:Copy the link from the box instead.`);
     }
   }
 

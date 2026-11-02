@@ -4,9 +4,10 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
+import { DigitsPipe } from '../../core/i18n/local-format.pipes';
 import { Person, fullName } from '../people/person';
 import { problemMessage } from '../people/problem';
-import { Candidate, PersonPicker } from './person-picker';
+import { Candidate, PersonPicker, pickerHintEveryone } from './person-picker';
 import {
   DirectRelatives,
   LinkEndpoint,
@@ -40,7 +41,14 @@ type LinkOutcome = SpouseLinkOutcome;
  */
 @Component({
   selector: 'app-person-relatives',
-  imports: [NgTemplateOutlet, PersonPicker, ReactiveFormsModule, RouterLink, SpouseLinkChoices],
+  imports: [
+    DigitsPipe,
+    NgTemplateOutlet,
+    PersonPicker,
+    ReactiveFormsModule,
+    RouterLink,
+    SpouseLinkChoices,
+  ],
   templateUrl: './person-relatives.html',
 })
 export class PersonRelatives {
@@ -50,6 +58,8 @@ export class PersonRelatives {
 
   protected readonly fullName = fullName;
   protected readonly relationHint = relationHint;
+  protected readonly deleteLinkLabel = $localize`:@@relatives.deleteLink:Delete link`;
+  protected readonly withdrawApprovalLabel = $localize`:@@relatives.withdrawApproval:Withdraw approval`;
   protected readonly relatives = signal<DirectRelatives | null>(null);
   protected readonly adding = signal(false);
   /** The people to link, in the order they were picked. */
@@ -80,8 +90,8 @@ export class PersonRelatives {
   }));
   protected readonly hint = computed(() =>
     this.person().maintainedByYou
-      ? 'Your profiles and the people linked to them are listed first. Type a name to search everyone with a public profile.'
-      : `You do not maintain ${this.name()}, so you can only pick your own profiles. The links stay inactive until its maintainer approves them.`,
+      ? pickerHintEveryone()
+      : $localize`:@@relatives.pickerHintOwn:You do not maintain ${this.name()}:name:, so you can only pick your own profiles. The links stay inactive until its maintainer approves them.`,
   );
 
   constructor() {
@@ -94,6 +104,14 @@ export class PersonRelatives {
       this.confirming.set(null);
       this.load(id);
     });
+  }
+
+  protected moveUpLabel(child: Relative): string {
+    return $localize`:@@relatives.moveUp:Move ${fullName(child)}:name: up`;
+  }
+
+  protected moveDownLabel(child: Relative): string {
+    return $localize`:@@relatives.moveDown:Move ${fullName(child)}:name: down`;
   }
 
   protected selectionChanged(selected: Candidate[]): void {
@@ -156,11 +174,13 @@ export class PersonRelatives {
     try {
       if (removal.kind === 'delete') {
         await this.relationships.delete(relative.linkId);
-        this.notice.set(`You deleted the link to ${fullName(relative)}.`);
+        this.notice.set(
+          $localize`:@@relatives.deleted:You deleted the link to ${fullName(relative)}:name:.`,
+        );
       } else {
         await this.relationships.disagree(relative.linkId, removal.endpoint);
         this.notice.set(
-          `You withdrew your approval, so the link to ${fullName(relative)} is no longer active. You can restore it on the Approvals page.`,
+          $localize`:@@relatives.withdrawn:You withdrew your approval, so the link to ${fullName(relative)}:name: is no longer active. You can restore it on the Approvals page.`,
         );
       }
       this.confirming.set(null);
@@ -234,7 +254,7 @@ export class PersonRelatives {
       }
       if (outcome.state === 'pending') {
         this.notice.set(
-          'The link is saved but not active yet. It becomes active when the maintainer of the other profile approves it.',
+          $localize`:@@relatives.savedPending:The link is saved but not active yet. It becomes active when the maintainer of the other profile approves it.`,
         );
       }
     } else {

@@ -1,7 +1,7 @@
 @if (relatives(); as relatives) {
-  <h2>Parents</h2>
+  <h2 i18n="@@relatives.parents">Parents</h2>
   @if (relatives.parents.length === 0) {
-    <p class="hint">No parents are linked.</p>
+    <p class="hint" i18n="@@relatives.noParents">No parents are linked.</p>
   } @else {
     <ul class="people">
       @for (parent of relatives.parents; track parent.id) {
@@ -20,16 +20,20 @@
       }
     </ul>
     @if (relatives.parentsTruncated) {
-      <p class="hint">Only the first {{ relatives.parents.length }} parents are shown.</p>
+      <p class="hint" i18n="@@relatives.parentsTruncated">
+        Only the first {{ relatives.parents.length | digits }} parents are shown.
+      </p>
     }
   }
 
-  <h2>Children</h2>
+  <h2 i18n="@@relatives.children">Children</h2>
   @if (relatives.children.length === 0) {
-    <p class="hint">No children are linked.</p>
+    <p class="hint" i18n="@@relatives.noChildren">No children are linked.</p>
   } @else {
     @if (person().maintainedByYou && relatives.children.length > 1) {
-      <p class="hint">Eldest first. Use the arrows to put the children in birth order.</p>
+      <p class="hint" i18n="@@relatives.orderHint">
+        Eldest first. Use the arrows to put the children in birth order.
+      </p>
     }
     <ul class="people">
       @for (child of relatives.children; track child.id; let index = $index, last = $last) {
@@ -39,7 +43,7 @@
               type="button"
               class="link-button order"
               [disabled]="saving() || index === 0"
-              [attr.aria-label]="'Move ' + fullName(child) + ' up'"
+              [attr.aria-label]="moveUpLabel(child)"
               (click)="move(index, -1)"
             >
               ↑
@@ -48,7 +52,7 @@
               type="button"
               class="link-button order"
               [disabled]="saving() || last"
-              [attr.aria-label]="'Move ' + fullName(child) + ' down'"
+              [attr.aria-label]="moveDownLabel(child)"
               (click)="move(index, 1)"
             >
               ↓
@@ -68,7 +72,9 @@
       }
     </ul>
     @if (relatives.childrenTruncated) {
-      <p class="hint">Only the first {{ relatives.children.length }} children are shown.</p>
+      <p class="hint" i18n="@@relatives.childrenTruncated">
+        Only the first {{ relatives.children.length | digits }} children are shown.
+      </p>
     }
   }
 }
@@ -77,21 +83,37 @@
   @if (confirming() === relative.linkId) {
     <div class="actions">
       @if (removal.kind === 'delete') {
-        <span>Delete this link? This cannot be undone; you can add the link again later.</span>
-        <button type="button" [disabled]="saving()" (click)="remove(relative, removal)">
+        <span i18n="@@relatives.confirmDelete"
+          >Delete this link? This cannot be undone; you can add the link again later.</span
+        >
+        <button
+          type="button"
+          [disabled]="saving()"
+          (click)="remove(relative, removal)"
+          i18n="@@common.delete"
+        >
           Delete
         </button>
       } @else {
-        <span>Withdraw your approval? The link stops being active.</span>
-        <button type="button" [disabled]="saving()" (click)="remove(relative, removal)">
+        <span i18n="@@relatives.confirmWithdraw"
+          >Withdraw your approval? The link stops being active.</span
+        >
+        <button
+          type="button"
+          [disabled]="saving()"
+          (click)="remove(relative, removal)"
+          i18n="@@relatives.withdraw"
+        >
           Withdraw
         </button>
       }
-      <button type="button" class="secondary" (click)="confirming.set(null)">Keep</button>
+      <button type="button" class="secondary" (click)="confirming.set(null)" i18n="@@users.keep">
+        Keep
+      </button>
     </div>
   } @else {
     <button type="button" class="link-button" (click)="confirming.set(relative.linkId)">
-      {{ removal.kind === 'delete' ? 'Delete link' : 'Withdraw approval' }}
+      {{ removal.kind === 'delete' ? deleteLinkLabel : withdrawApprovalLabel }}
     </button>
   }
 </ng-template>
@@ -100,20 +122,30 @@
   <p role="status">{{ notice }}</p>
 }
 @if (outcomes().length > 0) {
-  <ul class="people" role="status" aria-label="Links you added">
+  <ul
+    class="people"
+    role="status"
+    aria-label="Links you added"
+    i18n-aria-label="@@newPerson.linksAdded"
+  >
     @for (outcome of outcomes(); track $index) {
       @switch (outcome.state) {
         @case ('active') {
-          <li>{{ outcome.name }}: linked.</li>
+          <li i18n="@@linkOutcome.active">{{ outcome.name }}: linked.</li>
         }
         @case ('pending') {
-          <li>{{ outcome.name }}: saved, but not active until the other maintainer approves it.</li>
+          <li i18n="@@linkOutcome.pending">
+            {{ outcome.name }}: saved, but not active until the other maintainer approves it.
+          </li>
         }
         @case ('existing') {
-          <li>{{ outcome.name }}: already linked.</li>
+          <li i18n="@@linkOutcome.existing">{{ outcome.name }}: already linked.</li>
         }
         @case ('failed') {
-          <li class="error">{{ outcome.name }}: not linked. {{ outcome.reason }}</li>
+          <li class="error" i18n="@@linkOutcome.failed">
+            {{ outcome.name }}: not linked.
+            {{ outcome.reason }}
+          </li>
         }
       }
     }
@@ -124,17 +156,17 @@
 }
 
 @if (adding()) {
-  <h2>Add parents or children</h2>
+  <h2><ng-container i18n="@@relatives.add">Add parents or children</ng-container></h2>
   <div [formGroup]="form" class="name-form">
     <fieldset>
-      <legend>Link them as</legend>
+      <legend i18n="@@relatives.linkThemAs">Link them as</legend>
       <label>
         <input type="radio" formControlName="side" value="parent" />
-        parents of {{ name() }}
+        <ng-container i18n="@@relatives.parentsOf">parents of {{ name() }}</ng-container>
       </label>
       <label>
         <input type="radio" formControlName="side" value="child" />
-        children of {{ name() }}
+        <ng-container i18n="@@relatives.childrenOf">children of {{ name() }}</ng-container>
       </label>
     </fieldset>
 
@@ -146,32 +178,44 @@
       (selectedChange)="selectionChanged($event)"
     />
     @if (selectionMissing()) {
-      <p class="error" role="alert">Choose at least one person.</p>
+      <p class="error" role="alert" i18n="@@relatives.chooseSomeone">Choose at least one person.</p>
     }
 
     <app-spouse-link-choices [relation]="side()" [person]="target()" [picked]="selected()" />
 
     <fieldset>
-      <legend>Relationship</legend>
+      <legend i18n="@@relatives.relationship">Relationship</legend>
       <label>
         <input type="radio" formControlName="type" value="Biological" />
-        Biological
+        <ng-container i18n="@@linkType.biological">Biological</ng-container>
       </label>
       <label>
         <input type="radio" formControlName="type" value="Adoptive" />
-        Adoptive
+        <ng-container i18n="@@linkType.adoptive">Adoptive</ng-container>
       </label>
     </fieldset>
 
     <div class="actions">
       <button type="button" [disabled]="saving()" (click)="add()">
-        {{ selected().length > 1 ? 'Add ' + selected().length + ' links' : 'Add link' }}
+        @if (selected().length > 1) {
+          <ng-container i18n="@@relatives.addLinks"
+            >Add
+            {{ selected().length | digits }}
+            links</ng-container
+          >
+        } @else {
+          <ng-container i18n="@@relatives.addLink">Add link</ng-container>
+        }
       </button>
-      <button type="button" class="secondary" (click)="adding.set(false)">Cancel</button>
+      <button type="button" class="secondary" (click)="adding.set(false)">
+        <ng-container i18n="@@common.cancel">Cancel</ng-container>
+      </button>
     </div>
   </div>
 } @else if (person().placeholder !== 'Deleted') {
   <p>
-    <button type="button" class="secondary" (click)="startAdding()">Add parents or children</button>
+    <button type="button" class="secondary" (click)="startAdding()">
+      <ng-container i18n="@@relatives.add">Add parents or children</ng-container>
+    </button>
   </p>
 }

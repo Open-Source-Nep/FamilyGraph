@@ -1,10 +1,14 @@
-<h1 class="visually-hidden">Family graph</h1>
+<h1 class="visually-hidden" i18n="@@graph.familyGraph">Family graph</h1>
 @if (error(); as error) {
   <p class="error" role="alert">{{ error }}</p>
 }
 @if (shown(); as shown) {
   <app-graph-diagram [graph]="shown" [dots]="true" (selected)="open($event)" />
-  <nav class="people-links" aria-label="People in the family graph">
+  <nav
+    class="people-links"
+    aria-label="People in the family graph"
+    i18n-aria-label="@@home.peopleInGraph"
+  >
     <ul>
       @for (row of shown.people; track row.person.id) {
         <li>

@@ -12,18 +12,25 @@
     #enlarged
     class="photo-dialog"
     aria-label="Enlarged photo"
+    i18n-aria-label="@@photo.enlarged"
     (click)="closeOnBackdrop($event)"
   >
     <div class="photo-frame">
       <img class="enlarged" [src]="url" [alt]="alt()" width="512" height="512" />
-      <button type="button" class="secondary close" (click)="closeEnlarged()">Close</button>
+      <button type="button" class="secondary close" (click)="closeEnlarged()" i18n="@@common.close">
+        Close
+      </button>
     </div>
   </dialog>
 }
 @if (person().maintainedByYou && !person().placeholder) {
   <p class="actions">
     <label class="button secondary" [class.disabled]="saving()">
-      {{ url() ? 'Change photo' : 'Add photo' }}
+      @if (url()) {
+        <ng-container i18n="@@photo.change">Change photo</ng-container>
+      } @else {
+        <ng-container i18n="@@photo.add">Add photo</ng-container>
+      }
       <input
         #file
         type="file"
@@ -33,7 +40,13 @@
       />
     </label>
     @if (url()) {
-      <button type="button" class="secondary" [disabled]="saving()" (click)="remove()">
+      <button
+        type="button"
+        class="secondary"
+        [disabled]="saving()"
+        (click)="remove()"
+        i18n="@@photo.remove"
+      >
         Remove photo
       </button>
     }

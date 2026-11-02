@@ -1,9 +1,10 @@
 <label class="search-box">
-  Search everyone
+  <ng-container i18n="@@people.searchEveryone">Search everyone</ng-container>
   <input
     type="search"
     autocomplete="off"
     placeholder="Name or description"
+    i18n-placeholder="@@people.searchPlaceholder"
     [value]="query()"
     (input)="search($any($event.target).value)"
   />
@@ -34,17 +35,23 @@
       </li>
     } @empty {
       @if (!loading()) {
-        <li class="hint empty">Nobody matches.</li>
+        <li class="hint empty" i18n="@@people.nobodyMatches">Nobody matches.</li>
       }
     }
   </ul>
   @if (hasMore()) {
     <p>
-      <button type="button" class="secondary" [disabled]="loading()" (click)="showMore()">
+      <button
+        type="button"
+        class="secondary"
+        [disabled]="loading()"
+        (click)="showMore()"
+        i18n="@@people.showMore"
+      >
         Show more
       </button>
     </p>
   }
 } @else if (loading()) {
-  <p class="hint">Loading…</p>
+  <p class="hint" i18n="@@common.loading">Loading…</p>
 }

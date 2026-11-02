@@ -6,10 +6,15 @@
   @if (profiles(); as profiles) {
     @if (profiles.length === 0) {
       <h1>FamilyGraph</h1>
-      <p>Signed in as {{ account()?.email }}.</p>
+      <p i18n="@@home.signedInAs">
+        Signed in as
+        {{ account()?.email }}.
+      </p>
       <p>
-        Your family graph appears here once you add a profile.
-        <a routerLink="/people/new">Add a person</a>
+        <ng-container i18n="@@home.emptyGraph"
+          >Your family graph appears here once you add a profile.</ng-container
+        >
+        <a routerLink="/people/new" i18n="@@home.addPerson">Add a person</a>
       </p>
     } @else {
       <app-home-graph />

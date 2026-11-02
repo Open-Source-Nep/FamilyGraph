@@ -1,12 +1,26 @@
 @import '@opensourcenepal/nepali-calendar-angular/styles.css';
 
+/*
+ * Devanagari text, the Nepali UI and Nepali names alike, uses the bundled Noto Sans Devanagari on
+ * screen and in print, so it looks the same on every device (D-047). The unicode-range keeps Latin
+ * text in the system font, and the file loads only on pages that show Devanagari.
+ */
+@font-face {
+  font-family: 'Noto Sans Devanagari';
+  src: url('/fonts/NotoSansDevanagari.woff2') format('woff2');
+  font-weight: 100 900;
+  font-display: swap;
+  unicode-range:
+    U+0900-097F, U+1CD0-1CFF, U+200C-200D, U+20A8, U+20B9, U+25CC, U+A830-A839, U+A8E0-A8FF;
+}
+
 :root {
   --text: #1f1f24;
   --muted: #5b5b66;
   --border: #d9d9e0;
   --accent: #2f5bd3;
   --error: #b3261e;
-  font-family: system-ui, sans-serif;
+  font-family: 'Noto Sans Devanagari', system-ui, sans-serif;
   color: var(--text);
   line-height: 1.5;
 }

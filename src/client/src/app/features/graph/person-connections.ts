@@ -3,6 +3,7 @@ import { Component, computed, effect, inject, input, signal } from '@angular/cor
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
+import { DigitsPipe } from '../../core/i18n/local-format.pipes';
 import { PersonLabel, PersonName, fullName } from '../people/person';
 import { problemMessage } from '../people/problem';
 import { Connections, GraphPerson, stepLabel } from './graph';
@@ -18,7 +19,7 @@ export type ConnectionCandidate = (PersonName | PersonLabel) & { id: string };
  */
 @Component({
   selector: 'app-person-connections',
-  imports: [NgTemplateOutlet, ReactiveFormsModule, RouterLink],
+  imports: [DigitsPipe, NgTemplateOutlet, ReactiveFormsModule, RouterLink],
   templateUrl: './person-connections.html',
 })
 export class PersonConnections {

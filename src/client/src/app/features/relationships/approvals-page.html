@@ -1,6 +1,6 @@
 <section class="panel">
-  <h1>Link approvals</h1>
-  <p class="hint">
+  <h1 i18n="@@approvals.title">Link approvals</h1>
+  <p class="hint" i18n="@@approvals.intro">
     Parent and child links and marriages of the profiles you maintain that are not active. A link or
     marriage is active only when the maintainers of both people approve it.
   </p>
@@ -14,16 +14,24 @@
 
   @if (list(); as list) {
     @if (list.links.length === 0 && marriageList()?.marriages?.length === 0) {
-      <p>Nothing is waiting. All links and marriages of your profiles are active.</p>
+      <p i18n="@@approvals.nothingWaiting">
+        Nothing is waiting. All links and marriages of your profiles are active.
+      </p>
     }
     @for (section of sections(); track section.title) {
       <h2>{{ section.title }}</h2>
       <ul class="links">
         @for (link of section.links; track link.id) {
           <li>
-            <a [routerLink]="['/people', link.parent.id]">{{ fullName(link.parent) }}</a>
-            as {{ relationWord('parent', link.parent.gender, link.type) }} of
-            <a [routerLink]="['/people', link.child.id]">{{ fullName(link.child) }}</a>
+            <ng-container i18n="@@approvals.linkLine"
+              ><a [routerLink]="['/people', link.parent.id]">{{ fullName(link.parent) }}</a>
+              as
+              {{ relationWord('parent', link.parent.gender, link.type) }}
+              of
+              <a [routerLink]="['/people', link.child.id]">{{
+                fullName(link.child)
+              }}</a></ng-container
+            >
             @if (section.yours) {
               <div class="actions">
                 @for (action of actions(link); track action.label) {
@@ -38,16 +46,28 @@
                 }
                 @if (deletable(link)) {
                   @if (confirming() === link.id) {
-                    <span>Delete this link? This cannot be undone.</span>
-                    <button type="button" [disabled]="saving()" (click)="delete(link)">
+                    <span i18n="@@approvals.confirmDeleteLink"
+                      >Delete this link? This cannot be undone.</span
+                    >
+                    <button
+                      type="button"
+                      [disabled]="saving()"
+                      (click)="delete(link)"
+                      i18n="@@common.delete"
+                    >
                       Delete
                     </button>
-                    <button type="button" class="secondary" (click)="confirming.set(null)">
+                    <button
+                      type="button"
+                      class="secondary"
+                      (click)="confirming.set(null)"
+                      i18n="@@users.keep"
+                    >
                       Keep
                     </button>
                   } @else {
                     <button type="button" class="secondary" (click)="confirming.set(link.id)">
-                      Delete link
+                      <ng-container i18n="@@relatives.deleteLink">Delete link</ng-container>
                     </button>
                   }
                 }
@@ -60,21 +80,27 @@
       </ul>
     }
     @if (list.isTruncated) {
-      <p class="hint">Only the first {{ list.links.length }} links are shown.</p>
+      <p class="hint" i18n="@@approvals.linksTruncated">
+        Only the first {{ list.links.length | digits }} links are shown.
+      </p>
     }
   }
 
   @if (marriageList(); as marriageList) {
     @if (marriageList.marriages.length > 0) {
-      <h2>Marriages</h2>
+      <h2 i18n="@@approvals.marriages">Marriages</h2>
       <ul class="links">
         @for (marriage of marriageList.marriages; track marriage.id) {
           <li>
-            <a [routerLink]="['/people', marriage.first.id]">{{ fullName(marriage.first) }}</a>
-            married to
-            <a [routerLink]="['/people', marriage.second.id]">{{ fullName(marriage.second) }}</a>
+            <ng-container i18n="@@approvals.marriageLine"
+              ><a [routerLink]="['/people', marriage.first.id]">{{ fullName(marriage.first) }}</a>
+              married to
+              <a [routerLink]="['/people', marriage.second.id]">{{
+                fullName(marriage.second)
+              }}</a></ng-container
+            >
             @if (marriage.isFormer) {
-              <span class="hint"> (former)</span>
+              <span class="hint" i18n="@@approvals.former"> (former)</span>
             }
             @if (marriageActions(marriage).length > 0 || marriageDeletable(marriage)) {
               <div class="actions">
@@ -90,16 +116,28 @@
                 }
                 @if (marriageDeletable(marriage)) {
                   @if (confirming() === marriage.id) {
-                    <span>Delete this marriage? This cannot be undone.</span>
-                    <button type="button" [disabled]="saving()" (click)="deleteMarriage(marriage)">
+                    <span i18n="@@approvals.confirmDeleteMarriage"
+                      >Delete this marriage? This cannot be undone.</span
+                    >
+                    <button
+                      type="button"
+                      [disabled]="saving()"
+                      (click)="deleteMarriage(marriage)"
+                      i18n="@@common.delete"
+                    >
                       Delete
                     </button>
-                    <button type="button" class="secondary" (click)="confirming.set(null)">
+                    <button
+                      type="button"
+                      class="secondary"
+                      (click)="confirming.set(null)"
+                      i18n="@@users.keep"
+                    >
                       Keep
                     </button>
                   } @else {
                     <button type="button" class="secondary" (click)="confirming.set(marriage.id)">
-                      Delete marriage
+                      <ng-container i18n="@@spouses.deleteMarriage">Delete marriage</ng-container>
                     </button>
                   }
                 }
@@ -111,26 +149,36 @@
         }
       </ul>
       @if (marriageList.isTruncated) {
-        <p class="hint">Only the first {{ marriageList.marriages.length }} marriages are shown.</p>
+        <p class="hint" i18n="@@approvals.marriagesTruncated">
+          Only the first {{ marriageList.marriages.length | digits }} marriages are shown.
+        </p>
       }
     }
   }
 
   @if (pendingLinks(); as pendingLinks) {
-    <h2>Waiting for other maintainers</h2>
-    <p class="hint">
+    <h2 i18n="@@approvals.waitingForOthersAdmin">Waiting for other maintainers</h2>
+    <p class="hint" i18n="@@approvals.adminIntro">
       As an administrator you can approve a side that is still waiting, on behalf of its maintainer.
       A side its maintainer declined or withdrew stays theirs to restore.
     </p>
     @if (pendingLinks.links.length === 0 && pendingMarriages()?.marriages?.length === 0) {
-      <p>No link or marriage is waiting for another maintainer.</p>
+      <p i18n="@@approvals.adminNothingWaiting">
+        No link or marriage is waiting for another maintainer.
+      </p>
     }
     <ul class="links">
       @for (link of pendingLinks.links; track link.id) {
         <li>
-          <a [routerLink]="['/people', link.parent.id]">{{ fullName(link.parent) }}</a>
-          as {{ relationWord('parent', link.parent.gender, link.type) }} of
-          <a [routerLink]="['/people', link.child.id]">{{ fullName(link.child) }}</a>
+          <ng-container i18n="@@approvals.linkLine"
+            ><a [routerLink]="['/people', link.parent.id]">{{ fullName(link.parent) }}</a>
+            as
+            {{ relationWord('parent', link.parent.gender, link.type) }}
+            of
+            <a [routerLink]="['/people', link.child.id]">{{
+              fullName(link.child)
+            }}</a></ng-container
+          >
           <div class="actions">
             @for (action of administratorActions(link); track action.label) {
               <button
@@ -146,9 +194,13 @@
       }
       @for (marriage of pendingMarriages()?.marriages ?? []; track marriage.id) {
         <li>
-          <a [routerLink]="['/people', marriage.first.id]">{{ fullName(marriage.first) }}</a>
-          married to
-          <a [routerLink]="['/people', marriage.second.id]">{{ fullName(marriage.second) }}</a>
+          <ng-container i18n="@@approvals.marriageLine"
+            ><a [routerLink]="['/people', marriage.first.id]">{{ fullName(marriage.first) }}</a>
+            married to
+            <a [routerLink]="['/people', marriage.second.id]">{{
+              fullName(marriage.second)
+            }}</a></ng-container
+          >
           <div class="actions">
             @for (action of marriageAdministratorActions(marriage); track action.label) {
               <button
@@ -164,7 +216,9 @@
       }
     </ul>
     @if (pendingLinks.isTruncated || pendingMarriages()?.isTruncated) {
-      <p class="hint">Only the first ones are shown. Approve some to see the rest.</p>
+      <p class="hint" i18n="@@approvals.adminTruncated">
+        Only the first ones are shown. Approve some to see the rest.
+      </p>
     }
   }
 </section>

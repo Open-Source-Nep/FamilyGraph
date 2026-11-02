@@ -10,7 +10,9 @@ import { GraphView } from './graph-view';
   template: `
     <section class="panel graph-panel">
       <app-graph-view [id]="id()" />
-      <p><a [routerLink]="['/people', id()]">Back to the profile</a></p>
+      <p>
+        <a [routerLink]="['/people', id()]" i18n="@@graph.backToProfile">Back to the profile</a>
+      </p>
     </section>
   `,
 })

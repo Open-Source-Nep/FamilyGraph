@@ -1,5 +1,9 @@
-import { bootstrapApplication } from '@angular/platform-browser';
-import { appConfig } from './app/app.config';
-import { App } from './app/app';
+/// <reference types="@angular/localize" />
 
-bootstrapApplication(App, appConfig).catch((err) => console.error(err));
+import { loadStartup } from './app/core/i18n/startup';
+
+// `$localize` translates messages as their modules load, so the app is imported only once the
+// chosen language's translations are loaded (D-047).
+loadStartup()
+  .then(async (startup) => (await import('./app/bootstrap')).bootstrap(startup))
+  .catch((err) => console.error(err));

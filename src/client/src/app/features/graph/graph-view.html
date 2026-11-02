@@ -4,13 +4,24 @@
 
 @if (shown(); as shown) {
   @if (centre(); as centre) {
-    <h1>Family graph around {{ fullName(centre) }}</h1>
+    <h1 i18n="@@graph.title">Family graph around {{ fullName(centre) }}</h1>
     <p class="hint">
-      Showing {{ shown.people.length }} {{ shown.people.length === 1 ? 'person' : 'people' }}
-      through active links.
+      @if (shown.people.length === 1) {
+        <ng-container i18n="@@graph.showingOne"
+          >Showing 1 person through active links.</ng-container
+        >
+      } @else {
+        <ng-container i18n="@@graph.showingMany"
+          >Showing
+          {{ shown.people.length | digits }}
+          people through active links.</ng-container
+        >
+      }
       @if (truncated()) {
-        More relatives are in reach: load more around someone with a double border, or centre the
-        view on them.
+        <ng-container i18n="@@graph.moreInReach"
+          >More relatives are in reach: load more around someone with a double border, or centre the
+          view on them.</ng-container
+        >
       }
     </p>
 
@@ -38,25 +49,35 @@
       <div class="selected" aria-live="polite">
         <strong>{{ fullName(selected.person) }}</strong>
         <div class="actions">
-          <a [routerLink]="['/people', selected.person.id]">Open profile</a>
+          <a [routerLink]="['/people', selected.person.id]" i18n="@@graph.openProfile"
+            >Open profile</a
+          >
           @if (selected.person.id !== shown.centreId) {
-            <a [routerLink]="['/people', selected.person.id, 'graph']">Centre the view here</a>
+            <a [routerLink]="['/people', selected.person.id, 'graph']" i18n="@@graph.centreHereView"
+              >Centre the view here</a
+            >
           }
-          <a [routerLink]="['/people', selected.person.id, 'bansawali']">Show the Bansawali</a>
+          <a
+            [routerLink]="['/people', selected.person.id, 'bansawali']"
+            i18n="@@person.showBansawali"
+            >Show the Bansawali</a
+          >
           @if (selected.hasMore && !full()) {
             <button
               type="button"
               class="link-button"
               [disabled]="loadingAround() !== null"
               (click)="loadMore(selected.person.id)"
+              i18n="@@graph.loadMoreAround"
             >
-              Load more around {{ fullName(selected.person) }}
+              Load more around
+              {{ fullName(selected.person) }}
             </button>
           }
         </div>
       </div>
     } @else {
-      <p class="hint">
+      <p class="hint" i18n="@@graph.howTo">
         Hover over someone for their details, select them in the diagram, or use the list below.
         Right-click someone, or press and hold, to add their parents, children or spouse, or to
         delete a profile you may delete.
@@ -67,13 +88,14 @@
       <p role="status">{{ notice }}</p>
     }
     @if (full()) {
-      <p class="hint">
-        The view shows {{ maxShownPeople }} people, the most it can. Centre the view on someone to
-        explore further.
+      <p class="hint" i18n="@@graph.full">
+        The view shows
+        {{ maxShownPeople | digits }}
+        people, the most it can. Centre the view on someone to explore further.
       </p>
     }
 
-    <h2>People in this view</h2>
+    <h2 i18n="@@graph.peopleInView">People in this view</h2>
     @for (group of generations(); track group.generation) {
       <h3>{{ generationLabel(group.generation) }}</h3>
       <ul class="graph-people">
@@ -81,25 +103,25 @@
           <li [class.selected-person]="entry.row.person.id === selectedId()">
             <a [routerLink]="['/people', entry.row.person.id]">{{ fullName(entry.row.person) }}</a>
             @if (entry.row.person.id === shown.centreId) {
-              <span class="hint"> (centre)</span>
+              <span class="hint" i18n="@@graph.centreMark"> (centre)</span>
             }
             @if (entry.parents.length) {
               <div>
-                Parents:
+                <ng-container i18n="@@graph.parentsLabel">Parents: </ng-container>
                 @for (parent of entry.parents; track parent.link.id; let last = $last) {
                   <a [routerLink]="['/people', parent.person.id]">{{ fullName(parent.person) }}</a>
                   @if (relationHint('parent', parent.person.gender, parent.link.type); as hint) {
                     <span class="hint"> ({{ hint }})</span>
                   }
                   @if (!last) {
-                    <span>, </span>
+                    <span>{{ separator }}</span>
                   }
                 }
               </div>
             }
             @if (entry.spouses.length) {
               <div>
-                Spouses:
+                <ng-container i18n="@@graph.spousesLabel">Spouses: </ng-container>
                 @for (spouse of entry.spouses; track spouse.marriage.id; let last = $last) {
                   <a [routerLink]="['/people', spouse.person.id]">{{ fullName(spouse.person) }}</a>
                   @if (
@@ -113,40 +135,46 @@
                     <span class="hint"> ({{ hint }})</span>
                   }
                   @if (!last) {
-                    <span>, </span>
+                    <span>{{ separator }}</span>
                   }
                 }
               </div>
             }
             @if (entry.children.length) {
               <div>
-                Children:
+                <ng-container i18n="@@graph.childrenLabel">Children: </ng-container>
                 @for (child of entry.children; track child.link.id; let last = $last) {
                   <a [routerLink]="['/people', child.person.id]">{{ fullName(child.person) }}</a>
                   @if (relationHint('child', child.person.gender, child.link.type); as hint) {
                     <span class="hint"> ({{ hint }})</span>
                   }
                   @if (!last) {
-                    <span>, </span>
+                    <span>{{ separator }}</span>
                   }
                 }
               </div>
             }
             @if (entry.row.hasMore) {
               <div class="actions">
-                <span class="hint">Has relatives not shown.</span>
+                <span class="hint" i18n="@@graph.hasMore">Has relatives not shown.</span>
                 @if (!full()) {
                   <button
                     type="button"
                     class="link-button"
                     [disabled]="loadingAround() !== null"
                     (click)="loadMore(entry.row.person.id)"
+                    i18n="@@graph.loadMoreAround"
                   >
-                    Load more around {{ fullName(entry.row.person) }}
+                    Load more around
+                    {{ fullName(entry.row.person) }}
                   </button>
                 }
                 @if (entry.row.person.id !== shown.centreId) {
-                  <a [routerLink]="['/people', entry.row.person.id, 'graph']">Centre here</a>
+                  <a
+                    [routerLink]="['/people', entry.row.person.id, 'graph']"
+                    i18n="@@graph.centreHere"
+                    >Centre here</a
+                  >
                 }
               </div>
             }

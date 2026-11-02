@@ -1,8 +1,8 @@
-import { DatePipe } from '@angular/common';
 import { Component, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
+import { LocalDateTimePipe } from '../../core/i18n/local-format.pipes';
 import { fullName } from '../people/person';
 import { problemMessage } from '../people/problem';
 import { HandoverPreview } from './handover';
@@ -14,7 +14,7 @@ import { HandoversService } from './handovers.service';
  */
 @Component({
   selector: 'app-accept-handover-page',
-  imports: [DatePipe, RouterLink],
+  imports: [LocalDateTimePipe, RouterLink],
   templateUrl: './accept-handover-page.html',
 })
 export class AcceptHandoverPage {
@@ -33,7 +33,9 @@ export class AcceptHandoverPage {
       this.preview.set(null);
       this.error.set(null);
       if (!token) {
-        this.error.set('This handover link is incomplete. Ask for the whole link.');
+        this.error.set(
+          $localize`:@@handover.incomplete:This handover link is incomplete. Ask for the whole link.`,
+        );
         return;
       }
       this.handovers.preview(token).then(

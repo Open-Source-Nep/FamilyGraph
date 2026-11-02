@@ -2,6 +2,8 @@ import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
+import { localNumber } from '../../core/i18n/local-format';
+import { DigitsPipe } from '../../core/i18n/local-format.pipes';
 import { PersonAvatar } from '../people/person-avatar';
 import { fullName } from '../people/person';
 import { problemMessage } from '../people/problem';
@@ -30,7 +32,7 @@ export type BansawaliPhotoSize = 'None' | 'Small' | 'Medium' | 'Large';
 
 @Component({
   selector: 'app-bansawali-page',
-  imports: [NgTemplateOutlet, PersonAvatar, RouterLink],
+  imports: [DigitsPipe, NgTemplateOutlet, PersonAvatar, RouterLink],
   templateUrl: './bansawali-page.html',
   styleUrl: './bansawali-page.css',
 })
@@ -44,10 +46,10 @@ export class BansawaliPage {
 
   protected readonly fullName = fullName;
   protected readonly photoSizes: readonly { value: BansawaliPhotoSize; label: string }[] = [
-    { value: 'None', label: 'None' },
-    { value: 'Small', label: 'Small' },
-    { value: 'Medium', label: 'Medium' },
-    { value: 'Large', label: 'Large' },
+    { value: 'None', label: $localize`:@@bansawali.photosNone:None` },
+    { value: 'Small', label: $localize`:@@bansawali.photosSmall:Small` },
+    { value: 'Medium', label: $localize`:@@bansawali.photosMedium:Medium` },
+    { value: 'Large', label: $localize`:@@bansawali.photosLarge:Large` },
   ];
   protected readonly photoSize = signal<BansawaliPhotoSize>('Small');
   protected readonly allChildren = computed(() => this.line() === 'AllChildren');
@@ -64,11 +66,18 @@ export class BansawaliPage {
   });
   protected readonly title = computed(() => {
     const root = this.tree();
-    return root ? bansawaliTitle(root.row.person) : 'Bansawali';
+    return root ? bansawaliTitle(root.row.person) : $localize`:@@bansawali.title:Bansawali`;
   });
   protected readonly generations = computed(
     () => Math.max(0, ...(this.bansawali()?.people ?? []).map((row) => row.generation)) + 1,
   );
+  /** "1 generation" or "5 generations". */
+  protected readonly generationCount = computed(() => {
+    const count = this.generations();
+    return count === 1
+      ? $localize`:@@bansawali.oneGeneration:1 generation`
+      : $localize`:@@bansawali.generations:${localNumber(count)}:count: generations`;
+  });
 
   constructor() {
     effect(() => {

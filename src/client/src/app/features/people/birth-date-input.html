@@ -1,6 +1,9 @@
 @if (open()) {
   <fieldset class="birth-date">
-    <legend>Birth date <span class="hint">(optional)</span></legend>
+    <legend>
+      <ng-container i18n="@@birthDate.legend">Birth date</ng-container>
+      <span class="hint" i18n="@@common.optional">(optional)</span>
+    </legend>
     <div class="choices">
       <label>
         <input
@@ -9,7 +12,7 @@
           [checked]="calendar() === 'Bs'"
           (change)="setCalendar('Bs')"
         />
-        BS
+        <ng-container i18n="@@birthDate.calendarBs">BS</ng-container>
       </label>
       <label>
         <input
@@ -18,11 +21,11 @@
           [checked]="calendar() === 'Ad'"
           (change)="setCalendar('Ad')"
         />
-        AD
+        <ng-container i18n="@@birthDate.calendarAd">AD</ng-container>
       </label>
     </div>
     <div class="choices known">
-      <span>Known:</span>
+      <span i18n="@@birthDate.known">Known:</span>
       @for (choice of knownChoices; track choice.value) {
         <label>
           <input
@@ -37,7 +40,7 @@
     </div>
     <div class="date-parts">
       <label>
-        Year
+        <ng-container i18n="@@birthDate.year">Year</ng-container>
         <input
           type="number"
           inputmode="numeric"
@@ -49,9 +52,9 @@
       </label>
       @if (known() !== 'year') {
         <label>
-          Month
+          <ng-container i18n="@@birthDate.month">Month</ng-container>
           <select (change)="setMonth($any($event.target).value)">
-            <option value="" [selected]="month() === null">Choose</option>
+            <option value="" [selected]="month() === null" i18n="@@birthDate.choose">Choose</option>
             @for (name of months(); track $index) {
               <option [value]="$index + 1" [selected]="month() === $index + 1">{{ name }}</option>
             }
@@ -60,32 +63,38 @@
       }
       @if (known() === 'day') {
         <label>
-          Day
+          <ng-container i18n="@@birthDate.day">Day</ng-container>
           <select (change)="setDay($any($event.target).value)">
-            <option value="" [selected]="day() === null">Choose</option>
+            <option value="" [selected]="day() === null" i18n="@@birthDate.choose">Choose</option>
             @for (value of days(); track value) {
-              <option [value]="value" [selected]="day() === value">{{ value }}</option>
+              <option [value]="value" [selected]="day() === value">{{ value | digits }}</option>
             }
           </select>
         </label>
       }
     </div>
-    @if (missing(); as parts) {
-      <p class="error">Choose the {{ parts }}, or change what is known.</p>
+    @if (missing(); as missing) {
+      <p class="error">{{ missing }}</p>
     } @else if (invalid()) {
-      <p class="error" role="alert">That date does not exist.</p>
+      <p class="error" role="alert" i18n="@@birthDate.invalid">That date does not exist.</p>
     }
     <div class="actions">
       @if (canPick()) {
         <button type="button" class="secondary" (click)="picking.set(!picking())">
-          {{ picking() ? 'Close the calendar' : 'Pick on the calendar' }}
+          @if (picking()) {
+            <ng-container i18n="@@birthDate.closeCalendar">Close the calendar</ng-container>
+          } @else {
+            <ng-container i18n="@@birthDate.pickOnCalendar">Pick on the calendar</ng-container>
+          }
         </button>
       }
-      <button type="button" class="secondary" (click)="remove()">Remove birth date</button>
+      <button type="button" class="secondary" (click)="remove()" i18n="@@birthDate.remove">
+        Remove birth date
+      </button>
     </div>
     @if (picking() && canPick()) {
       <osn-nepali-calendar
-        script="roman"
+        [script]="script"
         [showScriptToggle]="false"
         [showCalendarToggle]="false"
         [calendar]="calendar() === 'Bs' ? 'bs' : 'ad'"
@@ -100,6 +109,8 @@
   </fieldset>
 } @else {
   <p>
-    <button type="button" class="secondary" (click)="add()">Add birth date</button>
+    <button type="button" class="secondary" (click)="add()" i18n="@@birthDate.add">
+      Add birth date
+    </button>
   </p>
 }

@@ -63,8 +63,9 @@ The technical decision log, plus any unresolved choices. Do not treat recommenda
 - All people on the People page, paged (D-042 below).
 - Bansawali view (D-043 below).
 - Photos in the Bansawali (D-044 below).
-- A long Bansawali in sections (D-045 below, proposed).
-- Picking a birth year or month on the calendar (D-046 below, proposed).
+- A long Bansawali in sections (D-045 below).
+- Picking a birth year or month on the calendar (D-046 below).
+- Translating the interface into English and Nepali (D-047 below, proposed).
 - **Name length (agreed 2026-10-21):** Business puts no length cap on name parts. Any storage or input limit is set later by persistence (#9) and API validation (D-010).
 
 ## Discussion topics (all agreed)
@@ -730,7 +731,7 @@ For each major decision, record:
 
 ### D-045: A long Bansawali in sections
 
-- **Status:** proposed (2026-10-27). Issue #116. Asked by the user on 2026-10-27 (PRD 08, Bansawali): a real Bansawali of 32 generations pushed the deepest names off the printed page; after seeing prototypes the user chose numbered sections over capping the indent, with the person's description in each section title. The rest is proposed with the PR.
+- **Status:** agreed (2026-10-27, PR #117 merged). Issue #116. Asked by the user on 2026-10-27 (PRD 08, Bansawali): a real Bansawali of 32 generations pushed the deepest names off the printed page; after seeing prototypes the user chose numbered sections over capping the indent, with the person's description in each section title. The rest is proposed with the PR.
 - **Context:** The outline (D-043) indents each generation by about 28 px, so 32 generations need about 900 px, wider than an A4 page.
 - **Options considered:** a smaller indent per level; capping the indent after about 8 levels; continuing deep lines in numbered sections; a list by generation with "child of" references.
 - **Trade-offs:** A smaller indent still fails on deeper lines. A cap fits but, below it, a brother and a son look alike except for the generation number. Sections keep the tree shape everywhere at the cost of following a line across sections, as printed Bansawalis do. A list by generation loses the tree.
@@ -740,10 +741,22 @@ For each major decision, record:
 
 ### D-046: Picking a birth year or month on the calendar
 
-- **Status:** proposed (2026-10-25). Issue #110. Agreed with the user on 2026-10-25 (PRD 01): upgrade `@opensourcenepal/nepali-calendar-angular` and its core from 1.2.0 to 1.3.0, whose calendar can pick a whole year or month; the birth date field first asks what is known (Year only, Year and month, Full date), and the calendar opens at that level. The rest is proposed with the PR.
+- **Status:** agreed (2026-10-28, PR #111 merged). Issue #110. Agreed with the user on 2026-10-25 (PRD 01): upgrade `@opensourcenepal/nepali-calendar-angular` and its core from 1.2.0 to 1.3.0, whose calendar can pick a whole year or month; the birth date field first asks what is known (Year only, Year and month, Full date), and the calendar opens at that level. The rest is proposed with the PR.
 - **Context:** D-037 allows a year, a year and month, or a full date, but its calendar picked only full dates, so partial dates were typed and "Not known" in the Month and Day selects meant a partial date.
 - **Options considered:** a "what is known" choice that drives the boxes and the calendar; three calendar buttons (year, month, day); the calendar level following which boxes are filled.
 - **Trade-offs:** One choice says plainly that a partial date is fine and keeps the boxes and the calendar in step. The typed boxes stay for dates the calendar does not reach (before BS 1970 or AD 1914).
 - **Decision:**
   - **Client:** `BirthDateInput` has `known` (`year`, `month`, `day`; a new date starts at Full date, a stored one at its own level) with radio buttons after BS/AD. It shows the Month select unless only the year is known and the Day select only for a full date, each starting at "Choose"; while a known part is missing it says "Choose the month and day, or change what is known." and the form does not save. The calendar gets `[pick]="known()"`, `[calendars]="['bs', 'ad']"` and `[initialMonth]` from the typed year and month, so it opens there while a part is still missing; a picked year or month arrives as its first day, of which only the known parts are kept, in the calendar the date is entered in.
 - **Consequences:** No server change, endpoint or new dependency; D-037's dependency moves to `^1.3.0`. Nepal Sambat, new in 1.3.0, is not offered.
+
+### D-047: Translating the interface into English and Nepali
+
+- **Status:** proposed (2026-10-29). Issue #120. Agreed with the user on 2026-10-28 and 2026-10-29 (PRD 09, Languages): Angular's built-in i18n (`@angular/localize`); translations as JSON files on the server, loaded at startup, so one Client build serves every language; the instance configuration sets the default language and a header switch remembers each person's choice in their browser, with no account field; Devanagari digits in Nepali and a bundled Noto Sans Devanagari font; relationship words as whole phrases; the user reviews the Nepali text in the PR. Culture-specific kinship labels (PRD 08) are later work. The rest is proposed with the PR.
+- **Context:** Every Client string was English in templates and TypeScript. The users are largely Nepali speakers, and later work separates language from culture (calendar, kinship terms).
+- **Options considered:** Angular i18n with a build per locale, or loaded at runtime; a third-party runtime library (Transloco, ngx-translate); YAML or JSON files; the language on the account, in the browser, or both; ASCII or Devanagari digits.
+- **Trade-offs:** Angular i18n needs no extra library beyond `@angular/localize`, checks message IDs at extraction and keeps templates plain. Loading at runtime keeps one build and one image, at the cost of a page reload when switching, since `$localize` translates as modules load. JSON needs no new NuGet package. A browser-only choice adds no personal data to accounts.
+- **Decision:**
+  - **Client:** every message has a stable `@@area.name` ID (`i18n` attributes in templates, `$localize` in TypeScript); `npm run extract-i18n` writes the English source to `src/locale/messages.json`. `main.ts` runs `core/i18n/startup.ts` first: it reads `GET /api/configuration`, chooses the language (`chooseLanguage`: the remembered one if offered, else the instance default, else English), fetches `/api/translations/{code}` and calls `loadTranslations`, registers the Angular locale data, sets `<html lang>`, and only then imports and bootstraps the app; a failed fetch falls back to English. The configuration is provided as `STARTUP_CONFIGURATION` instead of an app initializer. `LanguageSwitch` in the header (hidden with one language) stores the choice under `familygraph.language` in `localStorage` and reloads. `core/i18n/local-format.ts` writes Devanagari digits by mapping the digits itself (`localNumber`, `localDigits`, `localDateTime`, with the `digits` and `localDateTime` pipes), because some browsers have no `ne` number data. BS month names follow the language. Plurals are separate one/many messages, except one ICU message on the Users page. `relationWord` reads a table of whole phrases (`relation.adoptedSon`, `relation.formerWife`, …). `styles.css` loads `public/fonts/NotoSansDevanagari.woff2` (a Devanagari-only subset of the variable font from Noto Sans Devanagari 2.006, SIL OFL 1.1, licence beside it) for the Devanagari range only.
+  - **Server:** `Server/Localization`: `TranslationCatalog` loads `Translations/*.json` (`{ locale, name, translations }`) at startup and fails startup for a malformed file, a locale that does not match its file name, an English file or a `Languages:Default` without a file. `GET /api/translations/{code}` answers the file with an ETag and `no-cache` (404 for English or an unknown code). `GET /api/configuration` adds `languages: { default, available: [{ code, name }] }`, English first. `Translations/ne.json` ships in the image.
+  - **Tests:** a Server test checks that `ne.json` has exactly the IDs of `messages.json` with the same placeholders, so a new message without a Nepali translation fails CI; the CI Client job runs `npm run extract-i18n` and fails when `messages.json` is out of date.
+- **Consequences:** New npm dependency `@angular/localize` (agreed in #120). New messages need an ID, a run of `npm run extract-i18n` and a Nepali translation. Another language is one JSON file. Server error wording stays in the Client (`problem.ts`), so it is translated with the rest. The kinship label maps per culture (PRD 08) build on this later.

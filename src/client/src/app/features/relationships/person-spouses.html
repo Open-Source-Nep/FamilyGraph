@@ -1,7 +1,7 @@
 @if (spouses(); as spouses) {
-  <h2>Spouses</h2>
+  <h2 i18n="@@spouses.title">Spouses</h2>
   @if (spouses.spouses.length === 0) {
-    <p class="hint">No marriages are linked.</p>
+    <p class="hint" i18n="@@spouses.none">No marriages are linked.</p>
   } @else {
     <ul class="people">
       @for (spouse of spouses.spouses; track spouse.marriageId) {
@@ -20,30 +20,53 @@
               [disabled]="saving()"
               (click)="setFormer(spouse, !spouse.isFormer)"
             >
-              {{ spouse.isFormer ? 'Mark as current' : 'Mark as former' }}
+              @if (spouse.isFormer) {
+                <ng-container i18n="@@spouses.markCurrent">Mark as current</ng-container>
+              } @else {
+                <ng-container i18n="@@spouses.markFormer">Mark as former</ng-container>
+              }
             </button>
           }
           @if (removal(spouse); as removal) {
             @if (confirming() === spouse.marriageId) {
               <div class="actions">
                 @if (removal.kind === 'delete') {
-                  <span
+                  <span i18n="@@spouses.confirmDelete"
                     >Delete this marriage? This cannot be undone; you can add it again later.</span
                   >
-                  <button type="button" [disabled]="saving()" (click)="remove(spouse, removal)">
+                  <button
+                    type="button"
+                    [disabled]="saving()"
+                    (click)="remove(spouse, removal)"
+                    i18n="@@common.delete"
+                  >
                     Delete
                   </button>
                 } @else {
-                  <span>Withdraw your approval? The marriage stops being active.</span>
-                  <button type="button" [disabled]="saving()" (click)="remove(spouse, removal)">
+                  <span i18n="@@spouses.confirmWithdraw"
+                    >Withdraw your approval? The marriage stops being active.</span
+                  >
+                  <button
+                    type="button"
+                    [disabled]="saving()"
+                    (click)="remove(spouse, removal)"
+                    i18n="@@relatives.withdraw"
+                  >
                     Withdraw
                   </button>
                 }
-                <button type="button" class="secondary" (click)="confirming.set(null)">Keep</button>
+                <button
+                  type="button"
+                  class="secondary"
+                  (click)="confirming.set(null)"
+                  i18n="@@users.keep"
+                >
+                  Keep
+                </button>
               </div>
             } @else {
               <button type="button" class="link-button" (click)="confirming.set(spouse.marriageId)">
-                {{ removal.kind === 'delete' ? 'Delete marriage' : 'Withdraw approval' }}
+                {{ removal.kind === 'delete' ? deleteMarriageLabel : withdrawApprovalLabel }}
               </button>
             }
           }
@@ -51,7 +74,9 @@
       }
     </ul>
     @if (spouses.isTruncated) {
-      <p class="hint">Only the first {{ spouses.spouses.length }} spouses are shown.</p>
+      <p class="hint" i18n="@@spouses.truncated">
+        Only the first {{ spouses.spouses.length | digits }} spouses are shown.
+      </p>
     }
   }
 }
@@ -64,10 +89,11 @@
 }
 
 @if (adding()) {
-  <h2>Add a spouse</h2>
+  <h2><ng-container i18n="@@spouses.add">Add a spouse</ng-container></h2>
   <div class="name-form">
     <app-person-picker
       legend="Spouse"
+      i18n-legend="@@spouses.spouse"
       [excludeId]="personId()"
       [searchesEveryone]="person().maintainedByYou"
       [single]="true"
@@ -75,12 +101,18 @@
       [(selected)]="selected"
     />
     <div class="actions">
-      <button type="button" [disabled]="saving()" (click)="add()">Add marriage</button>
-      <button type="button" class="secondary" (click)="adding.set(false)">Cancel</button>
+      <button type="button" [disabled]="saving()" (click)="add()" i18n="@@spouses.addMarriage">
+        Add marriage
+      </button>
+      <button type="button" class="secondary" (click)="adding.set(false)">
+        <ng-container i18n="@@common.cancel">Cancel</ng-container>
+      </button>
     </div>
   </div>
 } @else if (person().placeholder !== 'Deleted') {
   <p>
-    <button type="button" class="secondary" (click)="startAdding()">Add a spouse</button>
+    <button type="button" class="secondary" (click)="startAdding()">
+      <ng-container i18n="@@spouses.add">Add a spouse</ng-container>
+    </button>
   </p>
 }

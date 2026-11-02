@@ -53,7 +53,10 @@ export class AllPeople {
 
   /** "(yours)" and "(private)" after the name, or nothing. */
   protected marks(person: NamedPerson): string {
-    return [person.maintainedByYou && '(yours)', person.visibility === 'Private' && '(private)']
+    return [
+      person.maintainedByYou && $localize`:@@people.yoursMark:(yours)`,
+      person.visibility === 'Private' && $localize`:@@people.privateMark:(private)`,
+    ]
       .filter(Boolean)
       .join(' ');
   }

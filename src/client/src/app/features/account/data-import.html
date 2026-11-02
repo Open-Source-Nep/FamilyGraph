@@ -1,5 +1,5 @@
-<h2>Data import</h2>
-<p>
+<h2 i18n="@@import.title">Data import</h2>
+<p i18n="@@import.intro">
   Load a data export file into this instance. It only works while the instance has no profiles.
   Every profile, relationship and marriage keeps its consent as in the file. A profile goes to the
   account with its maintainer's verified email; if there is none here, you become its maintainer.
@@ -7,21 +7,37 @@
 </p>
 <p>
   <label>
-    Export file
+    <ng-container i18n="@@import.file">Export file</ng-container>
     <input type="file" accept="application/json,.json" (change)="choose($event)" />
   </label>
   <button type="button" (click)="import()" [disabled]="!file() || importing()">
-    {{ importing() ? 'Importing…' : 'Import file' }}
+    @if (importing()) {
+      <ng-container i18n="@@import.importing">Importing…</ng-container>
+    } @else {
+      <ng-container i18n="@@import.import">Import file</ng-container>
+    }
   </button>
 </p>
 
 @if (result(); as result) {
   <p role="status">
-    Imported {{ result.people }} profiles, {{ result.links }} parent–child links and
-    {{ result.marriages }} marriages. {{ result.matchedAccounts }} maintainer accounts were found
-    here.
+    <ng-container i18n="@@import.result"
+      >Imported
+      {{ result.people | digits }}
+      profiles,
+      {{ result.links | digits }}
+      parent–child links and
+      {{ result.marriages | digits }}
+      marriages.
+      {{ result.matchedAccounts | digits }}
+      maintainer accounts were found here.</ng-container
+    >
     @if (result.assignedToYou > 0) {
-      You now maintain {{ result.assignedToYou }} profiles whose maintainer has no account here.
+      <ng-container i18n="@@import.assignedToYou"
+        >You now maintain
+        {{ result.assignedToYou | digits }}
+        profiles whose maintainer has no account here.</ng-container
+      >
     }
   </p>
 }
@@ -36,7 +52,9 @@
         }
       </ul>
       @if (moreProblems()) {
-        <p>There are more problems than these. Fix them and try again.</p>
+        <p i18n="@@import.moreProblems">
+          There are more problems than these. Fix them and try again.
+        </p>
       }
     }
   </div>
