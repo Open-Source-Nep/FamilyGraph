@@ -17,4 +17,6 @@ public sealed class InMemoryHandovers : IHandoverStore
         Task.FromResult(_handovers.Values.SingleOrDefault(handover => handover.TokenHash == tokenHash));
 
     public void Add(ProfileHandover handover) => _handovers[handover.Id] = handover;
+
+    public IReadOnlyCollection<ProfileHandover> All => _handovers.Values.ToList();
 }

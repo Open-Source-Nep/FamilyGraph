@@ -36,7 +36,7 @@ public sealed class AccountTestFactory : WebApplicationFactory<Program>
     public AccountTestFactory()
     {
         Graph = new InMemoryGraph(People);
-        Export = new InMemoryExport(Store, People);
+        Export = new InMemoryExport(Store, People, Handovers);
         Import = new InMemoryImport(Store, People);
     }
 
@@ -111,10 +111,11 @@ public sealed class AccountTestFactory : WebApplicationFactory<Program>
     /// Signs a new account in through a fake Google ID token and returns the antiforgery token for
     /// its state-changing requests.
     /// </summary>
-    public static async Task<string> SignInAsync(HttpClient browser, string email, CancellationToken cancellationToken)
+    public static async Task<string> SignInAsync(
+        HttpClient browser, string email, CancellationToken cancellationToken, string? subject = null)
     {
         using var _ = await PostGoogleSignInAsync(
-            browser, IdToken(Guid.NewGuid().ToString(), email, "secret"), "secret", cancellationToken);
+            browser, IdToken(subject ?? Guid.NewGuid().ToString(), email, "secret"), "secret", cancellationToken);
         using var account = await browser.GetAsync("/api/account", cancellationToken);
         return XsrfToken(account);
     }
@@ -141,6 +142,23 @@ public sealed class InMemoryAccountStore : IAccountStore
     private readonly Dictionary<(string Provider, string Key), AccountId> _logins = [];
 
     public Dictionary<AccountId, AccountView> Accounts { get; } = [];
+
+    /// <summary>Each account's Google login, if it has one.</summary>
+    public string? GoogleIdOf(AccountId id) =>
+        _logins.Where(login => login.Value == id && login.Key.Provider == ExternalLogin.GoogleProvider).Select(login => login.Key.Key).FirstOrDefault();
+
+    public AccountId? FindByGoogleId(string googleId) =>
+        _logins.TryGetValue((ExternalLogin.GoogleProvider, googleId), out var id) ? id : null;
+
+    /// <summary>Adds an account with a given ID, as an import does.</summary>
+    public void Add(AccountView account, string? googleId)
+    {
+        Accounts[account.Id] = account;
+        if (googleId is not null)
+        {
+            _logins[(ExternalLogin.GoogleProvider, googleId)] = account.Id;
+        }
+    }
 
     public Task<AccountView?> FindAsync(AccountId id, CancellationToken cancellationToken) =>
         Task.FromResult(Accounts.GetValueOrDefault(id));

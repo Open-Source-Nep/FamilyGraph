@@ -1,4 +1,6 @@
+using System.IO.Compression;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FamilyGraph.Business.Export;
@@ -8,7 +10,7 @@ using Server.People;
 
 namespace Server.IntegrationTests.Export;
 
-/// <summary>An administrator's download of the whole instance (D-029, #75).</summary>
+/// <summary>An administrator's download of the whole instance as a zip (D-029, #75; D-049, #124).</summary>
 public class ExportEndpointTests(AccountTestFactory factory) : IClassFixture<AccountTestFactory>
 {
     private static CancellationToken Cancellation => TestContext.Current.CancellationToken;
@@ -42,7 +44,7 @@ public class ExportEndpointTests(AccountTestFactory factory) : IClassFixture<Acc
     [Trait("AC", "AC-09.4")]
     [Trait("AC", "AC-09.6")]
     [Trait("AC", "AC-09.7")]
-    public async Task Administrator_downloads_profiles_links_and_maintainer_emails_and_the_export_is_recorded()
+    public async Task Administrator_downloads_a_zip_of_accounts_profiles_links_images_and_history_and_the_export_is_recorded()
     {
         var email = UniqueEmail();
         var (owner, token) = await SignInAsync(email);
@@ -50,18 +52,26 @@ public class ExportEndpointTests(AccountTestFactory factory) : IClassFixture<Acc
         var child = await CreatePersonAsync(owner, token, "Maya");
         using var hidden = await SendAsync(owner, token, HttpMethod.Put, $"/api/people/{child}/visibility", new { visibility = "Private" });
         using var link = await SendAsync(owner, token, HttpMethod.Post, "/api/relationships", new { parentId = parent, childId = child, type = "Adoptive" });
+        using (var photo = new HttpRequestMessage(HttpMethod.Put, $"/api/people/{parent}/image") { Content = new ByteArrayContent(Jpeg) })
+        {
+            photo.Content.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+            photo.Headers.Add("X-XSRF-TOKEN", token);
+            (await owner.SendAsync(photo, Cancellation)).EnsureSuccessStatusCode();
+        }
+
         var (admin, _) = await SignInAsync(AccountTestFactory.AdministratorEmail);
 
         using var response = await admin.GetAsync("/api/export", Cancellation);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
-        Assert.StartsWith("familygraph-export-", response.Content.Headers.ContentDisposition?.FileName?.Trim('"'));
-        var file = await response.Content.ReadFromJsonAsync<JsonElement>(Cancellation);
+        Assert.Equal("application/zip", response.Content.Headers.ContentType?.MediaType);
+        Assert.EndsWith(".zip", response.Content.Headers.ContentDisposition?.FileName?.Trim('"'));
+        var (file, zip) = await ReadAsync(response);
         Assert.Equal("familygraph-export", file.GetProperty("format").GetString());
-        Assert.Equal(1, file.GetProperty("version").GetInt32());
+        Assert.Equal(2, file.GetProperty("version").GetInt32());
 
         var account = Single(file, "accounts", "email", email);
+        Assert.False(string.IsNullOrEmpty(account.GetProperty("googleId").GetString()));
         var person = Single(file, "people", "id", child.ToString());
         Assert.Equal(("Maya", "Private", account.GetProperty("id").GetGuid()), (
             person.GetProperty("firstName").GetString(),
@@ -73,8 +83,22 @@ public class ExportEndpointTests(AccountTestFactory factory) : IClassFixture<Acc
             exported.GetProperty("type").GetString(),
             exported.GetProperty("parentApproval").GetString(),
             exported.GetProperty("childApproval").GetString()));
+        var image = Single(file, "images", "personId", parent.ToString());
+        Assert.Equal(image.GetProperty("id").GetGuid(), Single(file, "people", "id", parent.ToString()).GetProperty("imageId").GetGuid());
+        var entry = zip.GetEntry(image.GetProperty("file").GetString()!);
+        Assert.NotNull(entry);
+        await using (var content = await entry.OpenAsync(Cancellation))
+        using (var bytes = new MemoryStream())
+        {
+            await content.CopyToAsync(bytes, Cancellation);
+            Assert.Equal(Jpeg, bytes.ToArray());
+        }
+
         var adminAccount = await admin.GetFromJsonAsync<AccountResponse>("/api/account", Cancellation);
         Assert.Contains(factory.People.AuditEvents, entry => entry.Event is DataExported e && e.ActorId.Value == adminAccount!.Id);
+        Assert.Contains(
+            file.GetProperty("auditEvents").EnumerateArray(),
+            row => row.GetProperty("type").GetString() == nameof(DataExported) && row.GetProperty("actorId").GetGuid() == adminAccount!.Id);
     }
 
     [Fact]
@@ -88,13 +112,27 @@ public class ExportEndpointTests(AccountTestFactory factory) : IClassFixture<Acc
         (await owner.SendAsync(request, Cancellation)).Dispose();
         var (admin, _) = await SignInAsync(AccountTestFactory.AdministratorEmail);
 
-        var body = await admin.GetStringAsync("/api/export", Cancellation);
+        using var response = await admin.GetAsync("/api/export", Cancellation);
+        var (file, _) = await ReadAsync(response);
+        var body = file.GetRawText();
 
         Assert.DoesNotContain("Zebediah", body, StringComparison.Ordinal);
         Assert.DoesNotContain("[erased]", body, StringComparison.Ordinal);
-        var person = Single(JsonDocument.Parse(body).RootElement, "people", "id", deleted.ToString());
+        var person = Single(file, "people", "id", deleted.ToString());
         Assert.Equal(JsonValueKind.Null, person.GetProperty("firstName").ValueKind);
         Assert.NotEqual(JsonValueKind.Null, person.GetProperty("deletedAt").ValueKind);
+    }
+
+    /// <summary>A JPEG's first bytes, which is all the format check reads.</summary>
+    private static readonly byte[] Jpeg = [0xFF, 0xD8, 0xFF, 0xE0, 0, 0x10, 1, 2, 3];
+
+    /// <summary>The zip's JSON and the zip itself, to read images from.</summary>
+    internal static async Task<(JsonElement File, ZipArchive Zip)> ReadAsync(HttpResponseMessage response)
+    {
+        var bytes = new MemoryStream(await response.Content.ReadAsByteArrayAsync(Cancellation));
+        var zip = new ZipArchive(bytes, ZipArchiveMode.Read);
+        await using var json = await zip.GetEntry("familygraph.json")!.OpenAsync(Cancellation);
+        return ((await JsonDocument.ParseAsync(json, cancellationToken: Cancellation)).RootElement.Clone(), zip);
     }
 
     private int Exports() => factory.People.AuditEvents.Count(entry => entry.Event is DataExported);

@@ -5,7 +5,7 @@ public interface IExportQueries
 {
     /// <summary>
     /// Opens a consistent, read-only view of the data: every section reads the same moment, so
-    /// each link's people and each person's maintainer are in the export.
+    /// each row's people and accounts are in the export.
     /// </summary>
     Task<IExportSnapshot> OpenSnapshotAsync(CancellationToken cancellationToken);
 }
@@ -16,15 +16,27 @@ public interface IExportQueries
 /// </summary>
 public interface IExportSnapshot : IAsyncDisposable
 {
-    /// <summary>The accounts that maintain at least one profile, deleted or not.</summary>
+    /// <summary>Every account (D-049).</summary>
     IAsyncEnumerable<ExportedAccount> AccountsAsync(CancellationToken cancellationToken);
 
     /// <summary>Every profile, with its stored name even when deleted.</summary>
     IAsyncEnumerable<ExportedPerson> PeopleAsync(CancellationToken cancellationToken);
 
-    /// <summary>Every non-deleted link.</summary>
+    /// <summary>Every link, deleted ones too (D-049).</summary>
     IAsyncEnumerable<ExportedLink> LinksAsync(CancellationToken cancellationToken);
 
-    /// <summary>Every non-deleted marriage (D-031).</summary>
+    /// <summary>Every marriage, deleted ones too (D-031, D-049).</summary>
     IAsyncEnumerable<ExportedMarriage> MarriagesAsync(CancellationToken cancellationToken);
+
+    /// <summary>Every profile image, without its content.</summary>
+    IAsyncEnumerable<ExportedImage> ImagesAsync(CancellationToken cancellationToken);
+
+    /// <summary>Every profile image's content, one row at a time.</summary>
+    IAsyncEnumerable<ExportedImageContent> ImageContentsAsync(CancellationToken cancellationToken);
+
+    /// <summary>Every handover link.</summary>
+    IAsyncEnumerable<ExportedHandover> HandoversAsync(CancellationToken cancellationToken);
+
+    /// <summary>The whole audit history, oldest first.</summary>
+    IAsyncEnumerable<ExportedAuditEvent> AuditEventsAsync(CancellationToken cancellationToken);
 }

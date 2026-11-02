@@ -79,6 +79,31 @@ public sealed class ProfileHandover : AuditedEntity
     }
 
     /// <summary>
+    /// Restores a handover link from an export file with its ID, hash and state (D-049). It records
+    /// no event: the file's audit history covers it.
+    /// </summary>
+    public static ProfileHandover Import(
+        HandoverId id,
+        PersonId personId,
+        AccountId offeredById,
+        string tokenHash,
+        DateTimeOffset createdAt,
+        DateTimeOffset expiresAt,
+        HandoverState state,
+        AccountId? acceptedById,
+        DateTimeOffset? closedAt)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tokenHash);
+        ArgumentNullException.ThrowIfNull(state);
+        return new ProfileHandover(id, personId, offeredById, tokenHash, createdAt, expiresAt)
+        {
+            State = state,
+            AcceptedById = acceptedById,
+            ClosedAt = closedAt,
+        };
+    }
+
+    /// <summary>
     /// Whether the link can still be accepted: open, not expired, and its creator still maintains
     /// <paramref name="person"/>.
     /// </summary>

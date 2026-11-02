@@ -113,9 +113,9 @@ public sealed class ParentChildLink : AuditedEntity
     }
 
     /// <summary>
-    /// Restores a link from an export file with its ID, consent and birth order (D-033). The
-    /// import checks the whole file's links for duplicates, cycles and spouses first. It records no
-    /// event: the import's one <c>DataImported</c> covers it.
+    /// Restores a link from an export file with its ID, consent, birth order and deletion time (D-033,
+    /// D-049). The import checks the whole file's links for duplicates, cycles and spouses first. It
+    /// records no event: the file's audit history covers it.
     /// </summary>
     public static ParentChildLink Import(
         LinkId id,
@@ -124,7 +124,8 @@ public sealed class ParentChildLink : AuditedEntity
         ParentChildType type,
         EndpointApproval parentApproval,
         EndpointApproval childApproval,
-        int? birthOrder)
+        int? birthOrder,
+        DateTimeOffset? deletedAt = null)
     {
         ArgumentNullException.ThrowIfNull(type);
         ArgumentNullException.ThrowIfNull(parentApproval);
@@ -140,7 +141,7 @@ public sealed class ParentChildLink : AuditedEntity
             throw new InvalidBirthOrderException();
         }
 
-        return new ParentChildLink(id, parentId, childId, type, parentApproval, childApproval) { BirthOrder = birthOrder };
+        return new ParentChildLink(id, parentId, childId, type, parentApproval, childApproval) { BirthOrder = birthOrder, DeletedAt = deletedAt };
     }
 
     /// <summary>

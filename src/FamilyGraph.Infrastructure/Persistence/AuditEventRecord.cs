@@ -66,6 +66,11 @@ internal sealed class AuditEventRecord
             JsonSerializer.Serialize(auditEvent, auditEvent.GetType(), DataOptions));
     }
 
+    /// <summary>Restores a row from an export file as it was (D-049).</summary>
+    public static AuditEventRecord Restore(
+        Guid id, DateTimeOffset occurredAt, int family, string type, Guid actorId, Guid subjectId, string data) =>
+        new(id, occurredAt, family, type, actorId, subjectId, data);
+
     private static Guid SubjectOf(AuditEvent auditEvent) => auditEvent switch
     {
         PersonEvent e => e.PersonId.Value,

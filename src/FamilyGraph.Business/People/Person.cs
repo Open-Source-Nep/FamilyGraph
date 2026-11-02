@@ -80,9 +80,9 @@ public sealed class Person : AuditedEntity
     }
 
     /// <summary>
-    /// Restores a profile from an export file with its ID (D-033). A deleted profile keeps only the
-    /// erased name and no gender, description or birth date. It records no event: the import's one
-    /// <c>DataImported</c> covers it.
+    /// Restores a profile from an export file with its ID (D-033, D-049). A deleted profile keeps only the
+    /// erased name and no gender, description, birth date or image. It records no event: the file's audit
+    /// history and the import's one <c>DataImported</c> cover it.
     /// </summary>
     public static Person Import(
         PersonId id,
@@ -93,7 +93,8 @@ public sealed class Person : AuditedEntity
         Gender? gender,
         string? description = null,
         BirthDate? birthDate = null,
-        bool birthDateShown = false)
+        bool birthDateShown = false,
+        ProfileImageId? imageId = null)
     {
         ArgumentNullException.ThrowIfNull(name);
         ArgumentNullException.ThrowIfNull(visibility);
@@ -106,6 +107,7 @@ public sealed class Person : AuditedEntity
                 Description = PersonDescription.Normalize(description),
                 BirthDate = birthDate,
                 BirthDateShown = birthDateShown,
+                ImageId = imageId,
             }
             : new Person(id, PersonName.Erased, maintainerId) { Visibility = visibility, DeletedAt = deletedAt };
     }

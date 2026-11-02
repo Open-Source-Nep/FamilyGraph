@@ -34,7 +34,15 @@ public sealed class ProfileImage
 
     public byte[] Content { get; }
 
-    internal static ProfileImage Create(PersonId personId, byte[] content)
+    internal static ProfileImage Create(PersonId personId, byte[] content) => Check(ProfileImageId.New(), personId, content);
+
+    /// <summary>
+    /// Restores an image from an export file with its ID (D-049), under the same size and format
+    /// rules as an upload.
+    /// </summary>
+    public static ProfileImage Import(ProfileImageId id, PersonId personId, byte[] content) => Check(id, personId, content);
+
+    private static ProfileImage Check(ProfileImageId id, PersonId personId, byte[] content)
     {
         ArgumentNullException.ThrowIfNull(content);
 
@@ -44,7 +52,7 @@ public sealed class ProfileImage
         }
 
         var format = ImageFormat.Detect(content) ?? throw new UnsupportedImageFormatException();
-        return new ProfileImage(ProfileImageId.New(), personId, format, content);
+        return new ProfileImage(id, personId, format, content);
     }
 }
 

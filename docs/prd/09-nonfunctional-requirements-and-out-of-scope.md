@@ -11,11 +11,11 @@
 
 ## Data export
 
-An administrator can download the whole instance as one file that a later import can read back. It holds every profile with its details, including birth dates hidden from others (Private ones with their names; deleted ones as placeholders without any name or details), every relationship that has not been deleted with each side's consent and the birth order, every marriage that has not been deleted with each side's consent and whether it is former, and the email of each account that maintains a profile. It holds no profile images, audit history or deleted relationships. Other users cannot export. Each export is recorded in the audit history with the administrator and the time.
+An administrator can download everything the instance stores as one zip file that a later import can read back. It holds every user account with its ID, Google login and email; every profile with its details, including birth dates hidden from others, and its photo (Private ones with their names; deleted ones as placeholders without any name or details); every relationship and marriage, deleted ones too, with each side's consent, the birth order and whether a marriage is former; the profile handover links (never the link itself); and the audit history. Everything that refers to a user refers to the account's ID. Relationship label rules ship with the app and are not exported. Other users cannot export. Each export is recorded in the audit history with the administrator and the time.
 
 ## Data import
 
-An administrator can load an export file into an instance that has no profiles yet, for example to move to a new server or restore one. Every profile, relationship and marriage comes back as it was in the file, with its consent, visibility, gender, description, birth date and birth order. Each profile's maintainer is the account here with the same verified email; when there is no such account, the administrator who imports becomes its maintainer. A file with any problem is refused whole and nothing is saved, and the administrator is shown the problems. Other users cannot import, and an instance that already has profiles refuses an import. Each import is recorded in the audit history once, with the administrator and the time; the imported rows get no history entries of their own.
+An administrator can load an export file into an instance that has no profiles yet, for example to move to a new server or restore one. Everything comes back as it was in the file, with the same IDs: every profile, photo, relationship and marriage with its consent, visibility, gender, description, birth date and birth order, the handover links and the audit history. Each account in the file is created again with its ID, so its owner signs in with Google as before and finds their profiles; when an account here already has the same Google login (such as the administrator who imports), that account takes its place. Only exports in the current format can be imported; an older export is refused, and the old instance must be updated and export again. The instance sets the largest file it accepts. A file with any problem is refused whole and nothing is saved, and the administrator is shown the problems. Other users cannot import, and an instance that already has profiles refuses an import. The import itself is recorded in the audit history once, with the administrator and the time.
 
 ## Languages
 
@@ -34,13 +34,13 @@ The whole interface is offered in English and Nepali. Each instance chooses the 
 - `AC-09.1` The product remains usable when the graph is too large to render in full.
 - `AC-09.2` Core relationship information can be understood through text explanations as well as graph visualization.
 - `AC-09.3` Self-hosting is an explicit product goal, not tied to one hosting provider.
-- `AC-09.4` An administrator can download one file with every profile, every relationship that has not been deleted with both sides' consent, and the email of each profile's maintainer.
+- `AC-09.4` An administrator can download one zip file with every account by its ID, every profile with its photo, every relationship and marriage with both sides' consent, the handover links and the audit history.
 - `AC-09.5` A user who is not an administrator cannot export data.
-- `AC-09.6` The export includes Private profiles with their names and deleted profiles without any name, and leaves out images, audit history and deleted relationships.
+- `AC-09.6` The export includes Private profiles with their names, deleted profiles without any name, and deleted relationships and marriages, and refers to users only by account ID.
 - `AC-09.7` Each export is recorded in the audit history with the administrator and the time.
-- `AC-09.8` An administrator can import an export file into an instance without profiles, and every profile, relationship and marriage comes back with its consent, visibility, gender, description, birth date and birth order.
+- `AC-09.8` An administrator can import an export file into an instance without profiles, and every profile, photo, relationship, marriage, handover link and audit entry comes back with its ID, consent, visibility, gender, description, birth date and birth order.
 - `AC-09.9` A user who is not an administrator cannot import, and an instance that has any profile refuses an import.
-- `AC-09.10` An imported profile is maintained by the account with its maintainer's verified email, or by the importing administrator when there is none.
+- `AC-09.10` Each exported account is created again with its ID and Google login, so an imported profile keeps its maintainer; an account here with the same Google login takes that account's place.
 - `AC-09.11` A file with any problem is refused whole, nothing is saved, and the problems are listed.
 - `AC-09.12` Each import is recorded once in the audit history with the administrator and the time.
 - `AC-09.13` Every screen of one build can be shown in English or Nepali, and a message without a translation falls back to English.

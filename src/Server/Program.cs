@@ -21,7 +21,7 @@ builder.Services.AddRelationships(builder.Configuration);
 builder.Services.AddGraph(builder.Configuration);
 builder.Services.AddHandovers(builder.Configuration);
 builder.Services.AddExport();
-builder.Services.AddImport();
+builder.Services.AddImport(builder.Configuration);
 builder.Services.AddAdministration(builder.Configuration);
 builder.Services.AddTranslations(builder.Configuration);
 builder.Services.AddAntiforgery(options => options.HeaderName = "X-XSRF-TOKEN");
