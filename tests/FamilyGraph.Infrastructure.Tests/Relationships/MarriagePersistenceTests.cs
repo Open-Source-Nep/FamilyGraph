@@ -129,7 +129,7 @@ public class MarriagePersistenceTests(PostgresFixture postgres)
             new GraphLimits());
         var view = await service.LocalViewAsync(you.Id, As(Maintainer), Cancellation);
         var overview = await service.OverviewAsync(As(Maintainer), Cancellation);
-        var connections = await service.FindConnectionsAsync(you.Id, fatherInLaw.Id, As(Maintainer), Cancellation);
+        var connections = await service.FindConnectionsAsync(you.Id, fatherInLaw.Id, As(Maintainer), null, Cancellation);
 
         Assert.Equal(
             [("You", 0), ("Husband", 0), ("Father-in-law", 1)],

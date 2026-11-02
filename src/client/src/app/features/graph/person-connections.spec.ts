@@ -79,6 +79,25 @@ describe('PersonConnections', () => {
     expect(fixture.nativeElement.textContent).not.toContain('more connections');
   });
 
+  it('names what the other person is to the first in the current culture (AC-08.28)', async () => {
+    connections = {
+      paths: [
+        {
+          start: sita,
+          steps: [{ linkId: 'l1', relation: 'Parent', type: 'Biological', person: rina }],
+        },
+      ],
+      morePathsExist: false,
+      searchComplete: true,
+      label: 'Kaka',
+    };
+    await find();
+
+    const label: HTMLElement = fixture.nativeElement.querySelector('.relationship-label');
+    expect(label.textContent!.replace(/\s+/g, ' ').trim()).toBe('Rina is the Kaka of Sita.');
+    expect(label.querySelector('strong')!.textContent).toBe('Kaka');
+  });
+
   it('lists further paths on request (AC-08.6)', async () => {
     const path = (linkId: string) => ({
       start: sita,

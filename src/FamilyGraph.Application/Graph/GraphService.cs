@@ -1,6 +1,7 @@
 using FamilyGraph.Application.People;
 using FamilyGraph.Application.Privacy;
 using FamilyGraph.Business.Graph;
+using FamilyGraph.Business.Kinship;
 using FamilyGraph.Business.People;
 
 namespace FamilyGraph.Application.Graph;
@@ -60,10 +61,12 @@ public sealed class GraphService(IPersonQueries people, IGraphQueries queries, G
 
     /// <summary>
     /// The shortest path from one person to another and up to <see cref="GraphLimits.MorePaths"/>
-    /// further paths, within the people examined from the first person (D-009, D-023).
+    /// further paths, within the people examined from the first person (D-009, D-023). With a
+    /// <paramref name="culture"/>, the shortest path also gets that culture's label for the second
+    /// person as seen from the first (PRD 08, D-048), decided only from what the viewer may see.
     /// </summary>
     public async Task<Connections> FindConnectionsAsync(
-        PersonId fromId, PersonId toId, Viewer viewer, CancellationToken cancellationToken)
+        PersonId fromId, PersonId toId, Viewer viewer, KinshipCulture? culture, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(viewer);
         var viewerId = viewer.AccountId;
@@ -79,12 +82,64 @@ public sealed class GraphService(IPersonQueries people, IGraphQueries queries, G
         var records = await queries.PeopleAsync(ids, viewerId, cancellationToken);
         var visible = records.ToDictionary(record => record.Id, record => PrivacyProjection.Project(record, viewer));
 
+        var label = culture is not null && listed.Count > 0
+            ? culture.Label(await KinshipFactsAsync(listed[0], neighbourhood.Links, visible, viewer, cancellationToken))
+            : null;
+
         return new Connections(
             [.. listed.Select(path => new Connection(
                 visible[path.Start],
                 [.. path.Steps.Select(step => new ConnectionStep(step.Link, step.Relation, visible[step.PersonId]))]))],
             paths.Count > listed.Count,
-            neighbourhood.IsComplete);
+            neighbourhood.IsComplete,
+            label);
+    }
+
+    /// <summary>
+    /// What label rules may test about <paramref name="path"/> (D-048). It loads the children of
+    /// each parent the path walks down from, and of the other parents of the person before such a
+    /// turn, so siblings can be ranked and compared, and projects those children so a hidden
+    /// gender stays unknown. A parent with more children than the people limit is not ranked.
+    /// </summary>
+    private async Task<KinshipFacts> KinshipFactsAsync(
+        RelationshipPath path,
+        IReadOnlyList<GraphLink> around,
+        Dictionary<PersonId, PersonReference> visible,
+        Viewer viewer,
+        CancellationToken cancellationToken)
+    {
+        var people = path.People.ToList();
+        var turning = new HashSet<PersonId>();
+        for (var index = 0; index < path.Steps.Count; index++)
+        {
+            if (path.Steps[index].Relation != StepRelation.Child)
+            {
+                continue;
+            }
+            turning.Add(people[index]);
+            if (index > 0 && path.Steps[index - 1].Relation == StepRelation.Parent)
+            {
+                turning.UnionWith(around.Where(link => link.ChildId == people[index - 1]).Select(link => link.ParentId));
+            }
+        }
+
+        var links = around.ToList();
+        var complete = new HashSet<PersonId>();
+        if (turning.Count > 0)
+        {
+            var children = await queries.ChildLinksAsync(turning, limits.PathSearchPeople, cancellationToken);
+            if (!children.IsTruncated)
+            {
+                links = [.. around.Concat(children.Links).DistinctBy(link => link.Id)];
+                complete.UnionWith(turning);
+                var unseen = children.Links.Select(link => link.ChildId).Where(id => !visible.ContainsKey(id)).ToHashSet();
+                foreach (var record in await queries.PeopleAsync(unseen, viewer.AccountId, cancellationToken))
+                {
+                    visible[record.Id] = PrivacyProjection.Project(record, viewer);
+                }
+            }
+        }
+        return KinshipFacts.Of(path, id => visible.GetValueOrDefault(id)?.Gender, links, complete);
     }
 
     /// <summary>

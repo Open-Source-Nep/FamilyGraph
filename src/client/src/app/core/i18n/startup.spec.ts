@@ -1,5 +1,6 @@
 import { clearTranslations } from '@angular/localize';
 
+import { currentCulture, setCurrentCulture } from './culture';
 import { currentLanguage, setCurrentLanguage } from './language';
 import { loadStartup } from './startup';
 
@@ -17,6 +18,7 @@ describe('loadStartup', () => {
   const remembered = (code: string | null) => ({ getItem: () => code });
 
   afterEach(() => {
+    setCurrentCulture(null);
     clearTranslations();
     setCurrentLanguage('en');
     document.documentElement.lang = 'en';
@@ -64,5 +66,29 @@ describe('loadStartup', () => {
     const startup = await loadStartup(fetchJson, remembered(null));
 
     expect(startup).toEqual({ configuration, language: 'en', localeId: 'en-US' });
+  });
+
+  it('chooses the culture first and only its languages, else its first language (AC-08.32)', async () => {
+    const english = { code: 'en', name: { en: 'English' }, languages: ['en'] };
+    const nepali = { code: 'ne', name: { ne: 'नेपाली', en: 'Nepali' }, languages: ['ne', 'en'] };
+    const withCultures = {
+      ...configuration,
+      cultures: { default: 'en', available: [english, nepali] },
+    };
+    const fetchJson = <T>(url: string): Promise<T | null> =>
+      Promise.resolve((url === '/api/configuration' ? withCultures : null) as T | null);
+    const storage = (culture: string | null, language: string | null) => ({
+      getItem: (key: string) => (key === 'familygraph.culture' ? culture : language),
+    });
+
+    // The instance default language (ne) is not one of the English culture's languages.
+    const startup = await loadStartup(fetchJson, storage(null, null));
+    expect(currentCulture()).toEqual(english);
+    expect(startup.language).toBe('en');
+
+    // The remembered English stays with the Nepali culture.
+    const kept = await loadStartup(fetchJson, storage('ne', 'en'));
+    expect(currentCulture()).toEqual(nepali);
+    expect(kept.language).toBe('en');
   });
 });

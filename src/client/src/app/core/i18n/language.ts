@@ -26,12 +26,13 @@ export function setCurrentLanguage(code: string): void {
 
 /**
  * The browser's remembered choice when the instance still offers it, else the instance default,
- * else English.
+ * else `fallback` (English unless the culture says otherwise, D-048).
  */
 export function chooseLanguage(
   available: readonly Language[],
   instanceDefault: string | null,
   remembered: string | null,
+  fallback: string = sourceLanguage,
 ): string {
   const offered = (code: string | null) =>
     code !== null && available.some((language) => language.code === code);
@@ -41,7 +42,7 @@ export function chooseLanguage(
   if (offered(instanceDefault)) {
     return instanceDefault!;
   }
-  return sourceLanguage;
+  return fallback;
 }
 
 /** Browser storage can be blocked, which throws as soon as it is touched. */
