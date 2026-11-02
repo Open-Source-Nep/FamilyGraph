@@ -28,6 +28,7 @@
     <!-- The Client's translations (D-047), read at startup from the output folder. -->
     <ItemGroup>
         <Content Update="Translations\*.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest"/>
+        <Content Update="Cultures\*.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest"/>
     </ItemGroup>
 
     <ItemGroup>

@@ -1,5 +1,6 @@
 using FamilyGraph.Application.Privacy;
 using FamilyGraph.Business.Graph;
+using FamilyGraph.Business.Kinship;
 using FamilyGraph.Business.People;
 
 namespace FamilyGraph.Application.Graph;
@@ -42,8 +43,11 @@ public sealed record Connection(PersonReference Start, IReadOnlyList<ConnectionS
 /// of further paths. <see cref="MorePathsExist"/> says that paths beyond those were found.
 /// <see cref="SearchComplete"/> is false when the search stopped at its people limit, so no
 /// connection means "none found within the search limit", not "not related" (D-009).
+/// <see cref="Label"/> is the culture's label for the second person as seen from the first, from the
+/// shortest path (D-048); null without a culture, a path or steps.
 /// </summary>
-public sealed record Connections(IReadOnlyList<Connection> Paths, bool MorePathsExist, bool SearchComplete);
+public sealed record Connections(
+    IReadOnlyList<Connection> Paths, bool MorePathsExist, bool SearchComplete, KinshipLabel? Label = null);
 
 /// <summary>
 /// A person in a Bansawali, as the viewer may see them: <see cref="Generation"/> below the

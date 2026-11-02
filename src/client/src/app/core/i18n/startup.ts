@@ -2,6 +2,7 @@ import { registerLocaleData } from '@angular/common';
 import { loadTranslations } from '@angular/localize';
 
 import { ClientConfiguration } from '../config/client-configuration';
+import { chooseCulture, rememberedCulture, setCurrentCulture } from './culture';
 import { chooseLanguage, rememberedLanguage, setCurrentLanguage, sourceLanguage } from './language';
 
 /** What the app starts with: the instance settings and the language the page runs in. */
@@ -25,8 +26,9 @@ const localeData: Record<string, () => Promise<{ default: unknown }>> = {
 
 /**
  * Loads the instance settings and the chosen language's translations before the app is imported,
- * because `$localize` translates messages as their modules load (D-047). Anything that fails leaves
- * the app in English rather than not starting.
+ * because `$localize` translates messages as their modules load (D-047). The culture is chosen
+ * first, and only its languages are offered (D-048). Anything that fails leaves the app in English
+ * rather than not starting.
  */
 export async function loadStartup(
   fetchJson: <T>(url: string) => Promise<T | null> = getJson,
@@ -34,11 +36,21 @@ export async function loadStartup(
 ): Promise<Startup> {
   const configuration = await fetchJson<ClientConfiguration>('/api/configuration');
   const languages = configuration?.languages;
+  const cultures = configuration?.cultures;
+  const culture = chooseCulture(
+    cultures?.available ?? [],
+    cultures?.default ?? null,
+    rememberedCulture(storage),
+  );
+  setCurrentCulture(culture);
   let localeId = 'en-US';
   let language = chooseLanguage(
-    languages?.available ?? [],
+    (languages?.available ?? []).filter(
+      (offered) => !culture || culture.languages.includes(offered.code),
+    ),
     languages?.default ?? null,
     rememberedLanguage(storage),
+    culture?.languages[0] ?? sourceLanguage,
   );
 
   if (language !== sourceLanguage) {

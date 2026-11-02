@@ -3,6 +3,7 @@ using FamilyGraph.Application.People;
 using FamilyGraph.Application.Privacy;
 using FamilyGraph.Application.Tests.People;
 using FamilyGraph.Business.Graph;
+using FamilyGraph.Business.Kinship;
 using FamilyGraph.Business.People;
 using FamilyGraph.Business.Relationships;
 
@@ -56,7 +57,7 @@ public class GraphServiceTests
         _store.People[mother].SetVisibility(ProfileVisibility.Private, Bob);
 
         var view = await Service().LocalViewAsync(you, As(Alice), Cancellation);
-        var connections = await Service().FindConnectionsAsync(you, grandmother, As(Alice), Cancellation);
+        var connections = await Service().FindConnectionsAsync(you, grandmother, As(Alice), null, Cancellation);
 
         Assert.Equal(
             [(you, "Maya"), (mother, null), (grandmother, "Gita")],
@@ -81,7 +82,7 @@ public class GraphServiceTests
         AddLink(mother, you);
         _store.People[mother].Delete(Alice, actorIsAdministrator: false, DateTimeOffset.UtcNow);
 
-        var connections = await Service().FindConnectionsAsync(you, grandmother, As(Alice), Cancellation);
+        var connections = await Service().FindConnectionsAsync(you, grandmother, As(Alice), null, Cancellation);
 
         Assert.Equal(
             [PersonPlaceholder.Deleted, null],
@@ -109,7 +110,7 @@ public class GraphServiceTests
             AddLink(parent, sister);
         }
 
-        var connections = await Service(new GraphLimits(morePaths: 1)).FindConnectionsAsync(you, sister, As(Alice), Cancellation);
+        var connections = await Service(new GraphLimits(morePaths: 1)).FindConnectionsAsync(you, sister, As(Alice), null, Cancellation);
 
         Assert.Equal(GraphLimits.DefaultPathSearchPeople, _graph.LastSearchLimit);
         Assert.Equal(2, connections.Paths.Count);
@@ -130,7 +131,7 @@ public class GraphServiceTests
         var stranger = AddPerson("Rina", Bob);
         _graph.SearchHitsLimit = true;
 
-        var connections = await Service().FindConnectionsAsync(you, stranger, As(Alice), Cancellation);
+        var connections = await Service().FindConnectionsAsync(you, stranger, As(Alice), null, Cancellation);
 
         Assert.Empty(connections.Paths);
         Assert.False(connections.MorePathsExist);
@@ -146,7 +147,7 @@ public class GraphServiceTests
         var link = AddLink(mother, you);
         link.Disagree(_store.People[mother], _store.People[you], Bob);
 
-        var connections = await Service().FindConnectionsAsync(you, mother, As(Alice), Cancellation);
+        var connections = await Service().FindConnectionsAsync(you, mother, As(Alice), null, Cancellation);
 
         Assert.Empty(connections.Paths);
         Assert.True(connections.SearchComplete);
@@ -158,7 +159,7 @@ public class GraphServiceTests
         var you = AddPerson("Maya", Alice);
 
         await Assert.ThrowsAsync<PersonNotFoundException>(
-            () => Service().FindConnectionsAsync(you, PersonId.New(), As(Alice), Cancellation));
+            () => Service().FindConnectionsAsync(you, PersonId.New(), As(Alice), null, Cancellation));
     }
 
     [Fact]
@@ -237,7 +238,7 @@ public class GraphServiceTests
 
         var view = await Service().LocalViewAsync(you, As(Alice), Cancellation);
         var overview = await Service().OverviewAsync(As(Alice), Cancellation);
-        var connections = await Service().FindConnectionsAsync(you, fatherInLaw, As(Alice), Cancellation);
+        var connections = await Service().FindConnectionsAsync(you, fatherInLaw, As(Alice), null, Cancellation);
 
         Assert.Equal(
             [("Maya", 0), ("Ram", 0), ("Dasharath", 1)],
@@ -384,6 +385,75 @@ public class GraphServiceTests
         var marriage = Marriage.Create(spouse, _store.People[otherSpouseId], spouse.MaintainerId, alreadyMarried: false, directlyRelated: false);
         marriage.TakeEvents();
         _store.Marriages[marriage.Id] = marriage;
+    }
+
+    private static KinshipCulture Nepali()
+    {
+        static KinshipLabel Label(string text) => new(new Dictionary<string, string> { ["en"] = text });
+        return new KinshipCulture("ne", ["en"], new Dictionary<string, string> { ["en"] = "Nepali" }, Label("Relative"),
+        [
+            new([new(StepRelation.Parent, Gender.Male), new(StepRelation.Parent), new(StepRelation.Child, Gender.Male)], Label("Thulobuwa/Kaka")),
+            new([new(StepRelation.Parent, Gender.Male), new(StepRelation.Parent), new(StepRelation.Child, Gender.Male, RelativeAge.Younger)], Label("Kaka")),
+            new([new(StepRelation.Parent, Gender.Male), new(StepRelation.Parent),
+                new(StepRelation.Child, Gender.Male, RelativeAge.Younger, ChildPosition.Last(sameGender: true))], Label("Kanchhabuwa")),
+        ]);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-08.28")]
+    [Trait("AC", "AC-08.31")]
+    public async Task Connections_label_the_other_person_from_the_shortest_path_with_birth_order()
+    {
+        var grandfather = AddPerson("Ram", Alice, Gender.Male);
+        var father = AddPerson("Hari", Alice, Gender.Male);
+        var uncle = AddPerson("Shyam", Alice, Gender.Male);
+        var youngest = AddPerson("Gopal", Bob, Gender.Male);
+        var you = AddPerson("Maya", Alice);
+        AddLink(grandfather, father).SetBirthOrder(_store.People[grandfather], Alice, 1);
+        AddLink(grandfather, uncle).SetBirthOrder(_store.People[grandfather], Alice, 2);
+        AddLink(father, you);
+        var youngestLink = AddLink(grandfather, youngest);
+        youngestLink.SetBirthOrder(_store.People[grandfather], Alice, 3);
+
+        var uncleLabel = (await Service().FindConnectionsAsync(you, uncle, As(Alice), Nepali(), Cancellation)).Label;
+        var youngestLabel = (await Service().FindConnectionsAsync(you, youngest, As(Alice), Nepali(), Cancellation)).Label;
+
+        Assert.Equal("Kaka", uncleLabel!.Texts["en"]);
+        Assert.Equal("Kanchhabuwa", youngestLabel!.Texts["en"]);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-08.29")]
+    [Trait("AC", "AC-08.31")]
+    public async Task A_private_siblings_hidden_gender_leaves_the_position_unknown()
+    {
+        var grandfather = AddPerson("Ram", Alice, Gender.Male);
+        var father = AddPerson("Hari", Alice, Gender.Male);
+        var uncle = AddPerson("Shyam", Alice, Gender.Male);
+        var hidden = AddPerson("Gita", Bob, Gender.Female);
+        var you = AddPerson("Maya", Alice);
+        AddLink(grandfather, father).SetBirthOrder(_store.People[grandfather], Alice, 1);
+        AddLink(grandfather, uncle).SetBirthOrder(_store.People[grandfather], Alice, 2);
+        AddLink(grandfather, hidden).SetBirthOrder(_store.People[grandfather], Alice, 3);
+        AddLink(father, you);
+        _store.People[hidden].SetVisibility(ProfileVisibility.Private, Bob);
+
+        var connections = await Service().FindConnectionsAsync(you, uncle, As(Alice), Nepali(), Cancellation);
+
+        // Gita might be a son, so Shyam is not known to be the youngest son.
+        Assert.Equal("Kaka", connections.Label!.Texts["en"]);
+    }
+
+    [Fact]
+    public async Task Connections_without_a_culture_have_no_label()
+    {
+        var mother = AddPerson("Sita", Alice, Gender.Female);
+        var you = AddPerson("Maya", Alice);
+        AddLink(mother, you);
+
+        var connections = await Service().FindConnectionsAsync(you, mother, As(Alice), null, Cancellation);
+
+        Assert.Null(connections.Label);
     }
 
     private PersonId AddPerson(string firstName, AccountId maintainer, Gender? gender = null)

@@ -46,6 +46,11 @@
         </p>
       }
     } @else {
+      @if (result.label) {
+        <p class="relationship-label" i18n="@@connections.label">
+          {{ otherName() }} is the <strong>{{ result.label }}</strong> of {{ fullName(from()) }}.
+        </p>
+      }
       <ng-container
         [ngTemplateOutlet]="path"
         [ngTemplateOutletContext]="{ $implicit: result.paths[0] }"
