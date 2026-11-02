@@ -114,17 +114,21 @@ public sealed record ConnectionResponse(GraphPersonResponse Start, IReadOnlyList
 /// <summary>
 /// The shortest path first, then further paths. <see cref="MorePathsExist"/> says that paths beyond
 /// those listed were found. When <see cref="SearchComplete"/> is false, no path means no connection
-/// was found within the search limit, not that the people are unrelated (D-009).
+/// was found within the search limit, not that the people are unrelated (D-009). <see cref="Label"/>
+/// is what the second person is to the first in the chosen culture, such as "Kaka", from the
+/// shortest path (D-048); null when there is no path.
 /// </summary>
-public sealed record ConnectionsResponse(IReadOnlyList<ConnectionResponse> Paths, bool MorePathsExist, bool SearchComplete)
+public sealed record ConnectionsResponse(
+    IReadOnlyList<ConnectionResponse> Paths, bool MorePathsExist, bool SearchComplete, string? Label)
 {
-    internal static ConnectionsResponse From(Connections connections) => new(
+    internal static ConnectionsResponse From(Connections connections, string? label) => new(
         [.. connections.Paths.Select(path => new ConnectionResponse(
             GraphPersonResponse.From(path.Start),
             [.. path.Steps.Select(step => new ConnectionStepResponse(
                 step.Link.Id.Value, step.Relation.Name, TypeOf(step.Link), GraphPersonResponse.From(step.Person)))]))],
         connections.MorePathsExist,
-        connections.SearchComplete);
+        connections.SearchComplete,
+        label);
 
     private static string TypeOf(GraphEdge edge) => edge switch
     {

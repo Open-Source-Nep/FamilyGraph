@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 
+import { setCurrentCulture } from '../../core/i18n/culture';
 import { Gender } from '../people/person';
 import { Bansawali } from './bansawali';
 import { Connections, GraphOverview, GraphPerson, LocalView, stepLabel } from './graph';
@@ -49,6 +50,25 @@ describe('GraphService', () => {
     http.expectOne({ method: 'GET', url: '/api/people/p1/connections/p2' }).flush(connections);
 
     expect(await found).toEqual(connections);
+  });
+
+  it('asks for the label in the current culture and language (AC-08.33)', async () => {
+    setCurrentCulture({
+      code: 'ne',
+      name: { ne: 'नेपाली', en: 'Nepali' },
+      languages: ['ne', 'en'],
+    });
+    try {
+      const connections: Connections = { paths: [], morePathsExist: false, searchComplete: true };
+      const found = service.connections('p1', 'p2');
+      http
+        .expectOne({ method: 'GET', url: '/api/people/p1/connections/p2?culture=ne&language=en' })
+        .flush(connections);
+
+      expect(await found).toEqual(connections);
+    } finally {
+      setCurrentCulture(null);
+    }
   });
 
   it("loads a person's Bansawali for the chosen line", async () => {

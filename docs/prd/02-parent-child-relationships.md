@@ -32,7 +32,7 @@ Do not add guardianship, step-parent, foster-parent, or other parent categories 
 
 ## Birth order of children (agreed 2026-10-22, changed 2026-10-25)
 
-- A parent's children have a birth order, eldest first. It sorts that parent's children in views and path explanations only. It is not used to derive relationships or labels (PRD 08).
+- A parent's children have a birth order, eldest first. It sorts that parent's children in views and path explanations, and decides elder or younger siblings and a child's place for relationship labels (PRD 08, changed 2026-11-02). It is not used to derive relationships.
 - The order is set manually per parent, by moving a child up or down in the parent's list of children, which numbers the whole list eldest first. Each parent has their own order, so half siblings are ordered within each parent's list.
 - Only the parent profile's maintainer changes the order. It needs no consent and never changes a link's consent state or whether it is active. Every change is audited (PRD 07).
 - A newly linked child is unordered until the parent's maintainer places it. Views list ordered children first, then unordered ones by birth date where it is shown to others (PRD 01), then by name. A birth date hidden from others never affects the order, for anyone.

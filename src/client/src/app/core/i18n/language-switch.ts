@@ -2,11 +2,13 @@ import { DOCUMENT } from '@angular/common';
 import { Component, computed, inject } from '@angular/core';
 
 import { ConfigurationService } from '../config/configuration.service';
+import { currentCulture } from './culture';
 import { currentLanguage, rememberLanguage } from './language';
 
 /**
  * The header's language switch (D-047). The choice is remembered in this browser only, and the
- * page reloads so that every text is loaded in the new language. Hidden with a single language.
+ * page reloads so that every text is loaded in the new language. It offers only the current
+ * culture's languages (D-048), and is hidden with a single language.
  */
 @Component({
   selector: 'app-language-switch',
@@ -35,7 +37,12 @@ export class LanguageSwitch {
   private readonly configuration = inject(ConfigurationService).configuration;
 
   protected readonly current = currentLanguage();
-  protected readonly languages = computed(() => this.configuration()?.languages.available ?? []);
+  private readonly culture = currentCulture();
+  protected readonly languages = computed(() =>
+    (this.configuration()?.languages.available ?? []).filter(
+      (language) => !this.culture || this.culture.languages.includes(language.code),
+    ),
+  );
 
   protected switchTo(code: string): void {
     if (code === this.current) {

@@ -88,6 +88,8 @@ export interface Connections {
   paths: Connection[];
   morePathsExist: boolean;
   searchComplete: boolean;
+  /** What the other person is to the first in the current culture, such as "Kaka" (D-048). */
+  label?: string | null;
 }
 
 /**

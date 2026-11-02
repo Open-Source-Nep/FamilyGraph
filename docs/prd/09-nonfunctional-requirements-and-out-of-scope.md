@@ -19,7 +19,7 @@ An administrator can load an export file into an instance that has no profiles y
 
 ## Languages
 
-The whole interface is offered in English and Nepali. Each instance chooses the language it starts in. Anyone may switch the language from the page header; the choice is remembered in that browser only and is not part of the account. Names, descriptions and other text people enter are shown as entered, never translated. In Nepali, numbers and dates use Devanagari digits, and the app brings its own Devanagari font so that text looks the same on every device and in print. Relationship words such as "adopted son" or "former wife" are translated as whole phrases, so each language can word them in its own order. Kinship terms that depend on culture (such as different words for a father's elder and younger brother) are not part of this and come later.
+The whole interface is offered in English and Nepali. Each instance chooses the language it starts in. Anyone may switch the language from the page header; the choice is remembered in that browser only and is not part of the account. Names, descriptions and other text people enter are shown as entered, never translated. In Nepali, numbers and dates use Devanagari digits, and the app brings its own Devanagari font so that text looks the same on every device and in print. Relationship words such as "adopted son" or "former wife" are translated as whole phrases, so each language can word them in its own order. Kinship terms that depend on culture (such as different words for a father's elder and younger brother) come from the chosen culture, not the language (PRD 08); the language switch offers only the current culture's languages.
 
 ## Initial release exclusions
 

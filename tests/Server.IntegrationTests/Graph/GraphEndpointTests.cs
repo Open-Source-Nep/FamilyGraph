@@ -160,6 +160,30 @@ public class GraphEndpointTests(AccountTestFactory factory) : IClassFixture<Acco
         Assert.Equal(
             [("Parent", "Biological", "Sita"), ("Child", "Adoptive", "Rina")],
             path.Steps.Select(step => (step.Relation, step.Type, step.Person.FirstName)));
+        Assert.Equal("Sibling", connections.Label);
+    }
+
+    [Theory]
+    [Trait("AC", "AC-08.28")]
+    [Trait("AC", "AC-08.33")]
+    [InlineData("?culture=ne&language=ne", "दाजुभाइ/दिदीबहिनी")]
+    [InlineData("?culture=ne&language=en", "Dajubhai/Didibahini")]
+    [InlineData("?culture=ne&language=fr", "दाजुभाइ/दिदीबहिनी")]
+    [InlineData("?culture=en&language=ne", "Sibling")]
+    [InlineData("?culture=unknown", "Sibling")]
+    public async Task Connections_label_the_other_person_in_the_chosen_culture_and_language(string query, string label)
+    {
+        var (browser, token) = await SignInAsync(UniqueEmail());
+        var mother = await CreatePersonAsync(browser, token, "Sita");
+        var you = await CreatePersonAsync(browser, token, "Maya");
+        var sister = await CreatePersonAsync(browser, token, "Rina");
+        (await CreateLinkAsync(browser, token, mother, you, "Biological")).Dispose();
+        (await CreateLinkAsync(browser, token, mother, sister, "Biological")).Dispose();
+
+        var connections = await browser.GetFromJsonAsync<ConnectionsResponse>(
+            $"/api/people/{you}/connections/{sister}{query}", Cancellation);
+
+        Assert.Equal(label, connections!.Label);
     }
 
     [Theory]

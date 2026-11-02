@@ -2,11 +2,12 @@ import { Component, inject } from '@angular/core';
 import { RouterLink, RouterOutlet } from '@angular/router';
 
 import { AuthService } from './core/auth/auth.service';
+import { CultureSwitch } from './core/i18n/culture-switch';
 import { LanguageSwitch } from './core/i18n/language-switch';
 
 @Component({
   selector: 'app-root',
-  imports: [LanguageSwitch, RouterLink, RouterOutlet],
+  imports: [CultureSwitch, LanguageSwitch, RouterLink, RouterOutlet],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })

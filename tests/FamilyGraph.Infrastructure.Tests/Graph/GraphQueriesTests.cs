@@ -256,7 +256,7 @@ public class GraphQueriesTests(PostgresFixture postgres)
             new GraphLimits());
         var viewer = As(TestData.NewAccount());
         var view = await service.LocalViewAsync(you.Id, viewer, Cancellation);
-        var connections = await service.FindConnectionsAsync(you.Id, grandmother.Id, viewer, Cancellation);
+        var connections = await service.FindConnectionsAsync(you.Id, grandmother.Id, viewer, null, Cancellation);
 
         Assert.Equal(
             [("Maya", null, Gender.Female), (null, PersonPlaceholder.Private, null), (null, PersonPlaceholder.Deleted, null)],
@@ -367,7 +367,7 @@ public class GraphQueriesTests(PostgresFixture postgres)
             scope.ServiceProvider.GetRequiredService<IPersonQueries>(),
             scope.ServiceProvider.GetRequiredService<IGraphQueries>(),
             new GraphLimits(pathSearchPeople: pathSearchPeople));
-        return await service.FindConnectionsAsync(from, to, As(Maintainer), Cancellation);
+        return await service.FindConnectionsAsync(from, to, As(Maintainer), null, Cancellation);
     }
 
     private static async Task ApproveAsync(ServiceProvider services, LinkId link, AccountId actor)

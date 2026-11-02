@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 
 import { ConfigurationService } from '../config/configuration.service';
+import { setCurrentCulture } from './culture';
 import { languageStorageKey } from './language';
 import { LanguageSwitch } from './language-switch';
 
@@ -50,6 +51,20 @@ describe('LanguageSwitch', () => {
 
     expect(localStorage.getItem(languageStorageKey)).toBe('ne');
     expect(reload).toHaveBeenCalled();
+  });
+
+  it("offers only the current culture's languages (AC-08.32)", () => {
+    setCurrentCulture({ code: 'en', name: { en: 'English' }, languages: ['en'] });
+    try {
+      const element = render([
+        { code: 'en', name: 'English' },
+        { code: 'ne', name: 'नेपाली' },
+      ]);
+
+      expect(element.querySelector('select')).toBeNull();
+    } finally {
+      setCurrentCulture(null);
+    }
   });
 
   it('is hidden when the instance offers one language', () => {

@@ -34,4 +34,20 @@ public class ClientConfigurationEndpointTests(WebApplicationFactory<Program> fac
         Assert.True(configuration!.Google.Enabled);
         Assert.Equal("test-client-id", configuration.Google.ClientId);
     }
+
+    [Fact]
+    [Trait("AC", "AC-08.32")]
+    public async Task Lists_the_cultures_with_their_languages_and_the_default_one()
+    {
+        using var configured = factory.WithWebHostBuilder(builder => builder.UseSetting("Cultures:Default", "ne"));
+        using var client = configured.CreateClient();
+
+        var configuration = await client.GetFromJsonAsync<ClientConfigurationResponse>("/api/configuration", Cancellation);
+
+        Assert.Equal("ne", configuration!.Cultures.Default);
+        Assert.Equal(
+            [("en", "English", "en"), ("ne", "नेपाली", "ne,en")],
+            configuration.Cultures.Available.Select(culture => (culture.Code, culture.Name[culture.Languages[0]], string.Join(",", culture.Languages))));
+        Assert.Equal("अङ्ग्रेजी", configuration.Cultures.Available[0].Name["ne"]);
+    }
 }

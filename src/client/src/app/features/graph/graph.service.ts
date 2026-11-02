@@ -4,6 +4,8 @@ import { firstValueFrom } from 'rxjs';
 
 import { Bansawali, BansawaliLine } from './bansawali';
 import { Connections, GraphOverview, LocalView } from './graph';
+import { currentCulture } from '../../core/i18n/culture';
+import { currentLanguage } from '../../core/i18n/language';
 
 /** Graph exploration requests. The server bounds every query and walks only active links. */
 @Service()
@@ -22,10 +24,16 @@ export class GraphService {
     return firstValueFrom(this.http.get<GraphOverview>('/api/graph/overview'));
   }
 
+  /**
+   * How two people are connected, with the other person's relationship label in the current
+   * culture, written in the current language when the culture has it (D-048).
+   */
   connections(personId: string, otherId: string): Promise<Connections> {
+    const culture = currentCulture();
     return firstValueFrom(
       this.http.get<Connections>(
         `/api/people/${encodeURIComponent(personId)}/connections/${encodeURIComponent(otherId)}`,
+        { params: culture ? { culture: culture.code, language: currentLanguage() } : {} },
       ),
     );
   }

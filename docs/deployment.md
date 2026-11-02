@@ -26,6 +26,7 @@ All settings come from environment variables (D-012); `__` separates section lev
 | `Admin__Emails__0`, `Admin__Emails__1`, ... | Administrator email addresses. |
 | `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` | Set this behind a reverse proxy or host that terminates HTTPS, so the app sees the original `https` scheme and client address. Only set it when the proxy is the only way in. |
 | `Languages__Default` | The language the app starts in for anyone who has not chosen one: `en` (the default) or `ne`. Each file in the image's `Translations` folder adds a language; startup fails if this names a language without one. |
+| `Cultures__Default` | The culture whose relationship labels the app starts with for anyone who has not chosen one: `en` (the default) or `ne`. Each file in the image's `Cultures` folder adds a culture and lists its languages; startup fails if this names a culture without a file, or a culture uses a language without a translation file. |
 | `Graph__*`, `Handovers__LinkLifetimeDays` | Optional limits; the defaults suit most instances. |
 
 HTTPS is terminated by your reverse proxy or host. The session cookie is always `Secure`, so the app must be reached over HTTPS.

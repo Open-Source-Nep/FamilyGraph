@@ -6,6 +6,7 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Server.Accounts;
+using Server.Localization;
 
 namespace Server.Graph;
 
@@ -17,7 +18,7 @@ namespace Server.Graph;
 [ApiController]
 [Authorize]
 [Route("api/people/{id:guid}")]
-public sealed class GraphController(GraphService graph) : ControllerBase
+public sealed class GraphController(GraphService graph, CultureCatalog cultures) : ControllerBase
 {
     /// <summary>
     /// The person and up to <c>Graph:ViewPeople</c> people nearest to them. "Load more" around an
@@ -37,12 +38,18 @@ public sealed class GraphController(GraphService graph) : ControllerBase
 
     /// <summary>
     /// How the person is connected to another: the shortest path and up to <c>Graph:MorePaths</c>
-    /// more (PRD 08). 404 <c>person.not_found</c>, 503 <c>graph.timeout</c>.
+    /// more (PRD 08), and the other person's relationship label in <c>culture</c> (the default
+    /// culture when unknown or not given), written in <c>language</c> when the culture has it,
+    /// else in its first language (D-048). 404 <c>person.not_found</c>, 503 <c>graph.timeout</c>.
     /// </summary>
     [HttpGet("connections/{otherId:guid}")]
-    public async Task<ConnectionsResponse> Connections(Guid id, Guid otherId, CancellationToken cancellationToken) =>
-        ConnectionsResponse.From(await graph.FindConnectionsAsync(
-            ToPersonId(id), ToPersonId(otherId), User.Viewer(), cancellationToken));
+    public async Task<ConnectionsResponse> Connections(
+        Guid id, Guid otherId, [FromQuery] string? culture, [FromQuery] string? language, CancellationToken cancellationToken)
+    {
+        var kinship = cultures.FindOrDefault(culture);
+        var connections = await graph.FindConnectionsAsync(ToPersonId(id), ToPersonId(otherId), User.Viewer(), kinship, cancellationToken);
+        return ConnectionsResponse.From(connections, connections.Label is { } label ? kinship.Text(label, language) : null);
+    }
 
     /// <summary>
     /// The person's Bansawali (D-043): their descendants generation by generation, through sons

@@ -60,7 +60,7 @@ A Bansawali is the traditional Nepali lineage record. It is a view derived from 
 
 ## Relationship explanations
 
-- The first release shows **no derived relationship labels** (such as "sibling" or "cousin"). An explanation shows the path between two people step by step, e.g. "Sita → parent: Maya → parent: Gita → child: Rina → child: You".
+- An explanation shows the path between two people step by step, e.g. "Sita → parent: Maya → parent: Gita → child: Rina → child: You", and above it a relationship label from the chosen culture (see below).
 - Where the gender of the step's person is known and visible (PRD 01), a step reads "mother" or "father" instead of "parent", and "daughter" or "son" instead of "child". It stays "parent" or "child" when the gender is Other, not set, or hidden behind a placeholder. Lists of parents and children use the same words.
 - A marriage step reads "husband" or "wife" where the spouse's gender is known and visible, "spouse" otherwise, with "former" before it once the marriage ended.
 - An adoptive step reads "adoptive parent" or "adopted child" instead of "parent" or "child", or "adoptive mother", "adopted son" and so on where the gender is known.
@@ -71,14 +71,23 @@ A Bansawali is the traditional Nepali lineage record. It is a view derived from 
 - There is no special state or placeholder for an unknown parent. A contributor represents one by creating an ordinary profile with the first name `UNKNOWN` and linking it under the normal rules.
 - Profiles named `UNKNOWN` are never treated as the same person. Duplicate suggestions and merges must not match on this name (PRD 01, PRD 06).
 
-## Planned: admin-defined relationship labels (not in the first release)
+## Relationship labels per culture (agreed 2026-11-02)
 
-- Administrators define label rules for the instance. A rule maps an exact step sequence (each step "up" to a parent or "down" to a child) to a label, e.g. up, up, down, down → "first cousin".
-- Labelling the relationship between two people uses the shortest path. No matching rule means no label, only the path.
-- Labels are display text only and never become stored facts. Adoption on the path is still flagged. Rule changes are audited.
-- A rule may also depend on the gender of the person being labelled (PRD 01), e.g. up, down with Female → "sister". When that gender is Other, not set or hidden behind a placeholder (PRD 05), the rule without a gender applies, e.g. up, down → "sibling". Gender rules never reveal a hidden gender.
-- Rules cannot depend on birth order, which is stored per parent for display only (PRD 02). Distinguishing full and half siblings needs a built-in rule, because both share the step sequence up, down.
-- Open: per-language labels, and whether to ship a default rule set.
+Kinship words are culture-specific, not translations: Mama is a mother's brother, Kaka and Thulobuwa a father's younger and elder brother, where English says "uncle".
+
+- A **culture** exists only to define relationship labels. It lists the languages it is written in (Nepali: Nepali and English; English: English); a language may belong to several cultures. Each label is written once per language of its culture, e.g. काका in Nepali and "Kaka" in English.
+- The instance configuration sets the default culture. A switch in the page header changes it and is remembered in that browser only, like the language (PRD 09). The language switch offers only the current culture's languages. After a culture switch the language stays when the new culture has it, otherwise it becomes the culture's first language.
+- Culture label rules ship with the app as files, reviewed by the community. The first cultures are Nepali and English.
+- Labels appear in the connection view: finding how two people are connected names what the second person is to the first, from the shortest path, e.g. "Rina is the Kaka of Maya". Other places may follow later.
+- A rule matches the shortest path's exact steps (parent, child, spouse) from the first person and may also require:
+  - the gender of any person on the path (e.g. a mother's brother is Mama);
+  - the first person's own gender (a man calls his brother's son Bhatija, a woman Bhada);
+  - where the path goes up to a parent and back down to a child, whether that child is elder or younger than the person before, by birth order (PRD 02); every shared parent who ordered both must agree;
+  - on a child step, the child's place among the parent's children by birth order: the first, second, … or the youngest, counted among all the children or among those of the child's gender, as the rule says (Jetho, Maila, Kanchha). The place is known only when every child counted has a birth order and, among the same gender, every child's gender is known.
+- The most specific matching rule applies. A gender that is hidden or not set, or a birth order or place that is unknown, matches only rules that do not ask for it, so a label never reveals hidden details (PRD 05); e.g. a father's brother with unknown order is "Thulobuwa/Kaka". When no rule matches, the culture's fallback label applies ("Relative").
+- Birth dates never decide a label. Birth order, otherwise for display (PRD 02), decides elder, younger and places.
+- Labels are display text only and never become stored facts. Adoption on the path is still flagged, and the path shows a former marriage as former.
+- Planned: instance administrators may override or add rules for their instance, audited.
 
 ## Acceptance criteria
 
@@ -109,6 +118,12 @@ A Bansawali is the traditional Nepali lineage record. It is a view derived from 
 - `AC-08.25` The Bansawali page prints as a clean list from the browser.
 - `AC-08.26` The Bansawali shows each person's photo, or initials without one, at a size the viewer chooses (none, small, medium or large), and prints at that size.
 - `AC-08.27` A Bansawali deeper than 8 generations continues each longer line in a numbered section that starts from the person whose row points to it, titled with their name and description, so no section is deeper than 8 generations; the pointer jumps to the section on screen.
+- `AC-08.28` The connection view names what the second person is to the first in the chosen culture, from the shortest path, and the culture's fallback label when no rule matches.
+- `AC-08.29` A rule may require the gender of any person on the path and of the first person; a hidden or unset gender matches only rules that do not ask for it.
+- `AC-08.30` A rule may require an elder or younger sibling at an up-then-down turn, by the shared parents' birth order; an unknown or disagreeing order matches only rules without it.
+- `AC-08.31` A rule may require a child's place (first, second, … or youngest) among all the parent's children or among those of the child's gender; it is unknown unless every child counted has a birth order and a known gender where counted by gender.
+- `AC-08.32` The instance configuration sets the default culture, the header switch changes it and is remembered in the browser, the language switch offers only the culture's languages, and switching keeps the language when the new culture has it, else takes the culture's first.
+- `AC-08.33` A label is written in the current language when the culture has it, otherwise in the culture's first language.
 
 ## Open details
 
