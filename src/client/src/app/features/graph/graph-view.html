@@ -95,94 +95,104 @@
       </p>
     }
 
-    <h2 i18n="@@graph.peopleInView">People in this view</h2>
-    @for (group of generations(); track group.generation) {
-      <h3>{{ generationLabel(group.generation) }}</h3>
-      <ul class="graph-people">
-        @for (entry of group.people; track entry.row.person.id) {
-          <li [class.selected-person]="entry.row.person.id === selectedId()">
-            <a [routerLink]="['/people', entry.row.person.id]">{{ fullName(entry.row.person) }}</a>
-            @if (entry.row.person.id === shown.centreId) {
-              <span class="hint" i18n="@@graph.centreMark"> (centre)</span>
-            }
-            @if (entry.parents.length) {
-              <div>
-                <ng-container i18n="@@graph.parentsLabel">Parents: </ng-container>
-                @for (parent of entry.parents; track parent.link.id; let last = $last) {
-                  <a [routerLink]="['/people', parent.person.id]">{{ fullName(parent.person) }}</a>
-                  @if (relationHint('parent', parent.person.gender, parent.link.type); as hint) {
-                    <span class="hint"> ({{ hint }})</span>
+    <div class="card graph-section">
+      <h2 i18n="@@graph.peopleInView">People in this view</h2>
+      @for (group of generations(); track group.generation) {
+        <h3>{{ generationLabel(group.generation) }}</h3>
+        <ul class="graph-people">
+          @for (entry of group.people; track entry.row.person.id) {
+            <li [class.selected-person]="entry.row.person.id === selectedId()">
+              <a [routerLink]="['/people', entry.row.person.id]">{{
+                fullName(entry.row.person)
+              }}</a>
+              @if (entry.row.person.id === shown.centreId) {
+                <span class="hint" i18n="@@graph.centreMark"> (centre)</span>
+              }
+              @if (entry.parents.length) {
+                <div>
+                  <ng-container i18n="@@graph.parentsLabel">Parents: </ng-container>
+                  @for (parent of entry.parents; track parent.link.id; let last = $last) {
+                    <a [routerLink]="['/people', parent.person.id]">{{
+                      fullName(parent.person)
+                    }}</a>
+                    @if (relationHint('parent', parent.person.gender, parent.link.type); as hint) {
+                      <span class="hint"> ({{ hint }})</span>
+                    }
+                    @if (!last) {
+                      <span>{{ separator }}</span>
+                    }
                   }
-                  @if (!last) {
-                    <span>{{ separator }}</span>
+                </div>
+              }
+              @if (entry.spouses.length) {
+                <div>
+                  <ng-container i18n="@@graph.spousesLabel">Spouses: </ng-container>
+                  @for (spouse of entry.spouses; track spouse.marriage.id; let last = $last) {
+                    <a [routerLink]="['/people', spouse.person.id]">{{
+                      fullName(spouse.person)
+                    }}</a>
+                    @if (
+                      relationHint(
+                        'spouse',
+                        spouse.person.gender,
+                        spouse.marriage.isFormer ? 'FormerMarriage' : 'Marriage'
+                      );
+                      as hint
+                    ) {
+                      <span class="hint"> ({{ hint }})</span>
+                    }
+                    @if (!last) {
+                      <span>{{ separator }}</span>
+                    }
                   }
-                }
-              </div>
-            }
-            @if (entry.spouses.length) {
-              <div>
-                <ng-container i18n="@@graph.spousesLabel">Spouses: </ng-container>
-                @for (spouse of entry.spouses; track spouse.marriage.id; let last = $last) {
-                  <a [routerLink]="['/people', spouse.person.id]">{{ fullName(spouse.person) }}</a>
-                  @if (
-                    relationHint(
-                      'spouse',
-                      spouse.person.gender,
-                      spouse.marriage.isFormer ? 'FormerMarriage' : 'Marriage'
-                    );
-                    as hint
-                  ) {
-                    <span class="hint"> ({{ hint }})</span>
+                </div>
+              }
+              @if (entry.children.length) {
+                <div>
+                  <ng-container i18n="@@graph.childrenLabel">Children: </ng-container>
+                  @for (child of entry.children; track child.link.id; let last = $last) {
+                    <a [routerLink]="['/people', child.person.id]">{{ fullName(child.person) }}</a>
+                    @if (relationHint('child', child.person.gender, child.link.type); as hint) {
+                      <span class="hint"> ({{ hint }})</span>
+                    }
+                    @if (!last) {
+                      <span>{{ separator }}</span>
+                    }
                   }
-                  @if (!last) {
-                    <span>{{ separator }}</span>
+                </div>
+              }
+              @if (entry.row.hasMore) {
+                <div class="actions">
+                  <span class="hint" i18n="@@graph.hasMore">Has relatives not shown.</span>
+                  @if (!full()) {
+                    <button
+                      type="button"
+                      class="link-button"
+                      [disabled]="loadingAround() !== null"
+                      (click)="loadMore(entry.row.person.id)"
+                      i18n="@@graph.loadMoreAround"
+                    >
+                      Load more around
+                      {{ fullName(entry.row.person) }}
+                    </button>
                   }
-                }
-              </div>
-            }
-            @if (entry.children.length) {
-              <div>
-                <ng-container i18n="@@graph.childrenLabel">Children: </ng-container>
-                @for (child of entry.children; track child.link.id; let last = $last) {
-                  <a [routerLink]="['/people', child.person.id]">{{ fullName(child.person) }}</a>
-                  @if (relationHint('child', child.person.gender, child.link.type); as hint) {
-                    <span class="hint"> ({{ hint }})</span>
+                  @if (entry.row.person.id !== shown.centreId) {
+                    <a
+                      [routerLink]="['/people', entry.row.person.id, 'graph']"
+                      i18n="@@graph.centreHere"
+                      >Centre here</a
+                    >
                   }
-                  @if (!last) {
-                    <span>{{ separator }}</span>
-                  }
-                }
-              </div>
-            }
-            @if (entry.row.hasMore) {
-              <div class="actions">
-                <span class="hint" i18n="@@graph.hasMore">Has relatives not shown.</span>
-                @if (!full()) {
-                  <button
-                    type="button"
-                    class="link-button"
-                    [disabled]="loadingAround() !== null"
-                    (click)="loadMore(entry.row.person.id)"
-                    i18n="@@graph.loadMoreAround"
-                  >
-                    Load more around
-                    {{ fullName(entry.row.person) }}
-                  </button>
-                }
-                @if (entry.row.person.id !== shown.centreId) {
-                  <a
-                    [routerLink]="['/people', entry.row.person.id, 'graph']"
-                    i18n="@@graph.centreHere"
-                    >Centre here</a
-                  >
-                }
-              </div>
-            }
-          </li>
-        }
-      </ul>
-    }
+                </div>
+              }
+            </li>
+          }
+        </ul>
+      }
+    </div>
 
-    <app-person-connections [from]="centre" [candidates]="candidates()" />
+    <div class="card graph-section">
+      <app-person-connections [from]="centre" [candidates]="candidates()" />
+    </div>
   }
 }

@@ -1,156 +1,182 @@
-<section class="panel">
+<section class="panel stack person-page">
   @if (error(); as error) {
     <p class="error" role="alert">{{ error }}</p>
   }
 
   @if (person(); as person) {
     @if (editing()) {
-      <h1 i18n="@@person.editDetails">Edit details</h1>
-      <app-person-name-form
-        [name]="editableName()"
-        [gender]="person.gender"
-        [description]="person.description"
-        [birthDate]="person.birthDate"
-        [birthDateShown]="person.birthDateShown"
-        [busy]="saving()"
-        (saved)="saveDetails($event)"
-        (cancelled)="editing.set(false)"
-      />
+      <div class="card">
+        <h1 i18n="@@person.editDetails">Edit details</h1>
+        <app-person-name-form
+          [name]="editableName()"
+          [gender]="person.gender"
+          [description]="person.description"
+          [birthDate]="person.birthDate"
+          [birthDateShown]="person.birthDateShown"
+          [busy]="saving()"
+          (saved)="saveDetails($event)"
+          (cancelled)="editing.set(false)"
+        />
+      </div>
     } @else {
-      <h1>{{ name() }}</h1>
-      @if (person.description) {
-        <p class="description">{{ person.description }}</p>
-      }
-      <app-person-photo [person]="person" (changed)="photoChanged($event)" />
-      @if (person.placeholder === 'Deleted') {
-        <p class="hint" i18n="@@person.deletedHint">
-          This profile was deleted. Its name and details were erased.
-        </p>
-      } @else if (person.placeholder) {
-        <p class="hint" i18n="@@person.privateHint">
-          This profile is private. Its name and details are hidden.
-        </p>
-      } @else {
-        <dl>
-          <dt i18n="@@nameForm.firstName">First name</dt>
-          <dd>{{ person.firstName }}</dd>
-          @if (person.middleName) {
-            <dt i18n="@@nameForm.middleName">Middle name</dt>
-            <dd>{{ person.middleName }}</dd>
-          }
-          @if (person.lastName) {
-            <dt i18n="@@nameForm.lastName">Last name</dt>
-            <dd>{{ person.lastName }}</dd>
-          }
-          @if (person.gender) {
-            <dt i18n="@@nameForm.gender">Gender</dt>
-            <dd>{{ genderLabel(person.gender) }}</dd>
-          }
-          @if (birthDate(); as birthDate) {
-            <dt i18n="@@person.born">Born</dt>
-            <dd>
-              {{ birthDate }}
-              @if (!person.birthDateShown) {
-                <span class="hint" i18n="@@person.hiddenFromOthers">(hidden from others)</span>
-              }
-            </dd>
-          }
-          @if (person.visibility === 'Private') {
-            <dt i18n="@@person.visibility">Visibility</dt>
-            <dd i18n="@@person.visibilityPrivate">Private: others see only “Private”.</dd>
-          }
-        </dl>
-      }
-      @if (person.maintainedByYou) {
-        <p class="hint" i18n="@@person.youMaintain">You maintain this profile.</p>
-        <p class="actions">
-          <button type="button" (click)="editing.set(true)">
-            <ng-container i18n="@@person.editDetails">Edit details</ng-container>
-          </button>
-          @if (person.visibility === 'Public') {
-            <button
-              type="button"
-              class="secondary"
-              [disabled]="saving()"
-              (click)="setVisibility('Private')"
-              i18n="@@person.makePrivate"
-            >
-              Make private
-            </button>
-          } @else {
-            <button
-              type="button"
-              class="secondary"
-              [disabled]="saving()"
-              (click)="setVisibility('Public')"
-              i18n="@@person.makePublic"
-            >
-              Make public
-            </button>
-          }
-        </p>
-        <p class="hint" i18n="@@person.privateExplain">
-          A private profile shows as “Private” to everyone but you and administrators. Its
-          relationships stay in the family graph.
-        </p>
-        @if (person.placeholder !== 'Deleted') {
-          <app-person-handover [personId]="person.id" />
-        }
-      }
-      @if (canDelete()) {
-        @if (confirmingDelete()) {
-          <div class="actions">
-            <span i18n="@@person.confirmDelete"
-              >Delete this profile? Its name is erased for good and it stays as “Deleted”, with its
-              links. This cannot be undone.</span
-            >
-            <button
-              type="button"
-              [disabled]="saving()"
-              (click)="deleteProfile()"
-              i18n="@@common.delete"
-            >
-              Delete
-            </button>
-            <button
-              type="button"
-              class="secondary"
-              (click)="confirmingDelete.set(false)"
-              i18n="@@users.keep"
-            >
-              Keep
-            </button>
+      <div class="card profile">
+        <div class="profile-head">
+          <app-person-photo [person]="person" (changed)="photoChanged($event)" />
+          <div class="profile-title">
+            <h1>{{ name() }}</h1>
+            @if (person.description) {
+              <p class="description">{{ person.description }}</p>
+            }
+            @if (person.maintainedByYou) {
+              <span class="badge" i18n="@@person.youMaintain">You maintain this profile.</span>
+            }
           </div>
-        } @else {
-          <p>
-            <button
-              type="button"
-              class="secondary"
-              (click)="confirmingDelete.set(true)"
-              i18n="@@person.deleteProfile"
-            >
-              Delete profile
-            </button>
+        </div>
+        @if (person.placeholder === 'Deleted') {
+          <p class="hint" i18n="@@person.deletedHint">
+            This profile was deleted. Its name and details were erased.
           </p>
+        } @else if (person.placeholder) {
+          <p class="hint" i18n="@@person.privateHint">
+            This profile is private. Its name and details are hidden.
+          </p>
+        } @else {
+          <dl>
+            <dt i18n="@@nameForm.firstName">First name</dt>
+            <dd>{{ person.firstName }}</dd>
+            @if (person.middleName) {
+              <dt i18n="@@nameForm.middleName">Middle name</dt>
+              <dd>{{ person.middleName }}</dd>
+            }
+            @if (person.lastName) {
+              <dt i18n="@@nameForm.lastName">Last name</dt>
+              <dd>{{ person.lastName }}</dd>
+            }
+            @if (person.gender) {
+              <dt i18n="@@nameForm.gender">Gender</dt>
+              <dd>{{ genderLabel(person.gender) }}</dd>
+            }
+            @if (birthDate(); as birthDate) {
+              <dt i18n="@@person.born">Born</dt>
+              <dd>
+                {{ birthDate }}
+                @if (!person.birthDateShown) {
+                  <span class="hint" i18n="@@person.hiddenFromOthers">(hidden from others)</span>
+                }
+              </dd>
+            }
+            @if (person.visibility === 'Private') {
+              <dt i18n="@@person.visibility">Visibility</dt>
+              <dd i18n="@@person.visibilityPrivate">Private: others see only “Private”.</dd>
+            }
+          </dl>
         }
+        <p class="actions profile-actions">
+          @if (person.maintainedByYou) {
+            <button type="button" (click)="editing.set(true)">
+              <ng-container i18n="@@person.editDetails">Edit details</ng-container>
+            </button>
+          }
+          <a
+            class="button secondary"
+            [routerLink]="['/people', person.id, 'graph']"
+            i18n="@@person.showGraph"
+            >Show the family graph</a
+          >
+          <a
+            class="button secondary"
+            [routerLink]="['/people', person.id, 'bansawali']"
+            i18n="@@person.showBansawali"
+            >Show the Bansawali</a
+          >
+        </p>
+      </div>
+      <div class="card">
+        <app-person-relatives [person]="person" />
+        <app-person-spouses [person]="person" />
+      </div>
+      @if (person.maintainedByYou || canDelete() || isAdministrator()) {
+        <div class="card manage">
+          <h2 i18n="@@person.manage">Manage this profile</h2>
+          @if (person.maintainedByYou) {
+            <div class="actions">
+              @if (person.visibility === 'Public') {
+                <button
+                  type="button"
+                  class="secondary"
+                  [disabled]="saving()"
+                  (click)="setVisibility('Private')"
+                  i18n="@@person.makePrivate"
+                >
+                  Make private
+                </button>
+              } @else {
+                <button
+                  type="button"
+                  class="secondary"
+                  [disabled]="saving()"
+                  (click)="setVisibility('Public')"
+                  i18n="@@person.makePublic"
+                >
+                  Make public
+                </button>
+              }
+            </div>
+            <p class="hint" i18n="@@person.privateExplain">
+              A private profile shows as “Private” to everyone but you and administrators. Its
+              relationships stay in the family graph.
+            </p>
+            @if (person.placeholder !== 'Deleted') {
+              <app-person-handover [personId]="person.id" />
+            }
+          }
+          @if (canDelete()) {
+            @if (confirmingDelete()) {
+              <div class="actions">
+                <span i18n="@@person.confirmDelete"
+                  >Delete this profile? Its name is erased for good and it stays as “Deleted”, with
+                  its links. This cannot be undone.</span
+                >
+                <button
+                  type="button"
+                  class="danger"
+                  [disabled]="saving()"
+                  (click)="deleteProfile()"
+                  i18n="@@common.delete"
+                >
+                  Delete
+                </button>
+                <button
+                  type="button"
+                  class="secondary"
+                  (click)="confirmingDelete.set(false)"
+                  i18n="@@users.keep"
+                >
+                  Keep
+                </button>
+              </div>
+            } @else {
+              <p>
+                <button
+                  type="button"
+                  class="secondary danger-text"
+                  (click)="confirmingDelete.set(true)"
+                  i18n="@@person.deleteProfile"
+                >
+                  Delete profile
+                </button>
+              </p>
+            }
+          }
+          @if (isAdministrator() && person.placeholder !== 'Deleted') {
+            <app-person-transfer [personId]="person.id" (transferred)="transferred()" />
+          }
+        </div>
       }
-      @if (isAdministrator() && person.placeholder !== 'Deleted') {
-        <app-person-transfer [personId]="person.id" (transferred)="transferred()" />
-      }
-      <p>
-        <a [routerLink]="['/people', person.id, 'graph']" i18n="@@person.showGraph"
-          >Show the family graph</a
-        >
-      </p>
-      <p>
-        <a [routerLink]="['/people', person.id, 'bansawali']" i18n="@@person.showBansawali"
-          >Show the Bansawali</a
-        >
-      </p>
-      <app-person-relatives [person]="person" />
-      <app-person-spouses [person]="person" />
     }
   }
 
-  <p><a routerLink="/people" i18n="@@handover.backToProfiles">Back to your profiles</a></p>
+  <p class="back">
+    <a routerLink="/people" i18n="@@handover.backToProfiles">Back to your profiles</a>
+  </p>
 </section>

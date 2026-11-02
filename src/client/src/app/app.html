@@ -1,18 +1,49 @@
-<header>
-  <a routerLink="/" class="brand">FamilyGraph</a>
-  <div class="end">
-    @if (account()) {
-      <nav>
-        <a routerLink="/people" i18n="@@header.people">People</a>
-        <a routerLink="/approvals" i18n="@@header.approvals">Approvals</a>
-        @if (isAdministrator()) {
-          <a routerLink="/admin/users" i18n="@@header.users">Users</a>
+<header class="app-header">
+  <div class="bar">
+    <a routerLink="/" class="brand" (click)="menuOpen.set(false)">
+      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="9" />
+        <path d="M16 10v6m0 0-6 6m6-6 6 6" />
+        <circle cx="16" cy="9" r="3.2" />
+        <circle cx="9.5" cy="22.5" r="3.2" />
+        <circle cx="22.5" cy="22.5" r="3.2" />
+      </svg>
+      <span>FamilyGraph</span>
+    </a>
+    <button
+      type="button"
+      class="menu-button"
+      aria-controls="app-menu"
+      [attr.aria-expanded]="menuOpen()"
+      (click)="menuOpen.set(!menuOpen())"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        @if (menuOpen()) {
+          <path d="M6 6l12 12M18 6 6 18" />
+        } @else {
+          <path d="M4 7h16M4 12h16M4 17h16" />
         }
-        <a routerLink="/account" i18n="@@header.account">Account</a>
-      </nav>
-    }
-    <app-culture-switch />
-    <app-language-switch />
+      </svg>
+      <span class="visually-hidden" i18n="@@header.menu">Menu</span>
+    </button>
+    <div id="app-menu" class="end" [class.open]="menuOpen()">
+      @if (account()) {
+        <nav (click)="menuOpen.set(false)">
+          <a routerLink="/people" routerLinkActive="current" i18n="@@header.people">People</a>
+          <a routerLink="/approvals" routerLinkActive="current" i18n="@@header.approvals"
+            >Approvals</a
+          >
+          @if (isAdministrator()) {
+            <a routerLink="/admin/users" routerLinkActive="current" i18n="@@header.users">Users</a>
+          }
+          <a routerLink="/account" routerLinkActive="current" i18n="@@header.account">Account</a>
+        </nav>
+      }
+      <div class="switches">
+        <app-culture-switch />
+        <app-language-switch />
+      </div>
+    </div>
   </div>
 </header>
 

@@ -21,6 +21,10 @@ An administrator can load an export file into an instance that has no profiles y
 
 The whole interface is offered in English and Nepali. Each instance chooses the language it starts in. Anyone may switch the language from the page header; the choice is remembered in that browser only and is not part of the account. Names, descriptions and other text people enter are shown as entered, never translated. In Nepali, numbers and dates use Devanagari digits, and the app brings its own Devanagari font so that text looks the same on every device and in print. Relationship words such as "adopted son" or "former wife" are translated as whole phrases, so each language can word them in its own order. Kinship terms that depend on culture (such as different words for a father's elder and younger brother) come from the chosen culture, not the language (PRD 08); the language switch offers only the current culture's languages.
 
+## Appearance
+
+The app has a clean, modern look: a light grey page with white rounded cards, one blue accent and tidy buttons and lists. It follows the device's light or dark setting, with no switch of its own; printed pages stay black on white. The header stays at the top with the main links and the culture and language switches; on a phone they fold behind a menu button so the graph keeps the whole width (agreed 2026-11-02).
+
 ## Initial release exclusions
 
 - Dedicated deceased-person workflow. Preserve profiles as they were left.
@@ -48,3 +52,5 @@ The whole interface is offered in English and Nepali. Each instance chooses the 
 - `AC-09.15` Anyone can switch the language from the page header; the choice is remembered in that browser only, not in the account.
 - `AC-09.16` In Nepali, numbers and dates use Devanagari digits on screen and in print, with a bundled Devanagari font.
 - `AC-09.17` Relationship words (such as "adopted son" or "former wife") are translated as whole phrases.
+- `AC-09.18` Every page follows the device's light or dark setting, and printed pages are black on white.
+- `AC-09.19` On a narrow screen the header's links and switches fold behind a menu button.

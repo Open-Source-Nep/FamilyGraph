@@ -64,6 +64,7 @@ A Bansawali is the traditional Nepali lineage record. It is a view derived from 
 - Where the gender of the step's person is known and visible (PRD 01), a step reads "mother" or "father" instead of "parent", and "daughter" or "son" instead of "child". It stays "parent" or "child" when the gender is Other, not set, or hidden behind a placeholder. Lists of parents and children use the same words.
 - A marriage step reads "husband" or "wife" where the spouse's gender is known and visible, "spouse" otherwise, with "former" before it once the marriage ended.
 - An adoptive step reads "adoptive parent" or "adopted child" instead of "parent" or "child", or "adoptive mother", "adopted son" and so on where the gender is known.
+- The other person in the connection view is chosen with the same searchable people picker (agreed 2026-11-02): the people shown in the graph, your connections, and anyone with a Public profile found by name.
 - When two people are connected by more than one path, the shortest path is shown, with a note "There are more connections between these people" that lists up to a configurable number of further paths (default 5).
 
 ## Unknown or undisclosed parents
@@ -129,3 +130,4 @@ Kinship words are culture-specific, not translations: Mama is a mother's brother
 
 - Cycle prevention rules are decided in PRD 02. Traversal must still tolerate cycles defensively.
 - Fan and tree diagram layout and styling are decided with the client graph UI.
+- `AC-08.34` The connection view picks the other person with the searchable people picker: the people shown, your connections, and Public profiles found by name.
