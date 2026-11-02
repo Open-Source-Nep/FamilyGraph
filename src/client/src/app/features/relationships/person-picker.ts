@@ -31,6 +31,18 @@ export interface Candidate {
 /** What the picker lists a person by: their name parts, image and description. */
 type Listed = PersonName & { id: string; imageId: string | null; description: string | null };
 
+/** Someone shown elsewhere on the page whom the picker lists too, such as the people in the graph. */
+export type ExtraPerson = {
+  id: string;
+  firstName: string | null;
+  middleName: string | null;
+  lastName: string | null;
+  placeholder?: string | null;
+  imageId?: string | null;
+  description?: string | null;
+  maintainedByYou?: boolean;
+};
+
 /** Searches start at this many characters, and wait this long after the last key. */
 const minSearchLength = 2;
 const searchDelayMs = 300;
@@ -82,6 +94,8 @@ export class PersonPicker {
   readonly hint = input('');
   /** Shows "Add a new person". */
   readonly offersNewPerson = input(true);
+  /** More people to list after your connections, such as those shown in the graph; placeholders are left out. */
+  readonly extra = input<ExtraPerson[]>([]);
   /** The people to add, in the order they were picked, kept while the list is filtered. */
   readonly selected = model<Candidate[]>([]);
   /** A profile created with "Add a new person", already listed and selected. */
@@ -104,7 +118,23 @@ export class PersonPicker {
 
   protected readonly options = computed(() => {
     const text = this.query().trim();
-    const local = (this.connections() ?? []).filter(
+    const connections = this.connections() ?? [];
+    const known = new Set(connections.map((candidate) => candidate.id));
+    const extra = this.extra()
+      .filter(
+        (person) => !person.placeholder && person.id !== this.excludeId() && !known.has(person.id),
+      )
+      .map((person) =>
+        this.remember(
+          listed({
+            ...person,
+            imageId: person.imageId ?? null,
+            description: person.description ?? null,
+          }),
+          person.maintainedByYou ?? false,
+        ),
+      );
+    const local = [...connections, ...extra].filter(
       (candidate) => !text || matchesName(this.nameParts(candidate), text),
     );
     const ids = new Set(local.map((candidate) => candidate.id));

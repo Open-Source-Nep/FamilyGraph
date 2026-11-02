@@ -15,62 +15,270 @@
 }
 
 :root {
-  --text: #1f1f24;
-  --muted: #5b5b66;
-  --border: #d9d9e0;
+  /* Design tokens (D-050): clean cards on a light grey page, one blue accent. */
+  --bg: #f4f5f9;
+  --surface: #ffffff;
+  --surface-2: #f0f2f7;
+  --text: #1b1c22;
+  --muted: #5d5f6c;
+  --border: #e2e4eb;
+  --border-strong: #c9ccd6;
   --accent: #2f5bd3;
+  --accent-hover: #2449b3;
+  --accent-soft: #e9eefc;
+  --on-accent: #ffffff;
   --error: #b3261e;
+  --error-soft: #fdecea;
+  --radius: 0.75rem;
+  --radius-sm: 0.5rem;
+  --shadow: 0 1px 2px rgb(16 24 40 / 5%), 0 1px 3px rgb(16 24 40 / 6%);
+  --shadow-lg: 0 12px 32px rgb(16 24 40 / 12%), 0 2px 6px rgb(16 24 40 / 6%);
+  --focus: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
+  --header-height: 3.75rem;
+  color-scheme: light dark;
   font-family: 'Noto Sans Devanagari', system-ui, sans-serif;
   color: var(--text);
   line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Dark mode follows the device setting; there is no switch (D-050). */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1115;
+    --surface: #181b21;
+    --surface-2: #22262e;
+    --text: #e8e9ee;
+    --muted: #a0a4b1;
+    --border: #2c3039;
+    --border-strong: #3c414c;
+    --accent: #7b9cff;
+    --accent-hover: #9bb4ff;
+    --accent-soft: #1f2a48;
+    --on-accent: #0f1115;
+    --error: #ff8a80;
+    --error-soft: #3a1d1b;
+    --shadow: 0 1px 2px rgb(0 0 0 / 40%);
+    --shadow-lg: 0 12px 32px rgb(0 0 0 / 55%);
+  }
+}
+
+* {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
+  background: var(--bg);
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+h1 {
+  margin: 0 0 0.75rem;
+  font-size: 1.75rem;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  font-size: 1.125rem;
+  letter-spacing: -0.01em;
+}
+
+h3 {
+  font-size: 1rem;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+
+/* A page: one card in the middle of the page (D-050). */
+.panel,
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
 }
 
 .panel {
-  max-width: 32rem;
-  margin: 2rem auto;
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 1.75rem 2rem;
+}
+
+/* A page made of several cards, such as the person page. */
+.panel.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
+}
+
+.card {
+  padding: 1.5rem 1.75rem;
+}
+
+/* Sections in a page or card are divided by a thin line above their heading. */
+.panel:not(.stack) h2,
+.card h2 {
+  margin: 1.75rem 0 0.75rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+}
+
+.card > h2:first-child,
+.card > :first-child > h2:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.panel > h1:first-child + .hint,
+.panel > h1:first-child + p {
+  margin-top: -0.25rem;
+}
+
+@media (max-width: 47.99rem) {
+  .panel {
+    padding: 1.25rem 1rem;
+  }
+
+  .card {
+    padding: 1.25rem 1rem;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+  }
 }
 
 .error {
   color: var(--error);
 }
 
+p.error,
+div.error {
+  padding: 0.625rem 0.875rem;
+  border-radius: var(--radius-sm);
+  background: var(--error-soft);
+}
+
+[role='status']:not(:empty) {
+  padding: 0.625rem 0.875rem;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+}
+
 .button,
 button {
-  display: inline-block;
-  padding: 0.5rem 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  min-height: 2.5rem;
+  padding: 0.5rem 1.125rem;
   border: 1px solid var(--accent);
-  border-radius: 0.375rem;
+  border-radius: 999px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font: inherit;
+  font-weight: 500;
+  line-height: 1.25;
   text-decoration: none;
   cursor: pointer;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.button:hover,
+button:hover:not(:disabled) {
+  border-color: var(--accent-hover);
+  background: var(--accent-hover);
+  text-decoration: none;
 }
 
 button:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: default;
 }
 
 dt {
   color: var(--muted);
+  font-size: 0.875rem;
 }
 
 dd {
   margin: 0 0 0.75rem;
 }
 
-button.secondary {
-  background: transparent;
-  color: var(--accent);
+/* Name and value side by side on wider screens. */
+dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.5rem 1.5rem;
+  margin: 1rem 0;
+}
+
+dl dt,
+dl dd {
+  margin: 0;
+}
+
+@media (max-width: 30rem) {
+  dl {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  dl dd {
+    margin-bottom: 0.5rem;
+  }
+}
+
+button.secondary,
+.button.secondary,
+label.secondary {
+  border-color: var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+}
+
+button.secondary:hover:not(:disabled),
+.button.secondary:hover,
+label.secondary:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+
+button.danger {
+  border-color: var(--error);
+  background: var(--error);
+  color: var(--surface);
+}
+
+button.danger:hover:not(:disabled) {
+  border-color: var(--error);
+  background: color-mix(in srgb, var(--error) 85%, black);
 }
 
 .description {
-  margin-top: -0.5rem;
+  margin-top: -0.25rem;
   color: var(--muted);
 }
 
@@ -78,48 +286,143 @@ button.secondary {
   color: var(--muted);
 }
 
+p.hint {
+  font-size: 0.9375rem;
+}
+
 .name-form {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .name-form label {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.375rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+/* A field's name and "(optional)" share a line, with the input below. */
+.name-form > label:not(.check) {
+  display: block;
+}
+
+.name-form > label:not(.check) > .hint {
+  margin-left: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+.name-form > label:not(.check) > input,
+.name-form > label:not(.check) > select,
+.name-form > label:not(.check) > textarea {
+  display: block;
+  width: 100%;
+  margin-top: 0.375rem;
+}
+
+h2 .hint {
+  margin-left: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 400;
 }
 
 input,
-select {
-  padding: 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: 0.375rem;
+select,
+textarea {
+  min-height: 2.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
   font: inherit;
+  font-weight: 400;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: var(--focus);
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  min-height: 0;
+  width: 1.05rem;
+  height: 1.05rem;
+  margin: 0;
+  accent-color: var(--accent);
 }
 
 .actions {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 0.5rem;
 }
 
-.people {
-  padding-left: 1.25rem;
+/* A list of people or links: rows with a thin line between them. */
+.people,
+.links {
+  margin: 0.5rem 0 1rem;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.people > li,
+.links > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.links > li {
+  display: block;
+}
+
+.people > li:last-child,
+.links > li:last-child {
+  border-bottom: none;
+}
+
+.people > li > a:first-of-type {
+  font-weight: 500;
 }
 
 .name-form fieldset {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.375rem;
   margin: 0;
+  padding: 0.75rem 1rem 1rem;
   border: 1px solid var(--border);
-  border-radius: 0.375rem;
+  border-radius: var(--radius-sm);
+}
+
+.name-form legend {
+  padding: 0 0.375rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
 }
 
 .name-form fieldset label {
   flex-direction: row;
   align-items: center;
   gap: 0.5rem;
+  font-weight: 400;
 }
 
 .name-form label.check {
@@ -127,6 +430,7 @@ select {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
+  font-weight: 400;
 }
 
 .name-form fieldset.birth-date .choices,
@@ -145,42 +449,64 @@ select {
   width: 6rem;
 }
 
-.links {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding-left: 1.25rem;
-}
-
 .links .actions {
   margin-top: 0.25rem;
 }
 
 button.link-button {
+  min-height: 0;
   margin-left: 0.5rem;
   padding: 0;
   border: none;
+  border-radius: 0.25rem;
   background: none;
   color: var(--accent);
   font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+button.link-button:hover:not(:disabled) {
+  border: none;
+  background: none;
   text-decoration: underline;
 }
 
 button.link-button.order {
-  margin: 0 0.25rem 0 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text);
+}
+
+button.link-button.order:hover:not(:disabled) {
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
   text-decoration: none;
 }
 
 button.link-button.order:disabled {
   color: var(--muted);
-  opacity: 0.5;
+  opacity: 0.4;
 }
 
-/* The home graph fills the page below the header: the header, its border and main's padding take 5.25rem. */
+/* The home graph fills the page below the header and main's padding. */
 .graph-panel {
-  --dots-height: max(22rem, calc(100dvh - 5.25rem));
+  --dots-height: max(22rem, calc(100dvh - var(--header-height) - 3rem - 1px));
   max-width: none;
   margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
+}
+
+@media (max-width: 47.99rem) {
+  .graph-panel {
+    --dots-height: max(22rem, calc(100dvh - var(--header-height) - 2rem - 1px));
+  }
 }
 
 .name-form fieldset.choices {
@@ -197,19 +523,24 @@ button.link-button.order:disabled {
 }
 
 .dialog {
-  width: min(28rem, calc(100vw - 2rem));
+  width: min(30rem, calc(100vw - 2rem));
   padding: 1.5rem;
   border: 1px solid var(--border);
-  border-radius: 0.5rem;
+  border-radius: var(--radius);
+  background: var(--surface);
   color: var(--text);
+  box-shadow: var(--shadow-lg);
 }
 
 .dialog::backdrop {
-  background: rgb(0 0 0 / 0.4);
+  background: rgb(15 17 21 / 0.5);
+  backdrop-filter: blur(2px);
 }
 
 .dialog h2 {
   margin-top: 0;
+  padding-top: 0;
+  border-top: none;
 }
 
 /* A round photo or initials next to a person's name (D-038). */
@@ -222,7 +553,7 @@ button.link-button.order:disabled {
   height: 2.5rem;
   overflow: hidden;
   border-radius: 50%;
-  background: #e6ebf8;
+  background: var(--accent-soft);
   color: var(--accent);
   font-size: 0.875rem;
   font-weight: 600;
@@ -245,6 +576,10 @@ button.link-button.order:disabled {
   display: flex;
   flex-direction: column;
   min-width: 0;
+}
+
+.person-name {
+  font-weight: 500;
 }
 
 .person-description {
@@ -272,52 +607,141 @@ button.link-button.order:disabled {
 }
 
 .person-rows a.person-row {
-  padding: 0.5rem 0.25rem;
+  margin: 0 -0.5rem;
+  padding: 0.625rem 0.5rem;
+  border-radius: var(--radius-sm);
   color: inherit;
   text-decoration: none;
+  transition: background-color 0.15s;
+}
+
+.person-rows a.person-row:hover,
+.person-rows a.person-row:focus-visible {
+  background: var(--surface-2);
 }
 
 .person-rows a.person-row:hover .person-name,
 .person-rows a.person-row:focus-visible .person-name {
   color: var(--accent);
-  text-decoration: underline;
 }
 
+/* Tabs as a segmented control. */
 nav.tabs {
-  display: flex;
+  display: inline-flex;
   gap: 0.25rem;
   margin-bottom: 1rem;
-  border-bottom: 1px solid var(--border);
+  padding: 0.25rem;
+  border-radius: 999px;
+  background: var(--surface-2);
 }
 
 nav.tabs a {
-  margin-bottom: -1px;
-  padding: 0.5rem 0.75rem;
-  border-bottom: 2px solid transparent;
-  color: inherit;
+  padding: 0.375rem 1rem;
+  border-radius: 999px;
+  color: var(--muted);
+  font-weight: 500;
   text-decoration: none;
 }
 
 nav.tabs a.current {
-  border-bottom-color: var(--accent);
-  color: var(--accent);
-  font-weight: 600;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
 }
 
 nav.tabs a:hover,
 nav.tabs a:focus-visible {
-  color: var(--accent);
+  color: var(--text);
 }
 
 label.search-box {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.375rem;
   margin-bottom: 0.75rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
 }
 
 .person-rows > li.empty {
   padding: 0.5rem 0.25rem;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.0625rem 0.5rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+/* The person page (D-050): the profile card with photo and name, then relatives, then management. */
+.profile-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1rem 1.5rem;
+}
+
+.profile-title {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 14rem;
+  padding-top: 1rem;
+}
+
+.profile-title h1 {
+  margin-bottom: 0.25rem;
+  font-size: 2rem;
+}
+
+.profile-title .description {
+  margin: 0 0 0.75rem;
+  font-size: 1.0625rem;
+}
+
+.profile dl {
+  padding: 1rem 0 0;
+  border-top: 1px solid var(--border);
+}
+
+.profile-actions {
+  margin: 1.25rem 0 0;
+}
+
+.manage > :last-child {
+  margin-bottom: 0;
+}
+
+button.secondary.danger-text {
+  color: var(--error);
+}
+
+p.back {
+  margin: 0.25rem 0 0;
+  text-align: center;
+}
+
+@media (max-width: 30rem) {
+  .profile-head {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .profile-title {
+    align-items: center;
+    min-width: 0;
+    padding-top: 0;
+  }
+
+  .profile-title h1 {
+    font-size: 1.625rem;
+  }
 }
 
 /* For screen readers only. */
@@ -328,4 +752,24 @@ label.search-box {
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/* Printed pages are plain black on white, without cards or shadows. */
+@media print {
+  :root {
+    --bg: #fff;
+    --surface: #fff;
+    --text: #000;
+    --muted: #444;
+    --border: #ccc;
+    color-scheme: light;
+  }
+
+  .panel,
+  .card {
+    max-width: none;
+    padding: 0;
+    border: none;
+    box-shadow: none;
+  }
 }

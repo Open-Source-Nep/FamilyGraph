@@ -1,15 +1,17 @@
 :host {
   display: flex;
   justify-content: center;
-  padding: 2rem 0;
+  padding: 3rem 0;
 }
 
 .sign-in {
   width: 100%;
   max-width: 24rem;
-  padding: 2rem 1.5rem;
+  padding: 2.5rem 2rem 2rem;
   border: 1px solid var(--border);
-  border-radius: 0.75rem;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
   text-align: center;
 }
 
@@ -21,7 +23,7 @@
 
 h1 {
   margin: 0.25rem 0 0;
-  font-size: 1.5rem;
+  font-size: 1.75rem;
 }
 
 .lead {

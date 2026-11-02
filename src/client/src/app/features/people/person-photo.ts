@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 
 import { PeopleService } from './people.service';
+import { PersonAvatar } from './person-avatar';
 import { Person, fullName, imageUrl } from './person';
 import { problemMessage } from './problem';
 import { preparePhoto } from './profile-photo';
@@ -22,6 +23,7 @@ import { preparePhoto } from './profile-photo';
  */
 @Component({
   selector: 'app-person-photo',
+  imports: [PersonAvatar],
   templateUrl: './person-photo.html',
   styleUrl: './person-photo.css',
 })
@@ -33,6 +35,11 @@ export class PersonPhoto {
   readonly changed = output<string | null>();
 
   protected readonly url = computed(() => imageUrl(this.person()));
+  /** Without a photo, the profile shows a large circle with the initials (D-050). */
+  protected readonly avatar = computed(() => ({
+    ...this.person(),
+    firstName: this.person().firstName ?? '',
+  }));
   protected readonly alt = computed(
     () => $localize`:@@photo.alt:Photo of ${fullName(this.person())}:name:`,
   );

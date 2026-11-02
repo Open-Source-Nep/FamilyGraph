@@ -22,6 +22,8 @@
       </button>
     </div>
   </dialog>
+} @else {
+  <app-person-avatar class="photo-placeholder" [person]="avatar()" />
 }
 @if (person().maintainedByYou && !person().placeholder) {
   <p class="actions">

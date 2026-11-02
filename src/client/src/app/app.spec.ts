@@ -45,4 +45,24 @@ describe('App', () => {
     const links = [...element.querySelectorAll('nav a')].map((link) => link.textContent);
     expect(links).toEqual(['People', 'Approvals', 'Users', 'Account']);
   });
+
+  it('folds the links behind a menu button that opens and closes (AC-09.19)', async () => {
+    const fixture = TestBed.createComponent(App);
+    account.set({ id: '1', email: 'maya@example.org', emailVerified: true, roles: ['User'] });
+    await fixture.whenStable();
+    const element = fixture.nativeElement as HTMLElement;
+    const button = element.querySelector<HTMLButtonElement>('.menu-button')!;
+    const menu = element.querySelector('#app-menu')!;
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+    expect(menu.classList).not.toContain('open');
+
+    button.click();
+    await fixture.whenStable();
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+    expect(menu.classList).toContain('open');
+
+    element.querySelector('nav')!.dispatchEvent(new Event('click'));
+    await fixture.whenStable();
+    expect(menu.classList).not.toContain('open');
+  });
 });

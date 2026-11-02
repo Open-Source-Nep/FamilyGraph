@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
 import { Connections, GraphPerson } from './graph';
+import { PeopleService } from '../people/people.service';
 import { GraphService } from './graph.service';
 import { PersonConnections } from './person-connections';
 
@@ -30,19 +31,42 @@ describe('PersonConnections', () => {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
-        { provide: GraphService, useValue: { connections: () => Promise.resolve(connections) } },
+        {
+          provide: GraphService,
+          useValue: {
+            connections: () => Promise.resolve(connections),
+            overview: () =>
+              Promise.resolve({ people: [], links: [], marriages: [], isTruncated: false }),
+          },
+        },
+        {
+          provide: PeopleService,
+          useValue: {
+            listMaintained: () => Promise.resolve({ people: [], isTruncated: false }),
+            search: () => Promise.resolve({ people: [], isTruncated: false }),
+          },
+        },
       ],
     });
   });
+
+  /** The picker loads your connections before it lists anyone. */
+  const settle = async () => {
+    await fixture.whenStable();
+    await new Promise((resolve) => setTimeout(resolve));
+    fixture.detectChanges();
+    await fixture.whenStable();
+  };
 
   const find = async () => {
     fixture = TestBed.createComponent(PersonConnections);
     fixture.componentRef.setInput('from', sita);
     fixture.componentRef.setInput('candidates', [sita, maya, rina]);
-    await fixture.whenStable();
-    const select: HTMLSelectElement = fixture.nativeElement.querySelector('select');
-    select.value = select.options[2].value;
-    select.dispatchEvent(new Event('change'));
+    await settle();
+    const rinaOption = [...fixture.nativeElement.querySelectorAll('label.person-row')].find(
+      (label: HTMLElement) => label.textContent?.includes('Rina'),
+    ) as HTMLElement;
+    rinaOption.querySelector('input')!.click();
     fixture.nativeElement.querySelector('form').dispatchEvent(new Event('submit'));
     await fixture.whenStable();
   };
@@ -51,12 +75,26 @@ describe('PersonConnections', () => {
       [...ol.querySelectorAll('li')].map((li) => li.textContent.replace(/\s+/g, ' ').trim()),
     );
 
-  it('offers everyone but the person themselves', async () => {
+  it('offers everyone shown but the person themselves in the people picker (AC-08.34)', async () => {
     connections = { paths: [], morePathsExist: false, searchComplete: true };
     await find();
 
-    const options = [...fixture.nativeElement.querySelectorAll('option')].map((o) => o.textContent);
-    expect(options).toEqual(['Choose a person', 'Maya', 'Rina']);
+    const options = [
+      ...fixture.nativeElement.querySelectorAll('label.person-row .person-name'),
+    ].map((name: HTMLElement) => name.textContent?.trim());
+    expect(options).toEqual(['Maya', 'Rina']);
+    expect(fixture.nativeElement.querySelector('select')).toBeNull();
+  });
+
+  it('asks for a person before searching', async () => {
+    fixture = TestBed.createComponent(PersonConnections);
+    fixture.componentRef.setInput('from', sita);
+    fixture.componentRef.setInput('candidates', [sita, maya]);
+    await fixture.whenStable();
+    fixture.nativeElement.querySelector('form').dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    expect(fixture.nativeElement.textContent).toContain('Choose a person.');
   });
 
   it('shows the shortest path with adoptive steps named (AC-08.2, AC-08.3, AC-08.7)', async () => {
