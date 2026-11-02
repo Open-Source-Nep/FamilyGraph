@@ -52,11 +52,11 @@ public class ExportServiceTests
     [Trait("AC", "AC-09.6")]
     public async Task People_links_and_accounts_pass_through_and_a_deleted_profile_has_no_name()
     {
-        var kept = new ExportedPerson(new PersonId(Guid.NewGuid()), new PersonName("Maya"), ProfileVisibility.Private, null, Alice, Gender.Female, null, null, false);
-        var deleted = new ExportedPerson(new PersonId(Guid.NewGuid()), PersonName.Erased, ProfileVisibility.Public, Now, Alice, null, null, null, false);
+        var kept = new ExportedPerson(new PersonId(Guid.NewGuid()), new PersonName("Maya"), ProfileVisibility.Private, null, Alice, Gender.Female, null, null, false, null);
+        var deleted = new ExportedPerson(new PersonId(Guid.NewGuid()), PersonName.Erased, ProfileVisibility.Public, Now, Alice, null, null, null, false, null);
         var link = new ExportedLink(
-            new LinkId(Guid.NewGuid()), deleted.Id, kept.Id, ParentChildType.Adoptive, EndpointApproval.Approved, EndpointApproval.Pending, null);
-        var account = new ExportedAccount(Alice, "alice@example.org", true);
+            new LinkId(Guid.NewGuid()), deleted.Id, kept.Id, ParentChildType.Adoptive, EndpointApproval.Approved, EndpointApproval.Pending, null, null);
+        var account = new ExportedAccount(Alice, "google-alice", "alice@example.org", true);
         _queries.Data = ([account], [kept, deleted], [link]);
 
         await using var export = await Service().StartAsync(new Viewer(Admin, IsAdministrator: true), Cancellation);
@@ -99,6 +99,18 @@ public class ExportServiceTests
 
         public IAsyncEnumerable<ExportedMarriage> MarriagesAsync(CancellationToken cancellationToken) =>
             AsyncEnumerable.Empty<ExportedMarriage>();
+
+        public IAsyncEnumerable<ExportedImage> ImagesAsync(CancellationToken cancellationToken) =>
+            AsyncEnumerable.Empty<ExportedImage>();
+
+        public IAsyncEnumerable<ExportedImageContent> ImageContentsAsync(CancellationToken cancellationToken) =>
+            AsyncEnumerable.Empty<ExportedImageContent>();
+
+        public IAsyncEnumerable<ExportedHandover> HandoversAsync(CancellationToken cancellationToken) =>
+            AsyncEnumerable.Empty<ExportedHandover>();
+
+        public IAsyncEnumerable<ExportedAuditEvent> AuditEventsAsync(CancellationToken cancellationToken) =>
+            AsyncEnumerable.Empty<ExportedAuditEvent>();
 
         public ValueTask DisposeAsync()
         {

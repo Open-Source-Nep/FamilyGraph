@@ -23,9 +23,7 @@ describe('DataImport', () => {
   const button = () => element().querySelector('button') as HTMLButtonElement;
 
   async function chooseFile(): Promise<File> {
-    const file = new File(['{"format":"familygraph-export"}'], 'export.json', {
-      type: 'application/json',
-    });
+    const file = new File(['PK'], 'export.zip', { type: 'application/zip' });
     const input = element().querySelector('input[type="file"]') as HTMLInputElement;
     Object.defineProperty(input, 'files', { value: [file] });
     input.dispatchEvent(new Event('change'));
@@ -41,13 +39,26 @@ describe('DataImport', () => {
     const request = http.expectOne('/api/import');
     expect(request.request.method).toBe('POST');
     expect(request.request.body).toBe(file);
-    expect(request.request.headers.get('Content-Type')).toBe('application/json');
-    request.flush({ people: 3, links: 1, marriages: 0, matchedAccounts: 1, assignedToYou: 1 });
+    expect(request.request.headers.get('Content-Type')).toBe('application/zip');
+    request.flush({
+      people: 3,
+      links: 1,
+      marriages: 0,
+      images: 2,
+      handovers: 0,
+      auditEvents: 9,
+      createdAccounts: 1,
+      reusedAccounts: 1,
+    });
     await fixture.whenStable();
 
-    const status = element().querySelector('[role="status"]')?.textContent ?? '';
-    expect(status).toContain('Imported 3 profiles, 1 parent–child links and 0 marriages.');
-    expect(status).toContain('You now maintain 1 profiles');
+    const status = (element().querySelector('[role="status"]')?.textContent ?? '').replace(
+      /\s+/g,
+      ' ',
+    );
+    expect(status).toContain('Imported 3 profiles, 1 parent–child links, 0 marriages, 2 photos');
+    expect(status).toContain('9 audit history entries.');
+    expect(status).toContain('1 accounts were created and 1 were matched to accounts here.');
   });
 
   it('lists the problems of a refused file', async () => {

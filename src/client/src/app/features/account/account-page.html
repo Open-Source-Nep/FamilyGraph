@@ -24,8 +24,9 @@
   @if (isAdministrator()) {
     <h2 i18n="@@account.exportTitle">Data export</h2>
     <p i18n="@@account.exportIntro">
-      Download every profile, relationship and the email of each profile's maintainer as one JSON
-      file, to import later. Private profiles are included with their names, so keep the file safe.
+      Download everything stored in this instance as one zip file, to import later: every account
+      with its email, every profile with its photo, every relationship and marriage, handover links
+      and the audit history. Private profiles are included with their names, so keep the file safe.
       Each download is recorded in the audit history.
     </p>
     <p><a href="/api/export" download i18n="@@account.exportDownload">Download data export</a></p>

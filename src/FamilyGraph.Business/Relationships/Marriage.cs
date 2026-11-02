@@ -104,7 +104,7 @@ public sealed class Marriage : AuditedEntity
     }
 
     /// <summary>
-    /// Restores a marriage from an export file with its ID, consent and former flag (D-033). The
+    /// Restores a marriage from an export file with its ID, consent, former flag and deletion time (D-033, D-049). The
     /// spouses may come in either order; each keeps its own approval. The import checks the whole
     /// file for duplicates and parent–child pairs first. It records no event: the import's one
     /// <c>DataImported</c> covers it.
@@ -115,7 +115,8 @@ public sealed class Marriage : AuditedEntity
         PersonId otherSpouseId,
         EndpointApproval spouseApproval,
         EndpointApproval otherSpouseApproval,
-        bool isFormer)
+        bool isFormer,
+        DateTimeOffset? deletedAt = null)
     {
         ArgumentNullException.ThrowIfNull(spouseApproval);
         ArgumentNullException.ThrowIfNull(otherSpouseApproval);
@@ -129,6 +130,7 @@ public sealed class Marriage : AuditedEntity
             ? new Marriage(id, spouseId, otherSpouseId, spouseApproval, otherSpouseApproval)
             : new Marriage(id, otherSpouseId, spouseId, otherSpouseApproval, spouseApproval);
         marriage.IsFormer = isFormer;
+        marriage.DeletedAt = deletedAt;
         return marriage;
     }
 

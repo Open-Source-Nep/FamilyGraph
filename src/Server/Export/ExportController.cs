@@ -15,16 +15,18 @@ namespace Server.Export;
 public sealed class ExportController(ExportService export) : ControllerBase
 {
     /// <summary>
-    /// The export file as a JSON attachment (<see cref="ExportFile"/>). A non-administrator is 403
+    /// The export file as a zip attachment (<see cref="ExportFile"/>). A non-administrator is 403
     /// <c>export.not_administrator</c>.
     /// </summary>
     [HttpGet]
     public async Task Download(CancellationToken cancellationToken)
     {
         await using var data = await export.StartAsync(User.Viewer(), cancellationToken);
-        Response.ContentType = "application/json; charset=utf-8";
+        Response.ContentType = ExportFile.ContentType;
         Response.Headers.ContentDisposition = $"attachment; filename=\"{ExportFile.FileName(data.ExportedAt)}\"";
         Response.Headers.CacheControl = "no-store";
-        await ExportFile.WriteAsync(Response.BodyWriter, data, cancellationToken);
+        var body = new ResponsePipeStream(Response.BodyWriter);
+        await ExportFile.WriteAsync(body, data, cancellationToken);
+        await body.FlushAsync(cancellationToken);
     }
 }

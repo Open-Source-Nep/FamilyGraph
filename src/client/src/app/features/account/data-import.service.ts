@@ -2,13 +2,16 @@ import { HttpClient } from '@angular/common/http';
 import { Service, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-/** What an import added (D-033); `assignedToYou` profiles had no matching maintainer account. */
+/** What an import added (D-033, D-049); `reusedAccounts` matched an account here by Google login. */
 export interface ImportResult {
   people: number;
   links: number;
   marriages: number;
-  matchedAccounts: number;
-  assignedToYou: number;
+  images: number;
+  handovers: number;
+  auditEvents: number;
+  createdAccounts: number;
+  reusedAccounts: number;
 }
 
 /** One reason a file was refused, at `path` such as `people[3]`. */
@@ -23,11 +26,11 @@ export interface ImportProblem {
 export class DataImportService {
   private readonly http = inject(HttpClient);
 
-  /** Sends the export file as it is; the server reads and checks it whole. */
+  /** Sends the export zip as it is; the server reads and checks it whole. */
   import(file: Blob): Promise<ImportResult> {
     return firstValueFrom(
       this.http.post<ImportResult>('/api/import', file, {
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/zip' },
       }),
     );
   }

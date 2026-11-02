@@ -27,7 +27,7 @@ public sealed class AccountController(IAntiforgery antiforgery) : ControllerBase
     internal const string XsrfCookie = "XSRF-TOKEN";
 
     /// <summary>The login provider name stored with each account's Google user ID.</summary>
-    internal const string GoogleProvider = "Google";
+    internal const string GoogleProvider = ExternalLogin.GoogleProvider;
 
     /// <summary>
     /// The signed-in user's account, or 401. Both answers set the antiforgery cookie, so a signed-out
