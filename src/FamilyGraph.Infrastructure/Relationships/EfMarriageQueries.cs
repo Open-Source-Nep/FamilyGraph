@@ -99,8 +99,8 @@ internal sealed class EfMarriageQueries(FamilyGraphDbContext context) : IMarriag
                     && (marriage.FirstApproval == EndpointApproval.Pending || marriage.SecondApproval == EndpointApproval.Pending)
                 join first in context.Set<Person>() on marriage.FirstSpouseId equals first.Id
                 join second in context.Set<Person>() on marriage.SecondSpouseId equals second.Id
-                where (marriage.FirstApproval == EndpointApproval.Pending && first.DeletedAt == null && first.MaintainerId != viewerId)
-                    || (marriage.SecondApproval == EndpointApproval.Pending && second.DeletedAt == null && second.MaintainerId != viewerId)
+                where (marriage.FirstApproval == EndpointApproval.Pending && first.DeletedAt == null && first.ClaimedById == null && first.MaintainerId != viewerId)
+                    || (marriage.SecondApproval == EndpointApproval.Pending && second.DeletedAt == null && second.ClaimedById == null && second.MaintainerId != viewerId)
                 let firstHidden = first.DeletedAt != null
                 let secondHidden = second.DeletedAt != null
                 orderby firstHidden, firstHidden ? "" : first.Name.FirstName,

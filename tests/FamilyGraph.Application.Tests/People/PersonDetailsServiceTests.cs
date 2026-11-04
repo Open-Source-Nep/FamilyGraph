@@ -1,4 +1,5 @@
 using FamilyGraph.Application.People;
+using FamilyGraph.Application.Tests.Claims;
 using FamilyGraph.Application.Privacy;
 using FamilyGraph.Business.People;
 
@@ -15,7 +16,7 @@ public class PersonDetailsServiceTests
     private static CancellationToken Cancellation => TestContext.Current.CancellationToken;
 
     private PersonService Service() =>
-        new(_people, _people, _people, _people, _people, new FixedTimeProvider(Now), new PeopleLimits());
+        new(_people, _people, _people, new InMemoryClaims(_people), _people, _people, new FixedTimeProvider(Now), new PeopleLimits());
 
     [Fact]
     [Trait("AC", "AC-01.30")]

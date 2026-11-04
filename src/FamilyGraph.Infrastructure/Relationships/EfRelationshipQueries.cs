@@ -121,8 +121,8 @@ internal sealed class EfRelationshipQueries(FamilyGraphDbContext context) : IRel
                     && (link.ParentApproval == EndpointApproval.Pending || link.ChildApproval == EndpointApproval.Pending)
                 join parent in context.Set<Person>() on link.ParentId equals parent.Id
                 join child in context.Set<Person>() on link.ChildId equals child.Id
-                where (link.ParentApproval == EndpointApproval.Pending && parent.DeletedAt == null && parent.MaintainerId != viewerId)
-                    || (link.ChildApproval == EndpointApproval.Pending && child.DeletedAt == null && child.MaintainerId != viewerId)
+                where (link.ParentApproval == EndpointApproval.Pending && parent.DeletedAt == null && parent.ClaimedById == null && parent.MaintainerId != viewerId)
+                    || (link.ChildApproval == EndpointApproval.Pending && child.DeletedAt == null && child.ClaimedById == null && child.MaintainerId != viewerId)
                 let parentHidden = parent.DeletedAt != null
                 let childHidden = child.DeletedAt != null
                 orderby parentHidden, parentHidden ? "" : parent.Name.FirstName,

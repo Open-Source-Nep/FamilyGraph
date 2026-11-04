@@ -2,6 +2,7 @@ using FamilyGraph.Application.Accounts;
 using FamilyGraph.Application.Export;
 using FamilyGraph.Application.Privacy;
 using FamilyGraph.Business.Audit;
+using FamilyGraph.Business.Claims;
 using FamilyGraph.Business.Export;
 using FamilyGraph.Business.Handovers;
 using FamilyGraph.Business.People;
@@ -27,7 +28,7 @@ public class ExportPersistenceTests(PostgresFixture postgres)
     [Trait("AC", "AC-09.4")]
     [Trait("AC", "AC-09.6")]
     [Trait("AC", "AC-09.7")]
-    public async Task Export_reads_every_account_profile_link_marriage_image_handover_and_the_audit_history()
+    public async Task Export_reads_every_account_profile_link_marriage_image_handover_claim_and_the_audit_history()
     {
         await using var services = await NewServicesAsync();
         var alice = await CreateAccountAsync(services, "alice@example.org", "google-alice");
@@ -47,7 +48,9 @@ public class ExportPersistenceTests(PostgresFixture postgres)
         deletedMarriage.Delete(parent, child, alice, Now);
         deleted.Delete(alice, actorIsAdministrator: false, Now);
         var handover = ProfileHandover.Offer(child, alice, "hash", Now, Now.AddDays(14));
-        await SaveAsync(services, parent, child, deleted, image, kept, removed, marriage, deletedMarriage, handover);
+        parent.ClaimAsSelf(alice, actorHasClaim: false);
+        var claim = ProfileClaim.Submit(child, idle, "I am Maya.", claimantHasClaim: false, Now);
+        await SaveAsync(services, parent, child, deleted, image, kept, removed, marriage, deletedMarriage, handover, claim);
 
         await using var scope = services.CreateAsyncScope();
         await using var export = await scope.ServiceProvider.GetRequiredService<ExportService>()
@@ -59,6 +62,7 @@ public class ExportPersistenceTests(PostgresFixture postgres)
         var images = await export.ImagesAsync(Cancellation).ToListAsync(Cancellation);
         var contents = await export.ImageContentsAsync(Cancellation).ToListAsync(Cancellation);
         var handovers = await export.HandoversAsync(Cancellation).ToListAsync(Cancellation);
+        var claims = await export.ClaimsAsync(Cancellation).ToListAsync(Cancellation);
         var history = await export.AuditEventsAsync(Cancellation).ToListAsync(Cancellation);
 
         Assert.Equal(
@@ -72,7 +76,7 @@ public class ExportPersistenceTests(PostgresFixture postgres)
         Assert.Equal(
             new HashSet<ExportedPerson>
             {
-                new ExportedPerson(parent.Id, new PersonName("Hari"), ProfileVisibility.Public, null, alice, null, null, null, false, image.Id),
+                new ExportedPerson(parent.Id, new PersonName("Hari"), ProfileVisibility.Public, null, alice, null, null, null, false, image.Id, alice),
                 new ExportedPerson(child.Id, new PersonName("Maya"), ProfileVisibility.Private, null, alice, null, null, null, false, null),
                 new ExportedPerson(deleted.Id, null, ProfileVisibility.Public, Now, alice, null, null, null, false, null),
             },
@@ -96,6 +100,7 @@ public class ExportPersistenceTests(PostgresFixture postgres)
         Assert.Equal(
             [new ExportedHandover(handover.Id, child.Id, alice, "hash", Now, Now.AddDays(14), HandoverState.Open, null, null)],
             handovers);
+        Assert.Equal([new ExportedClaim(claim.Id, child.Id, idle, "I am Maya.", Now, ClaimState.Open, null, null)], claims);
         var exported = Assert.Single(history, row => row.Type == nameof(DataExported));
         Assert.Equal((admin, admin.Value, AuditFamily.Administrative), (exported.ActorId, exported.SubjectId, exported.Family));
 

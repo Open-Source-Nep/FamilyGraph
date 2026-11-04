@@ -1,6 +1,7 @@
 using FamilyGraph.Infrastructure;
 using Server.Accounts;
 using Server.Administration;
+using Server.Claims;
 using Server.Client;
 using Server.Errors;
 using Server.Export;
@@ -20,6 +21,7 @@ builder.Services.AddPeople(builder.Configuration);
 builder.Services.AddRelationships(builder.Configuration);
 builder.Services.AddGraph(builder.Configuration);
 builder.Services.AddHandovers(builder.Configuration);
+builder.Services.AddClaims(builder.Configuration);
 builder.Services.AddExport();
 builder.Services.AddImport(builder.Configuration);
 builder.Services.AddAdministration(builder.Configuration);

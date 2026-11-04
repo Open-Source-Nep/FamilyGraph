@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 namespace FamilyGraph.Infrastructure.Import;
 
 /// <summary>
-/// The import's transaction locks the people, link, marriage, image and handover tables in
+/// The import's transaction locks the people, link, marriage, image, handover and claim tables in
 /// <c>SHARE ROW EXCLUSIVE</c> mode: reads go on, but no other request can write to them, and a second
 /// import waits for the first and then finds the instance no longer empty (D-033). Accounts, images and
 /// audit rows are saved as they are added and then let go, so the change tracker never holds them all (D-049).
@@ -23,7 +23,7 @@ internal sealed class EfImportStore(FamilyGraphDbContext context, UserManager<Us
         try
         {
             await context.Database.ExecuteSqlRawAsync(
-                "LOCK TABLE people, parent_child_links, marriages, profile_images, profile_handovers IN SHARE ROW EXCLUSIVE MODE",
+                "LOCK TABLE people, parent_child_links, marriages, profile_images, profile_handovers, profile_claims IN SHARE ROW EXCLUSIVE MODE",
                 cancellationToken);
             return new Transaction(transaction);
         }

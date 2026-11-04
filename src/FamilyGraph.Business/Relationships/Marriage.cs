@@ -179,6 +179,11 @@ public sealed class Marriage : AuditedEntity
 
         EnsureNotDeleted();
         spouse.EnsureNotDeleted();
+        if (spouse.IsClaimed)
+        {
+            throw new ApprovalForClaimedPersonException();
+        }
+
         if (Approval(isFirst) == EndpointApproval.Approved)
         {
             throw new MarriageConsentUnchangedException();

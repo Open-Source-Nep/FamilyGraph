@@ -1,16 +1,18 @@
 using FamilyGraph.Application.Export;
 using FamilyGraph.Business.People;
 using Server.IntegrationTests.Accounts;
+using Server.IntegrationTests.Claims;
 using Server.IntegrationTests.Handovers;
 using Server.IntegrationTests.People;
 
 namespace Server.IntegrationTests.Export;
 
 /// <summary>
-/// Export queries over the in-memory accounts, people, links, images and handovers, copied when the
+/// Export queries over the in-memory accounts, people, links, images, handovers and claims, copied when the
 /// snapshot opens. Audit events are kept as objects here, so each row's data is an empty object.
 /// </summary>
-public sealed class InMemoryExport(InMemoryAccountStore accounts, InMemoryPeople people, InMemoryHandovers handovers) : IExportQueries
+public sealed class InMemoryExport(InMemoryAccountStore accounts, InMemoryPeople people, InMemoryHandovers handovers, InMemoryClaims claims)
+    : IExportQueries
 {
     public Task<IExportSnapshot> OpenSnapshotAsync(CancellationToken cancellationToken)
     {
@@ -23,7 +25,7 @@ public sealed class InMemoryExport(InMemoryAccountStore accounts, InMemoryPeople
                 .OrderBy(person => person.Id.Value)
                 .Select(person => new ExportedPerson(
                     person.Id, person.Name, person.Visibility, person.DeletedAt, person.MaintainerId, person.Gender, person.Description,
-                    person.BirthDate, person.BirthDateShown, person.ImageId))
+                    person.BirthDate, person.BirthDateShown, person.ImageId, person.ClaimedById))
                 .ToList(),
             people.Links.Values
                 .OrderBy(link => link.Id.Value)
@@ -55,6 +57,11 @@ public sealed class InMemoryExport(InMemoryAccountStore accounts, InMemoryPeople
                     handover.AcceptedById,
                     handover.ClosedAt))
                 .ToList(),
+            claims.All
+                .OrderBy(claim => claim.Id.Value)
+                .Select(claim => new ExportedClaim(
+                    claim.Id, claim.PersonId, claim.ClaimantId, claim.Evidence, claim.SubmittedAt, claim.State, claim.ClosedById, claim.ClosedAt))
+                .ToList(),
             people.AuditEvents
                 .Select(entry => new ExportedAuditEvent(
                     Guid.CreateVersion7(entry.OccurredAt),
@@ -75,6 +82,7 @@ public sealed class InMemoryExport(InMemoryAccountStore accounts, InMemoryPeople
         List<ExportedMarriage> marriages,
         List<ProfileImage> images,
         List<ExportedHandover> handovers,
+        List<ExportedClaim> claims,
         List<ExportedAuditEvent> auditEvents) : IExportSnapshot
     {
         public IAsyncEnumerable<ExportedAccount> AccountsAsync(CancellationToken cancellationToken) => accounts.ToAsyncEnumerable();
@@ -92,6 +100,8 @@ public sealed class InMemoryExport(InMemoryAccountStore accounts, InMemoryPeople
             images.Select(image => new ExportedImageContent(image.Id, image.Format, image.Content)).ToAsyncEnumerable();
 
         public IAsyncEnumerable<ExportedHandover> HandoversAsync(CancellationToken cancellationToken) => handovers.ToAsyncEnumerable();
+
+        public IAsyncEnumerable<ExportedClaim> ClaimsAsync(CancellationToken cancellationToken) => claims.ToAsyncEnumerable();
 
         public IAsyncEnumerable<ExportedAuditEvent> AuditEventsAsync(CancellationToken cancellationToken) => auditEvents.ToAsyncEnumerable();
 

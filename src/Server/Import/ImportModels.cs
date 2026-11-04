@@ -17,7 +17,8 @@ public sealed record ImportFileRequest(
     IReadOnlyList<ImportMarriage>? Marriages,
     IReadOnlyList<ImportImage>? Images,
     IReadOnlyList<ImportHandover>? Handovers,
-    IReadOnlyList<ImportAuditEventRequest>? AuditEvents)
+    IReadOnlyList<ImportAuditEventRequest>? AuditEvents,
+    IReadOnlyList<ImportClaim>? Claims = null)
 {
     internal ImportData ToData(IImportFiles files) => new(
         Accounts ?? [],
@@ -27,7 +28,8 @@ public sealed record ImportFileRequest(
         Images ?? [],
         Handovers ?? [],
         (AuditEvents ?? []).Select(row => row.ToRow()).ToList(),
-        files);
+        files,
+        Claims ?? []);
 }
 
 /// <summary>An audit row with its <see cref="Data"/> as written, which must be a JSON object.</summary>
@@ -53,7 +55,8 @@ public sealed record ImportResponse(
     int Handovers,
     int AuditEvents,
     int CreatedAccounts,
-    int ReusedAccounts)
+    int ReusedAccounts,
+    int Claims)
 {
     internal static ImportResponse From(ImportResult result) => new(
         result.People,
@@ -63,7 +66,8 @@ public sealed record ImportResponse(
         result.Handovers,
         result.AuditEvents,
         result.CreatedAccounts,
-        result.ReusedAccounts);
+        result.ReusedAccounts,
+        result.Claims);
 }
 
 /// <summary>The <c>Import</c> settings.</summary>

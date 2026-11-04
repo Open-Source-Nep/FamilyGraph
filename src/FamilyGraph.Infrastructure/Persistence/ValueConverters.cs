@@ -1,4 +1,5 @@
 using FamilyGraph.Business;
+using FamilyGraph.Business.Claims;
 using FamilyGraph.Business.Handovers;
 using FamilyGraph.Business.People;
 using FamilyGraph.Business.Relationships;
@@ -14,6 +15,8 @@ internal static class ValueConverters
     public static readonly ValueConverter<LinkId, Guid> LinkId = new(id => id.Value, value => new LinkId(value));
 
     public static readonly ValueConverter<HandoverId, Guid> HandoverId = new(id => id.Value, value => new HandoverId(value));
+
+    public static readonly ValueConverter<ClaimId, Guid> ClaimId = new(id => id.Value, value => new ClaimId(value));
 
     public static readonly ValueConverter<ProfileImageId, Guid> ProfileImageId = new(id => id.Value, value => new ProfileImageId(value));
 

@@ -1,3 +1,4 @@
+using FamilyGraph.Application.Claims;
 using FamilyGraph.Application.Persistence;
 using FamilyGraph.Application.Privacy;
 using FamilyGraph.Business.People;
@@ -14,6 +15,7 @@ public sealed class PersonService(
     IPersonStore people,
     IPersonQueries queries,
     IProfileImageStore images,
+    IClaimStore claims,
     IAuditLog audit,
     IUnitOfWork unitOfWork,
     TimeProvider time,
@@ -87,8 +89,17 @@ public sealed class PersonService(
 
         var person = await people.FindAsync(id, cancellationToken) ?? throw new PersonNotFoundException();
         var imageId = person.ImageId;
-        person.Delete(actor.AccountId, actor.IsAdministrator, time.GetUtcNow());
+        var now = time.GetUtcNow();
+        person.Delete(actor.AccountId, actor.IsAdministrator, now);
         await RemoveImageRowAsync(imageId, cancellationToken);
+
+        // Open claims end with the profile (D-051), freeing their claimants' accounts.
+        foreach (var claim in await claims.ListOpenForPersonAsync(id, cancellationToken))
+        {
+            claim.CancelForDeletedProfile(person, actor.AccountId, now);
+            audit.Add(claim.TakeEvents(), now);
+        }
+
         await SaveAsync(person, cancellationToken);
     }
 

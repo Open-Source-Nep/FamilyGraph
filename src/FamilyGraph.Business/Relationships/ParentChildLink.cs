@@ -199,6 +199,11 @@ public sealed class ParentChildLink : AuditedEntity
 
         EnsureNotDeleted();
         endpoint.EnsureNotDeleted();
+        if (endpoint.IsClaimed)
+        {
+            throw new ApprovalForClaimedPersonException();
+        }
+
         var isParentSide = endpoint.Id == ParentId;
         if (ApprovalOf(isParentSide) == EndpointApproval.Approved)
         {

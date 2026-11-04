@@ -13,7 +13,8 @@ public sealed record ImportData(
     IReadOnlyList<ImportImage> Images,
     IReadOnlyList<ImportHandover> Handovers,
     IReadOnlyList<ImportAuditEvent> AuditEvents,
-    IImportFiles Files);
+    IImportFiles Files,
+    IReadOnlyList<ImportClaim>? Claims = null);
 
 /// <summary>The other files of an export, such as images, by their path in it.</summary>
 public interface IImportFiles
@@ -40,7 +41,8 @@ public sealed record ImportPerson(
     string? Description = null,
     ImportBirthDate? BirthDate = null,
     bool BirthDateShown = false,
-    Guid? ImageId = null);
+    Guid? ImageId = null,
+    Guid? ClaimedById = null);
 
 /// <summary>A birth date as exported (D-037).</summary>
 public sealed record ImportBirthDate(string? Calendar, int Year, int? Month, int? Day);
@@ -78,6 +80,17 @@ public sealed record ImportHandover(
     Guid? AcceptedById,
     DateTimeOffset? ClosedAt);
 
+/// <summary>An identity claim as exported, with its evidence note (D-051).</summary>
+public sealed record ImportClaim(
+    Guid Id,
+    Guid PersonId,
+    Guid ClaimantId,
+    string? Evidence,
+    DateTimeOffset SubmittedAt,
+    string? State,
+    Guid? ClosedById,
+    DateTimeOffset? ClosedAt);
+
 /// <summary>An audit history row as exported; <see cref="Data"/> is the event's JSON object, or null when it was not one.</summary>
 public sealed record ImportAuditEvent(
     Guid Id,
@@ -99,4 +112,5 @@ public sealed record ImportResult(
     int Handovers,
     int AuditEvents,
     int CreatedAccounts,
-    int ReusedAccounts);
+    int ReusedAccounts,
+    int Claims = 0);

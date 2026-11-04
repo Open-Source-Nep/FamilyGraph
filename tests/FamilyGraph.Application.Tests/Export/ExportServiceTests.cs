@@ -109,6 +109,9 @@ public class ExportServiceTests
         public IAsyncEnumerable<ExportedHandover> HandoversAsync(CancellationToken cancellationToken) =>
             AsyncEnumerable.Empty<ExportedHandover>();
 
+        public IAsyncEnumerable<ExportedClaim> ClaimsAsync(CancellationToken cancellationToken) =>
+            AsyncEnumerable.Empty<ExportedClaim>();
+
         public IAsyncEnumerable<ExportedAuditEvent> AuditEventsAsync(CancellationToken cancellationToken) =>
             AsyncEnumerable.Empty<ExportedAuditEvent>();
 

@@ -1,3 +1,4 @@
+using FamilyGraph.Application.Claims;
 using FamilyGraph.Application.Handovers;
 using FamilyGraph.Application.People;
 using FamilyGraph.Application.Persistence;
@@ -5,6 +6,7 @@ using FamilyGraph.Application.Privacy;
 using FamilyGraph.Application.Relationships;
 using FamilyGraph.Business;
 using FamilyGraph.Business.Audit;
+using FamilyGraph.Business.Claims;
 using FamilyGraph.Business.Handovers;
 using FamilyGraph.Business.Import;
 using FamilyGraph.Business.People;
@@ -14,7 +16,7 @@ namespace FamilyGraph.Application.Import;
 
 /// <summary>
 /// An administrator's import of an export file into an empty instance (D-033, D-049). Every ID, name,
-/// visibility, gender, approval, birth order, deletion, image, handover link and audit row is kept as in
+/// visibility, gender, approval, birth order, deletion, image, handover link, identity claim and audit row is kept as in
 /// the file. Each file account is recreated with its ID, unless an account here has the same Google ID,
 /// which then takes its place. Any problem refuses the whole file. The import adds one
 /// <see cref="DataImported"/> event to the restored history.
@@ -25,6 +27,7 @@ public sealed class ImportService(
     IParentChildLinkStore links,
     IMarriageStore marriages,
     IHandoverStore handovers,
+    IClaimStore claims,
     IAuditLog audit,
     IUnitOfWork unitOfWork,
     TimeProvider time)
@@ -92,6 +95,11 @@ public sealed class ImportService(
             handovers.Add(handover(accounts.Local));
         }
 
+        foreach (var claim in rows.Claims)
+        {
+            claims.Add(claim(accounts.Local));
+        }
+
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         foreach (var image in rows.Images)
@@ -123,7 +131,8 @@ public sealed class ImportService(
             rows.Handovers.Count,
             rows.AuditEvents.Count,
             accounts.Create.Count,
-            accounts.Reused.Count);
+            accounts.Reused.Count,
+            rows.Claims.Count);
     }
 
     /// <summary>
@@ -186,6 +195,7 @@ public sealed class ImportService(
         List<Marriage> Marriages,
         List<ImageRow> Images,
         List<Func<Func<Guid, AccountId>, ProfileHandover>> Handovers,
+        List<Func<Func<Guid, AccountId>, ProfileClaim>> Claims,
         List<Func<AccountMap, ImportedAuditEvent>> AuditEvents);
 
     /// <summary>Checks the file's rows in order, collecting problems, and builds the entities from the valid ones.</summary>
@@ -214,8 +224,9 @@ public sealed class ImportService(
 
             var images = BuildImages(personIds, deletedIds, imageOf);
             var handovers = BuildHandovers(personIds);
+            var claims = BuildClaims(personIds);
             var auditEvents = BuildAuditEvents();
-            return new Rows(people.Select(row => row.Create).ToList(), links, marriages, images, handovers, auditEvents);
+            return new Rows(people.Select(row => row.Create).ToList(), links, marriages, images, handovers, claims, auditEvents);
         }
 
         public void ThrowIfProblems()
@@ -280,6 +291,7 @@ public sealed class ImportService(
             var result = new List<(PersonId, Func<Func<Guid, AccountId>, Person>)>();
             var imageOf = new Dictionary<Guid, Guid>();
             var seen = new HashSet<Guid>();
+            var claimants = new HashSet<Guid>();
             for (var i = 0; i < data.People.Count; i++)
             {
                 var person = data.People[i];
@@ -307,6 +319,13 @@ public sealed class ImportService(
                     Add(path, "import.deleted_image", "A deleted profile has no image.");
                 }
 
+                // A claimed person is their profile's maintainer, and an account is one claimed person (D-051).
+                if (person.ClaimedById is { } claimedBy
+                    && (person.DeletedAt is not null || claimedBy != person.MaintainerId || !claimants.Add(claimedBy)))
+                {
+                    Add(path, "import.invalid_claim", "A claimed profile is not deleted, is maintained by its claimant, and is the claimant's only one.");
+                }
+
                 if (_problemCount == problems)
                 {
                     var (id, deletedAt, maintainerId, shown) = (new PersonId(person.Id), person.DeletedAt, person.MaintainerId, person.BirthDateShown);
@@ -316,8 +335,10 @@ public sealed class ImportService(
                         imageOf[person.Id] = referenced;
                     }
 
-                    result.Add((id, local =>
-                        Person.Import(id, name!, visibility!, deletedAt, local(maintainerId), gender, description, birthDate, shown, imageId)));
+                    var claimedById = person.ClaimedById;
+                    result.Add((id, local => Person.Import(
+                        id, name!, visibility!, deletedAt, local(maintainerId), gender, description, birthDate, shown, imageId,
+                        claimedById is { } claimant ? local(claimant) : null)));
                 }
             }
 
@@ -536,6 +557,54 @@ public sealed class ImportService(
                         row.ExpiresAt,
                         state!,
                         row.AcceptedById is { } acceptedBy ? local(acceptedBy) : null,
+                        row.ClosedAt));
+                }
+            }
+
+            return result;
+        }
+
+        private List<Func<Func<Guid, AccountId>, ProfileClaim>> BuildClaims(HashSet<Guid> personIds)
+        {
+            var result = new List<Func<Func<Guid, AccountId>, ProfileClaim>>();
+            var source = data.Claims ?? [];
+            var seen = new HashSet<Guid>();
+            var open = new HashSet<Guid>();
+            for (var i = 0; i < source.Count; i++)
+            {
+                var claim = source[i];
+                var path = $"claims[{i}]";
+                var problems = _problemCount;
+                if (claim.Id == Guid.Empty || !seen.Add(claim.Id))
+                {
+                    Add(path, "import.duplicate_id", $"Claim {claim.Id} has no ID or appears more than once.");
+                }
+
+                RequirePerson(personIds, claim.PersonId, path, "person");
+                RequireAccount(claim.ClaimantId, path, "claimant");
+                if (claim.ClosedById is { } closedBy)
+                {
+                    RequireAccount(closedBy, path, "closing account");
+                }
+
+                var state = Parse<ClaimState>(claim.State, path, "state");
+                if (state == ClaimState.Open && !open.Add(claim.ClaimantId))
+                {
+                    Add(path, "import.duplicate_claim", "The claimant already has an open claim earlier in the file.");
+                }
+
+                var evidence = Try(path, () => ClaimEvidence.Normalize(claim.Evidence) ?? "");
+                if (_problemCount == problems)
+                {
+                    var row = claim;
+                    result.Add(local => ProfileClaim.Import(
+                        new ClaimId(row.Id),
+                        new PersonId(row.PersonId),
+                        local(row.ClaimantId),
+                        evidence,
+                        row.SubmittedAt,
+                        state!,
+                        row.ClosedById is { } closedById ? local(closedById) : null,
                         row.ClosedAt));
                 }
             }
