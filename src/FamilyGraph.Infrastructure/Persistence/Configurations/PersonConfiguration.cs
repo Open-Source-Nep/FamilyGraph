@@ -6,6 +6,8 @@ namespace FamilyGraph.Infrastructure.Persistence.Configurations;
 
 internal sealed class PersonConfiguration : IEntityTypeConfiguration<Person>
 {
+    internal const string UniqueClaimedByIndex = "ux_people_claimed_by_id";
+
     public void Configure(EntityTypeBuilder<Person> builder)
     {
         builder.ToTable("people", table => table.HasCheckConstraint(
@@ -13,6 +15,7 @@ internal sealed class PersonConfiguration : IEntityTypeConfiguration<Person>
         builder.HasKey(person => person.Id);
         builder.Property(person => person.Id).HasConversion(ValueConverters.PersonId).ValueGeneratedNever();
         builder.Property(person => person.MaintainerId).HasConversion(ValueConverters.AccountId);
+        builder.Property(person => person.ClaimedById).HasConversion(ValueConverters.AccountId);
         builder.Property(person => person.ImageId).HasConversion(ValueConverters.ProfileImageId);
         builder.Property(person => person.Visibility).HasConversion(ValueConverters.Enum<ProfileVisibility>());
         builder.Property(person => person.Gender).HasConversion(ValueConverters.Enum<Gender>());
@@ -32,8 +35,12 @@ internal sealed class PersonConfiguration : IEntityTypeConfiguration<Person>
             date.Ignore(part => part.IsFull);
         });
         builder.Ignore(person => person.IsDeleted);
+        builder.Ignore(person => person.IsClaimed);
         builder.Ignore(person => person.PendingEvents);
 
         builder.HasIndex(person => person.MaintainerId).HasDatabaseName("ix_people_maintainer_id");
+
+        // An account is at most one claimed person (D-051).
+        builder.HasIndex(person => person.ClaimedById, UniqueClaimedByIndex).IsUnique().HasFilter("claimed_by_id IS NOT NULL");
     }
 }

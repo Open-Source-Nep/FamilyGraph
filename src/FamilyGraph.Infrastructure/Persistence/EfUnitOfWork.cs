@@ -1,4 +1,5 @@
 using FamilyGraph.Application.Persistence;
+using FamilyGraph.Business.Claims;
 using FamilyGraph.Business.Handovers;
 using FamilyGraph.Business.Relationships;
 using FamilyGraph.Infrastructure.Persistence.Configurations;
@@ -40,6 +41,20 @@ internal sealed class EfUnitOfWork(FamilyGraphDbContext context) : IUnitOfWork
         })
         {
             throw new HandoverAlreadyOpenException();
+        }
+        catch (DbUpdateException e) when (e.InnerException is PostgresException
+        {
+            SqlState: PostgresErrorCodes.UniqueViolation,
+            ConstraintName: ProfileClaimConfiguration.UniqueOpenPerClaimantIndex or PersonConfiguration.UniqueClaimedByIndex,
+        })
+        {
+            // The same account claimed twice at once; the domain check could not see the other claim.
+            throw new AccountAlreadyClaimedException();
+        }
+        catch (DbUpdateConcurrencyException e) when (e.Entries.Any(entry => entry.Entity is ProfileClaim))
+        {
+            // Someone else decided or withdrew the claim first.
+            throw new ClaimClosedException();
         }
         catch (DbUpdateConcurrencyException e) when (e.Entries.Any(entry => entry.Entity is ProfileHandover))
         {

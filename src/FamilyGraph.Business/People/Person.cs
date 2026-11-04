@@ -1,4 +1,5 @@
 using FamilyGraph.Business.Audit;
+using FamilyGraph.Business.Claims;
 using FamilyGraph.Business.Handovers;
 
 namespace FamilyGraph.Business.People;
@@ -55,6 +56,15 @@ public sealed class Person : AuditedEntity
     public bool BirthDateShown { get; private set; }
 
     /// <summary>
+    /// The account of the person this profile describes, once claimed (PRD 04, D-051), or
+    /// <see langword="null"/>. While set, it is also the maintainer, and only an identity claim
+    /// changes the maintainer.
+    /// </summary>
+    public AccountId? ClaimedById { get; private set; }
+
+    public bool IsClaimed => ClaimedById is not null;
+
+    /// <summary>
     /// Creates a profile. The creating account becomes its maintainer. Only the name is required;
     /// the gender, description and birth date are optional (PRD 00, D-030, D-037).
     /// </summary>
@@ -94,7 +104,8 @@ public sealed class Person : AuditedEntity
         string? description = null,
         BirthDate? birthDate = null,
         bool birthDateShown = false,
-        ProfileImageId? imageId = null)
+        ProfileImageId? imageId = null,
+        AccountId? claimedById = null)
     {
         ArgumentNullException.ThrowIfNull(name);
         ArgumentNullException.ThrowIfNull(visibility);
@@ -108,6 +119,7 @@ public sealed class Person : AuditedEntity
                 BirthDate = birthDate,
                 BirthDateShown = birthDateShown,
                 ImageId = imageId,
+                ClaimedById = claimedById,
             }
             : new Person(id, PersonName.Erased, maintainerId) { Visibility = visibility, DeletedAt = deletedAt };
     }
@@ -220,6 +232,7 @@ public sealed class Person : AuditedEntity
         BirthDate = null;
         BirthDateShown = false;
         ImageId = null;
+        ClaimedById = null;
         DeletedAt = deletedAt;
         Record(new PersonDeleted(Id, actorId, deleter));
     }
@@ -270,6 +283,7 @@ public sealed class Person : AuditedEntity
         ArgumentNullException.ThrowIfNull(handover);
 
         EnsureNotDeleted();
+        EnsureNotClaimed();
         handover.EnsureCanBeAccepted(this, now);
         if (IsMaintainedBy(actorId))
         {
@@ -296,6 +310,7 @@ public sealed class Person : AuditedEntity
         }
 
         EnsureNotDeleted();
+        EnsureNotClaimed();
         if (IsMaintainedBy(newMaintainerId))
         {
             throw new TransferToSameMaintainerException(Id);
@@ -304,6 +319,52 @@ public sealed class Person : AuditedEntity
         var previousMaintainerId = MaintainerId;
         MaintainerId = newMaintainerId;
         Record(new PersonTransferred(Id, actorId, previousMaintainerId, newMaintainerId));
+    }
+
+    /// <summary>
+    /// The maintainer says this profile is themselves ("This is me", D-051): a self-approved identity
+    /// claim. Refused while their account already has a claimed profile or an open claim. Consent is
+    /// unchanged.
+    /// </summary>
+    public void ClaimAsSelf(AccountId actorId, bool actorHasClaim)
+    {
+        EnsureNotDeleted();
+        if (!IsMaintainedBy(actorId))
+        {
+            throw new NotProfileMaintainerException(Id);
+        }
+
+        if (IsClaimed)
+        {
+            throw new ProfileClaimedException(Id);
+        }
+
+        if (actorHasClaim)
+        {
+            throw new AccountAlreadyClaimedException();
+        }
+
+        ClaimedById = actorId;
+        Record(new ProfileClaimedAsSelf(Id, actorId));
+    }
+
+    /// <summary>Called by <see cref="ProfileClaim.Approve"/>, which records the event.</summary>
+    internal void AcceptClaim(ProfileClaim claim)
+    {
+        MaintainerId = claim.ClaimantId;
+        ClaimedById = claim.ClaimantId;
+    }
+
+    /// <summary>
+    /// A claimed profile's maintainer changes only through an identity claim: no handover, transfer
+    /// or approval on the claimed person's behalf (PRD 01, PRD 03).
+    /// </summary>
+    public void EnsureNotClaimed()
+    {
+        if (IsClaimed)
+        {
+            throw new ProfileClaimedException(Id);
+        }
     }
 
     /// <summary>A deleted profile accepts no further change, nor consent on its side of a link.</summary>
@@ -321,6 +382,9 @@ public sealed class NotProfileMaintainerException(PersonId personId)
 
 public sealed class ProfileDeletedException(PersonId personId)
     : ConflictException("person.deleted", $"Profile {personId.Value} was deleted.");
+
+public sealed class ProfileClaimedException(PersonId personId)
+    : ConflictException("person.claimed", $"Profile {personId.Value} is claimed by the person it describes.");
 
 public sealed class ProfileHasNoImageException(PersonId personId)
     : ConflictException("person.no_image", $"Profile {personId.Value} has no image.");

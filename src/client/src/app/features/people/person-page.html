@@ -95,6 +95,7 @@
         <app-person-relatives [person]="person" />
         <app-person-spouses [person]="person" />
       </div>
+      <app-person-claim [person]="person" (changed)="transferred()" />
       @if (person.maintainedByYou || canDelete() || isAdministrator()) {
         <div class="card manage">
           <h2 i18n="@@person.manage">Manage this profile</h2>

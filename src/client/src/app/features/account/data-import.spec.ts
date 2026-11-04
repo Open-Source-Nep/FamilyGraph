@@ -46,6 +46,7 @@ describe('DataImport', () => {
       marriages: 0,
       images: 2,
       handovers: 0,
+      claims: 0,
       auditEvents: 9,
       createdAccounts: 1,
       reusedAccounts: 1,

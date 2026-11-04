@@ -1,4 +1,5 @@
 using FamilyGraph.Application.People;
+using FamilyGraph.Application.Tests.Claims;
 using FamilyGraph.Application.Privacy;
 using FamilyGraph.Business.People;
 
@@ -20,7 +21,7 @@ public class PersonServiceTests
         int maintainedListLimit = PeopleLimits.DefaultMaintainedListLimit,
         int searchLimit = PeopleLimits.DefaultSearchLimit,
         int pageSize = PeopleLimits.DefaultPageSize) =>
-        new(_people, _people, _people, _people, _people, new FixedTimeProvider(Now), new PeopleLimits(maintainedListLimit, searchLimit, pageSize));
+        new(_people, _people, _people, new InMemoryClaims(_people), _people, _people, new FixedTimeProvider(Now), new PeopleLimits(maintainedListLimit, searchLimit, pageSize));
 
     [Fact]
     [Trait("AC", "AC-01.1")]

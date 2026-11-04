@@ -1,9 +1,11 @@
 using FamilyGraph.Application.Import;
 using FamilyGraph.Application.People;
 using FamilyGraph.Application.Privacy;
+using FamilyGraph.Application.Tests.Claims;
 using FamilyGraph.Application.Tests.Handovers;
 using FamilyGraph.Application.Tests.People;
 using FamilyGraph.Business.Audit;
+using FamilyGraph.Business.Claims;
 using FamilyGraph.Business.Handovers;
 using FamilyGraph.Business.Import;
 using FamilyGraph.Business.People;
@@ -29,11 +31,17 @@ public class ImportServiceTests
     private readonly FakeImportStore _store;
     private readonly FakeFiles _files = new();
 
-    public ImportServiceTests() => _store = new FakeImportStore(_people);
+    private readonly InMemoryClaims _claims;
+
+    public ImportServiceTests()
+    {
+        _store = new FakeImportStore(_people);
+        _claims = new InMemoryClaims(_people);
+    }
 
     private static CancellationToken Cancellation => TestContext.Current.CancellationToken;
 
-    private ImportService Service() => new(_store, _people, _people, _people, _handovers, _people, _people, new FixedTimeProvider(Now));
+    private ImportService Service() => new(_store, _people, _people, _people, _handovers, _claims, _people, _people, new FixedTimeProvider(Now));
 
     private static ImportPerson Person(string firstName, Guid maintainerId, Guid? id = null) =>
         new(id ?? Guid.NewGuid(), firstName, null, null, "Public", null, maintainerId, null);
@@ -51,8 +59,9 @@ public class ImportServiceTests
         IReadOnlyList<ImportAccount>? accounts = null,
         IReadOnlyList<ImportImage>? images = null,
         IReadOnlyList<ImportHandover>? handovers = null,
-        IReadOnlyList<ImportAuditEvent>? auditEvents = null) =>
-        new(accounts ?? [Account(FileBina)], people, links ?? [], marriages ?? [], images ?? [], handovers ?? [], auditEvents ?? [], _files);
+        IReadOnlyList<ImportAuditEvent>? auditEvents = null,
+        IReadOnlyList<ImportClaim>? claims = null) =>
+        new(accounts ?? [Account(FileBina)], people, links ?? [], marriages ?? [], images ?? [], handovers ?? [], auditEvents ?? [], _files, claims);
 
     [Fact]
     [Trait("AC", "AC-09.9")]
@@ -120,6 +129,43 @@ public class ImportServiceTests
         Assert.True(savedMarriage.IsFormer);
         var (auditEvent, occurredAt) = Assert.Single(_people.AuditEvents);
         Assert.Equal((new DataImported(Admin), AuditFamily.Administrative, Now), (auditEvent, auditEvent.Family, occurredAt));
+    }
+
+    [Fact]
+    [Trait("AC", "AC-09.8")]
+    [Trait("AC", "AC-04.11")]
+    public async Task Claims_and_claimed_profiles_come_back_with_reused_accounts_mapped()
+    {
+        _store.GoogleLogins["google-admin"] = Admin;
+        var maya = Person("Maya", FileAdmin) with { ClaimedById = FileAdmin };
+        var sita = Person("Sita", FileAdmin);
+        var claim = new ImportClaim(Guid.NewGuid(), sita.Id, FileBina, "I am Sita.", Now.AddDays(-1), "Open", null, null);
+        var data = Data([maya, sita], accounts: [Account(FileBina), Account(FileAdmin, "google-admin")], claims: [claim]);
+
+        var result = await Service().ImportAsync(Administrator, data, Cancellation);
+
+        Assert.Equal(1, result.Claims);
+        Assert.Equal(Admin, _people.People[new PersonId(maya.Id)].ClaimedById);
+        var saved = Assert.Single(_claims.All);
+        Assert.Equal(
+            (new ClaimId(claim.Id), new AccountId(FileBina), "I am Sita.", ClaimState.Open),
+            (saved.Id, saved.ClaimantId, saved.Evidence, saved.State));
+    }
+
+    [Fact]
+    [Trait("AC", "AC-09.8")]
+    public async Task A_claimed_profile_must_be_maintained_by_its_claimant_and_claims_must_be_valid()
+    {
+        var maya = Person("Maya", FileBina) with { ClaimedById = FileAdmin };
+        var claim = new ImportClaim(Guid.NewGuid(), Guid.NewGuid(), FileBina, null, Now, "Unknown", null, null);
+        var data = Data([maya], accounts: [Account(FileBina), Account(FileAdmin)], claims: [claim]);
+
+        var error = await Assert.ThrowsAsync<InvalidImportFileException>(() => Service().ImportAsync(Administrator, data, Cancellation));
+
+        Assert.Contains(error.Problems, problem => problem.Code == "import.invalid_claim");
+        Assert.Contains(error.Problems, problem => problem is { Path: "claims[0]", Code: "import.unknown_person" });
+        Assert.Contains(error.Problems, problem => problem is { Path: "claims[0]", Code: "import.invalid_value" });
+        Assert.Empty(_claims.All);
     }
 
     [Fact]

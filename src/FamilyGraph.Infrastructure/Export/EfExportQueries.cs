@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using FamilyGraph.Application.Accounts;
 using FamilyGraph.Application.Export;
 using FamilyGraph.Business.Audit;
+using FamilyGraph.Business.Claims;
 using FamilyGraph.Business.Handovers;
 using FamilyGraph.Business.People;
 using FamilyGraph.Business.Relationships;
@@ -57,7 +58,7 @@ internal sealed class EfExportQueries(FamilyGraphDbContext context) : IExportQue
                 .OrderBy(person => person.Id)
                 .Select(person => new ExportedPerson(
                     person.Id, person.Name, person.Visibility, person.DeletedAt, person.MaintainerId, person.Gender,
-                    person.Description, person.BirthDate, person.BirthDateShown, person.ImageId)),
+                    person.Description, person.BirthDate, person.BirthDateShown, person.ImageId, person.ClaimedById)),
                 cancellationToken);
 
         public IAsyncEnumerable<ExportedLink> LinksAsync(CancellationToken cancellationToken) =>
@@ -111,6 +112,21 @@ internal sealed class EfExportQueries(FamilyGraphDbContext context) : IExportQue
                     handover.State,
                     handover.AcceptedById,
                     handover.ClosedAt)),
+                cancellationToken);
+
+        public IAsyncEnumerable<ExportedClaim> ClaimsAsync(CancellationToken cancellationToken) =>
+            Stream(context.Set<ProfileClaim>()
+                .AsNoTracking()
+                .OrderBy(claim => claim.Id)
+                .Select(claim => new ExportedClaim(
+                    claim.Id,
+                    claim.PersonId,
+                    claim.ClaimantId,
+                    claim.Evidence,
+                    claim.SubmittedAt,
+                    claim.State,
+                    claim.ClosedById,
+                    claim.ClosedAt)),
                 cancellationToken);
 
         public async IAsyncEnumerable<ExportedAuditEvent> AuditEventsAsync([EnumeratorCancellation] CancellationToken cancellationToken)

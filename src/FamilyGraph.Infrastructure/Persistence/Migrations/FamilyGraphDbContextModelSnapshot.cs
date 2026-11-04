@@ -23,6 +23,59 @@ namespace FamilyGraph.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("FamilyGraph.Business.Claims.ProfileClaim", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ClaimantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("claimant_id");
+
+                    b.Property<DateTimeOffset?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("closed_at");
+
+                    b.Property<Guid?>("ClosedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("closed_by_id");
+
+                    b.Property<string>("Evidence")
+                        .HasColumnType("text")
+                        .HasColumnName("evidence");
+
+                    b.Property<Guid>("PersonId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("person_id");
+
+                    b.Property<int>("State")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("state");
+
+                    b.Property<DateTimeOffset>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_profile_claims");
+
+                    b.HasIndex("PersonId")
+                        .HasDatabaseName("ix_profile_claims_person_id");
+
+                    b.HasIndex(new[] { "ClaimantId" }, "ux_profile_claims_claimant_open")
+                        .IsUnique()
+                        .HasFilter("state = 1");
+
+                    b.ToTable("profile_claims", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_profile_claims_evidence_length", "char_length(evidence) <= 2000");
+
+                            t.HasCheckConstraint("ck_profile_claims_state", "state IN (1, 2, 3, 4, 5)");
+                        });
+                });
+
             modelBuilder.Entity("FamilyGraph.Business.Handovers.ProfileHandover", b =>
                 {
                     b.Property<Guid>("Id")
@@ -89,6 +142,10 @@ namespace FamilyGraph.Infrastructure.Persistence.Migrations
                     b.Property<bool>("BirthDateShown")
                         .HasColumnType("boolean")
                         .HasColumnName("birth_date_shown");
+
+                    b.Property<Guid?>("ClaimedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("claimed_by_id");
 
                     b.Property<DateTimeOffset?>("DeletedAt")
                         .HasColumnType("timestamp with time zone")
@@ -160,6 +217,10 @@ namespace FamilyGraph.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("MaintainerId")
                         .HasDatabaseName("ix_people_maintainer_id");
+
+                    b.HasIndex(new[] { "ClaimedById" }, "ux_people_claimed_by_id")
+                        .IsUnique()
+                        .HasFilter("claimed_by_id IS NOT NULL");
 
                     b.ToTable("people", null, t =>
                         {
@@ -618,6 +679,16 @@ namespace FamilyGraph.Infrastructure.Persistence.Migrations
                         .HasName("pk_user_account_tokens");
 
                     b.ToTable("user_account_tokens", (string)null);
+                });
+
+            modelBuilder.Entity("FamilyGraph.Business.Claims.ProfileClaim", b =>
+                {
+                    b.HasOne("FamilyGraph.Business.People.Person", null)
+                        .WithMany()
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_profile_claims_people_person_id");
                 });
 
             modelBuilder.Entity("FamilyGraph.Business.Handovers.ProfileHandover", b =>

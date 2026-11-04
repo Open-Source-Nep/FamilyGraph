@@ -51,7 +51,7 @@ public sealed class ProfileHandover : AuditedEntity
 
     /// <summary>
     /// Creates a handover link for <paramref name="person"/>. Only its current maintainer may, and
-    /// not for a deleted profile. Claimed profiles will be refused once claims exist (PRD 01).
+    /// not for a deleted or claimed profile (PRD 01).
     /// </summary>
     public static ProfileHandover Offer(
         Person person,
@@ -73,6 +73,7 @@ public sealed class ProfileHandover : AuditedEntity
             throw new NotProfileMaintainerException(person.Id);
         }
 
+        person.EnsureNotClaimed();
         var handover = new ProfileHandover(HandoverId.New(), person.Id, actorId, tokenHash, now, expiresAt);
         handover.Record(new HandoverOffered(handover.Id, person.Id, actorId, expiresAt));
         return handover;

@@ -8,7 +8,7 @@ namespace FamilyGraph.Application.Export;
 /// <summary>
 /// An administrator's export of the whole instance for a later import (D-029, D-049): every account by
 /// its ID with its Google ID and email, every profile (private ones with their names), every link and
-/// marriage with both sides' consent (deleted ones too), the profile images, the handover links and the
+/// marriage with both sides' consent (deleted ones too), the profile images, the handover links, the identity claims and the
 /// audit history. Relationship label rules ship with the app and are not exported.
 /// </summary>
 public sealed class ExportService(IExportQueries queries, IAuditLog audit, IUnitOfWork unitOfWork, TimeProvider time)
@@ -64,6 +64,9 @@ public sealed class DataExport(DateTimeOffset exportedAt, IExportSnapshot snapsh
 
     public IAsyncEnumerable<ExportedHandover> HandoversAsync(CancellationToken cancellationToken) =>
         snapshot.HandoversAsync(cancellationToken);
+
+    public IAsyncEnumerable<ExportedClaim> ClaimsAsync(CancellationToken cancellationToken) =>
+        snapshot.ClaimsAsync(cancellationToken);
 
     public IAsyncEnumerable<ExportedAuditEvent> AuditEventsAsync(CancellationToken cancellationToken) =>
         snapshot.AuditEventsAsync(cancellationToken);

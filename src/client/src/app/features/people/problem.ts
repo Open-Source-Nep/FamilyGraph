@@ -33,6 +33,15 @@ const messages: Record<string, string> = {
   'transfer.not_administrator': $localize`:@@problem.transfer.notAdministrator:Only an administrator can transfer profiles.`,
   'transfer.same_maintainer': $localize`:@@problem.transfer.sameMaintainer:That account already maintains this profile.`,
   'transfer.same_account': $localize`:@@problem.transfer.sameAccount:Choose a different account to move the profiles to.`,
+  'person.claimed': $localize`:@@problem.person.claimed:This profile is claimed by the person it describes, so only they can maintain it. It cannot be handed over or transferred.`,
+  'claim.own_profile': $localize`:@@problem.claim.ownProfile:You maintain this profile. Use “This is me” instead.`,
+  'claim.account_has_claim': $localize`:@@problem.claim.accountHasClaim:Your account already has a claimed profile or an open claim. An account can be only one person.`,
+  'claim.closed': $localize`:@@problem.claim.closed:This claim was already decided or withdrawn. Reload the page.`,
+  'claim.administrator_only': $localize`:@@problem.claim.administratorOnly:Only an administrator can decide this claim.`,
+  'claim.not_claimant': $localize`:@@problem.claim.notClaimant:Only the person who sent this claim can withdraw it.`,
+  'claim.not_found': $localize`:@@problem.claim.notFound:This claim does not exist. Reload the page.`,
+  'claim.evidence_too_long': $localize`:@@problem.claim.evidenceTooLong:The note is too long. Shorten it.`,
+  'consent.claimed_person': $localize`:@@problem.consent.claimedPerson:This person claimed their profile, so only they can approve it.`,
   'graph.timeout': $localize`:@@problem.graph.timeout:The family graph took too long to load. Please try again.`,
 };
 

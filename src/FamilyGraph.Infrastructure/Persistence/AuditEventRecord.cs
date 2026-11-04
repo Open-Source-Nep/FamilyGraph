@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 using FamilyGraph.Business;
 using FamilyGraph.Business.Audit;
+using FamilyGraph.Business.Claims;
 using FamilyGraph.Business.Export;
 using FamilyGraph.Business.Handovers;
 using FamilyGraph.Business.Import;
@@ -44,7 +45,7 @@ internal sealed class AuditEventRecord
     public Guid ActorId { get; }
 
     /// <summary>
-    /// The link, marriage or person the event is about; a handover's events are about its person, and an
+    /// The link, marriage or person the event is about; a handover's and a claim's events are about its person, and an
     /// export or import is about the administrator's account.
     /// </summary>
     public Guid SubjectId { get; }
@@ -79,6 +80,7 @@ internal sealed class AuditEventRecord
         MarriageEvent e => e.MarriageId.Value,
         MarriageFormerChanged e => e.MarriageId.Value,
         HandoverEvent e => e.PersonId.Value,
+        ClaimEvent e => e.PersonId.Value,
         DataExported e => e.ActorId.Value,
         DataImported e => e.ActorId.Value,
         _ => throw new ArgumentException($"No audit subject is defined for {auditEvent.GetType().Name}.", nameof(auditEvent)),
@@ -97,6 +99,7 @@ internal sealed class AuditEventRecord
         options.Converters.Add(new GuidValueConverter<LinkId>(id => id.Value));
         options.Converters.Add(new GuidValueConverter<AccountId>(id => id.Value));
         options.Converters.Add(new GuidValueConverter<HandoverId>(id => id.Value));
+        options.Converters.Add(new GuidValueConverter<ClaimId>(id => id.Value));
         options.Converters.Add(new BaseEnumConverterFactory());
         return options;
     }

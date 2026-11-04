@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 
 import { PersonTransfer } from '../admin/person-transfer';
+import { PersonClaim } from '../claims/person-claim';
 import { PersonHandover } from '../handovers/person-handover';
 import { PersonRelatives } from '../relationships/person-relatives';
 import { PersonSpouses } from '../relationships/person-spouses';
@@ -16,7 +17,7 @@ import { problemMessage } from './problem';
 
 /**
  * One profile with its photo, parents and children. Its maintainer can rename it, change its photo,
- * make it Public or Private and hand it over to another account, and its maintainer or an
+ * make it Public or Private, hand it over to another account and decide claims on it (D-051), and its maintainer or an
  * administrator can delete it. An administrator can also give it to another account (D-035). The
  * server enforces all of these (PRD 01, PRD 05). A Private profile hidden from you or a deleted one shows only its
  * placeholder, with its parents and children.
@@ -24,6 +25,7 @@ import { problemMessage } from './problem';
 @Component({
   selector: 'app-person-page',
   imports: [
+    PersonClaim,
     PersonHandover,
     PersonNameForm,
     PersonPhoto,
@@ -129,7 +131,7 @@ export class PersonPage {
     }
   }
 
-  /** After an administrator's transfer, `maintainedByYou` may have changed. */
+  /** After an administrator's transfer or an approved claim, `maintainedByYou` may have changed. */
   protected async transferred(): Promise<void> {
     const person = this.person();
     if (!person) {

@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using FamilyGraph.Application.Accounts;
+using FamilyGraph.Application.Claims;
 using FamilyGraph.Application.Export;
 using FamilyGraph.Application.Graph;
 using FamilyGraph.Application.Handovers;
@@ -16,6 +17,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Server.Accounts;
 using Server.IntegrationTests.Administration;
+using Server.IntegrationTests.Claims;
 using Server.IntegrationTests.Export;
 using Server.IntegrationTests.Graph;
 using Server.IntegrationTests.Handovers;
@@ -36,7 +38,8 @@ public sealed class AccountTestFactory : WebApplicationFactory<Program>
     public AccountTestFactory()
     {
         Graph = new InMemoryGraph(People);
-        Export = new InMemoryExport(Store, People, Handovers);
+        Claims = new InMemoryClaims(People);
+        Export = new InMemoryExport(Store, People, Handovers, Claims);
         Import = new InMemoryImport(Store, People);
     }
 
@@ -47,6 +50,8 @@ public sealed class AccountTestFactory : WebApplicationFactory<Program>
     public InMemoryGraph Graph { get; }
 
     public InMemoryHandovers Handovers { get; } = new();
+
+    public InMemoryClaims Claims { get; }
 
     public InMemoryExport Export { get; }
 
@@ -71,6 +76,8 @@ public sealed class AccountTestFactory : WebApplicationFactory<Program>
             services.AddSingleton<IUnitOfWork>(People);
             services.AddSingleton<IGraphQueries>(Graph);
             services.AddSingleton<IHandoverStore>(Handovers);
+            services.AddSingleton<IClaimStore>(Claims);
+            services.AddSingleton<IClaimQueries>(Claims);
             services.AddSingleton<IExportQueries>(Export);
             services.AddSingleton<IImportStore>(Import);
             services.AddSingleton<IGoogleIdTokenValidator, FakeIdTokenValidator>();

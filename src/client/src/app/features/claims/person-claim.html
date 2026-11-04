@@ -1,0 +1,114 @@
+@if (shown() || error() || notice()) {
+  <div class="card">
+    <h2 i18n="@@claims.title">Is this you?</h2>
+    @if (notice(); as notice) {
+      <p role="status">{{ notice }}</p>
+    }
+    @if (error(); as error) {
+      <p class="error" role="alert">{{ error }}</p>
+    }
+    @if (status(); as status) {
+      @if (status.claimedByYou) {
+        <p class="badge" i18n="@@claims.isYou">This profile is you.</p>
+        <p class="hint" i18n="@@claims.isYouHint">
+          Only you maintain it. It cannot be handed over or transferred, and only you approve its
+          relationships.
+        </p>
+      } @else if (status.toDecide.length > 0) {
+        <p i18n="@@claims.someoneClaims">
+          Someone says this profile is them. If you approve, they become its only maintainer and you
+          can no longer change it. Its relationships and approvals stay as they are.
+        </p>
+        @for (claim of status.toDecide; track claim.id) {
+          <app-claim-decision [claim]="claim" [busy]="busy()" (decided)="decide(claim, $event)" />
+        }
+      } @else if (status.needsAdministrator) {
+        <p class="hint" i18n="@@claims.needsAdministrator">
+          This profile has more than one claim, or is already claimed. An administrator decides
+          these claims.
+        </p>
+      } @else if (status.yourClaim; as claim) {
+        <p i18n="@@claims.yourClaimOpen">
+          You claimed this profile on {{ claim.submittedAt | localDateTime }}. Its maintainer has
+          not decided yet.
+        </p>
+        @if (claim.evidence; as evidence) {
+          <blockquote class="claim-note">{{ evidence }}</blockquote>
+        }
+        <div class="actions">
+          <button
+            type="button"
+            class="secondary"
+            [disabled]="busy()"
+            (click)="withdraw(claim)"
+            i18n="@@claims.withdraw"
+          >
+            Withdraw my claim
+          </button>
+        </div>
+      } @else if (canClaimAsSelf()) {
+        <p class="hint" i18n="@@claims.selfHint">
+          If this profile is you, say so. Then only you maintain it, and it cannot be handed over or
+          transferred. An account can be only one person.
+        </p>
+        <div class="actions">
+          <button
+            type="button"
+            class="secondary"
+            [disabled]="busy()"
+            (click)="claimAsSelf()"
+            i18n="@@claims.thisIsMe"
+          >
+            This is me
+          </button>
+        </div>
+      } @else if (canClaim()) {
+        @if (writing()) {
+          <form class="name-form" (ngSubmit)="submit()">
+            <label>
+              <ng-container i18n="@@claims.noteLabel">A note for the maintainer</ng-container>
+              <span class="hint" i18n="@@common.optional">(optional)</span>
+              <textarea
+                name="evidence"
+                rows="4"
+                [maxlength]="maxEvidenceLength"
+                [ngModel]="evidence()"
+                (ngModelChange)="evidence.set($event)"
+              ></textarea>
+            </label>
+            <p class="hint" i18n="@@claims.noteHint">
+              At most {{ maxEvidenceText }} characters. Say who you are and who can confirm it. Only
+              the maintainer of this profile and administrators read it.
+            </p>
+            <div class="actions">
+              <button type="submit" [disabled]="busy()" i18n="@@claims.send">Send claim</button>
+              <button
+                type="button"
+                class="secondary"
+                (click)="writing.set(false)"
+                i18n="@@common.cancel"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        } @else {
+          <p class="hint" i18n="@@claims.claimHint">
+            If this profile is you, claim it. Its maintainer decides. If they approve, you become
+            its only maintainer. An account can be only one person.
+          </p>
+          <div class="actions">
+            <button
+              type="button"
+              class="secondary"
+              (click)="writing.set(true)"
+              i18n="@@claims.claim"
+            >
+              Claim this profile
+            </button>
+          </div>
+        }
+      }
+    }
+  </div>
+}

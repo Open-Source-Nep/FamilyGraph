@@ -1,4 +1,5 @@
 using FamilyGraph.Business.Audit;
+using FamilyGraph.Business.Claims;
 using FamilyGraph.Business.Handovers;
 using FamilyGraph.Business.People;
 using FamilyGraph.Business.Relationships;
@@ -25,7 +26,8 @@ public sealed record ExportedPerson(
     string? Description,
     BirthDate? BirthDate,
     bool BirthDateShown,
-    ProfileImageId? ImageId);
+    ProfileImageId? ImageId,
+    AccountId? ClaimedById = null);
 
 /// <summary>A parent–child link with both endpoints' consent, active or not, and when it was deleted (D-049).</summary>
 public sealed record ExportedLink(
@@ -64,6 +66,17 @@ public sealed record ExportedHandover(
     DateTimeOffset ExpiresAt,
     HandoverState State,
     AccountId? AcceptedById,
+    DateTimeOffset? ClosedAt);
+
+/// <summary>An identity claim as stored, with its evidence note (D-051).</summary>
+public sealed record ExportedClaim(
+    ClaimId Id,
+    PersonId PersonId,
+    AccountId ClaimantId,
+    string? Evidence,
+    DateTimeOffset SubmittedAt,
+    ClaimState State,
+    AccountId? ClosedById,
     DateTimeOffset? ClosedAt);
 
 /// <summary>

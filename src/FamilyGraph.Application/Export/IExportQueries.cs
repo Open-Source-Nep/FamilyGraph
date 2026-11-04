@@ -37,6 +37,9 @@ public interface IExportSnapshot : IAsyncDisposable
     /// <summary>Every handover link.</summary>
     IAsyncEnumerable<ExportedHandover> HandoversAsync(CancellationToken cancellationToken);
 
+    /// <summary>Every identity claim (D-051).</summary>
+    IAsyncEnumerable<ExportedClaim> ClaimsAsync(CancellationToken cancellationToken);
+
     /// <summary>The whole audit history, oldest first.</summary>
     IAsyncEnumerable<ExportedAuditEvent> AuditEventsAsync(CancellationToken cancellationToken);
 }

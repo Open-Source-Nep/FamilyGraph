@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 
 import { AuthService } from '../../core/auth/auth.service';
 import { DigitsPipe } from '../../core/i18n/local-format.pipes';
+import { ClaimsOverview } from '../claims/claims-overview';
 import { fullName } from '../people/person';
 import { problemMessage } from '../people/problem';
 import { MarriagesService } from './marriages.service';
@@ -43,11 +44,12 @@ interface AdministratorAction {
  * The inactive links of the profiles you maintain (PRD 03, D-021): approve or decline those
  * waiting for you, restore an approval you withdrew, delete a link whose two people you maintain
  * (D-014), and see which wait for someone else. Administrators also see every link and marriage
- * waiting for another maintainer and may approve those sides on their behalf (D-040).
+ * waiting for another maintainer and may approve those sides on their behalf (D-040). Claims on your
+ * profiles and your own claims come first (D-051).
  */
 @Component({
   selector: 'app-approvals-page',
-  imports: [DigitsPipe, RouterLink],
+  imports: [ClaimsOverview, DigitsPipe, RouterLink],
   templateUrl: './approvals-page.html',
 })
 export class ApprovalsPage {
