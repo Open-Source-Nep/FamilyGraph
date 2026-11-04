@@ -21,6 +21,25 @@
     </ul>
   }
 }
+@if (toRespond()?.claims; as claims) {
+  @if (claims.length > 0) {
+    <h2 i18n="@@claims.toRespondTitle">Claims on your own profile</h2>
+    <p class="hint" i18n="@@claims.toRespondHint">
+      Someone else says your profile is them. An administrator decides; you can reply on the
+      profile's page.
+    </p>
+    <ul class="links">
+      @for (claim of claims; track claim.id) {
+        <li>
+          <a [routerLink]="['/people', claim.person.id]">{{ fullName(claim.person) }}</a>
+          <div class="hint" i18n="@@claims.submittedOn">
+            Claimed on {{ claim.submittedAt | localDateTime }}.
+          </div>
+        </li>
+      }
+    </ul>
+  }
+}
 @if (mine()?.claims; as claims) {
   @if (claims.length > 0) {
     <h2 i18n="@@claims.mineTitle">Your claims</h2>
@@ -29,11 +48,28 @@
         <li>
           <a [routerLink]="['/people', claim.person.id]">{{ fullName(claim.person) }}</a>
           <div class="hint">
-            {{ stateLabel(claim.state) }} ·
+            {{ stateLabel(claim) }} ·
             <ng-container i18n="@@claims.sentOn"
               >sent {{ claim.submittedAt | localDateTime }}</ng-container
             >
           </div>
+          @if (claim.administratorQuestion) {
+            <div class="hint" i18n="@@claims.questionWaiting">
+              An administrator asked you something. Answer on the profile's page.
+            </div>
+          }
+          @if (claim.mayRequestReview) {
+            <div class="actions">
+              <button
+                type="button"
+                [disabled]="busy()"
+                (click)="requestReview(claim)"
+                i18n="@@claims.askAdministrator"
+              >
+                Ask an administrator
+              </button>
+            </div>
+          }
           @if (claim.state === 'Open') {
             <div class="actions">
               <button

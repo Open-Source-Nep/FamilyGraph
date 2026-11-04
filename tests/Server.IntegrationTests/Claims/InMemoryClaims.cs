@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using FamilyGraph.Application.Claims;
-using FamilyGraph.Application.Privacy;
 using FamilyGraph.Business.Claims;
 using FamilyGraph.Business.People;
 using Server.IntegrationTests.People;
@@ -21,35 +20,56 @@ public sealed class InMemoryClaims(InMemoryPeople people) : IClaimStore, IClaimQ
         Task.FromResult<IReadOnlyList<ProfileClaim>>(
             [.. _claims.Values.Where(claim => claim.PersonId == personId && claim.IsOpen).OrderBy(claim => claim.SubmittedAt)]);
 
+    public Task<ProfileClaim?> FindLatestAsync(PersonId personId, AccountId claimantId, CancellationToken cancellationToken) =>
+        Task.FromResult(_claims.Values
+            .Where(claim => claim.PersonId == personId && claim.ClaimantId == claimantId)
+            .OrderByDescending(claim => claim.SubmittedAt)
+            .FirstOrDefault());
+
     public Task<bool> AccountHasClaimAsync(AccountId accountId, CancellationToken cancellationToken) =>
         Task.FromResult(
             people.People.Values.Any(person => person.ClaimedById == accountId && !person.IsDeleted)
             || _claims.Values.Any(claim => claim.ClaimantId == accountId && claim.IsOpen));
 
+    public Task<IReadOnlyList<ProfileClaim>> ListNotesToEraseAsync(DateTimeOffset closedBefore, int limit, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<ProfileClaim>>(
+            [.. _claims.Values.Where(claim => !claim.IsOpen && claim.NotesErasedAt is null && claim.ClosedAt < closedBefore).Take(limit)]);
+
     public void Add(ProfileClaim claim) => _claims[claim.Id] = claim;
 
-    public Task<ClaimRecords> ListToDecideAsync(AccountId maintainerId, int limit, CancellationToken cancellationToken)
-    {
-        var open = _claims.Values.Where(claim => claim.IsOpen).ToList();
-        var rows = open
-            .Select(claim => (Claim: claim, Person: people.People[claim.PersonId]))
-            .Where(row => row.Person.IsMaintainedBy(maintainerId) && !row.Person.IsDeleted && !row.Person.IsClaimed
-                && open.Count(other => other.PersonId == row.Claim.PersonId) == 1)
-            .OrderBy(row => row.Claim.SubmittedAt)
-            .ToList();
-        return Task.FromResult(Records(rows, maintainerId, limit));
-    }
+    public Task<ClaimRecords> ListToDecideAsync(AccountId maintainerId, int limit, CancellationToken cancellationToken) =>
+        Task.FromResult(Records(
+            Open().Where(row => row.Person.IsMaintainedBy(maintainerId) && !row.Person.IsDeleted && row.Claim.IsForMaintainer(row.Person, row.Open)),
+            maintainerId,
+            limit));
 
-    public Task<ClaimRecords> ListByClaimantAsync(AccountId claimantId, int limit, CancellationToken cancellationToken)
-    {
-        var rows = _claims.Values
-            .Where(claim => claim.ClaimantId == claimantId)
-            .Select(claim => (Claim: claim, Person: people.People[claim.PersonId]))
-            .OrderByDescending(row => row.Claim.SubmittedAt)
-            .ToList();
-        return Task.FromResult(Records(rows, claimantId, limit));
-    }
+    public Task<ClaimRecords> ListToRespondAsync(AccountId maintainerId, int limit, CancellationToken cancellationToken) =>
+        Task.FromResult(Records(
+            Open().Where(row => row.Person.IsMaintainedBy(maintainerId) && !row.Person.IsDeleted && row.Person.IsClaimed),
+            maintainerId,
+            limit));
 
-    private static ClaimRecords Records(List<(ProfileClaim Claim, Person Person)> rows, AccountId viewerId, int limit) =>
-        new([.. rows.Take(limit).Select(row => ClaimRecord.From(row.Claim, PersonRecord.From(row.Person, viewerId)))], rows.Count > limit);
+    public Task<ClaimRecords> ListForAdministratorsAsync(AccountId viewerId, int limit, CancellationToken cancellationToken) =>
+        Task.FromResult(Records(
+            Open().Where(row => !row.Person.IsDeleted && row.Claim.IsForAdministrators(row.Person.IsClaimed, row.Open)),
+            viewerId,
+            limit));
+
+    public Task<ClaimRecords> ListByClaimantAsync(AccountId claimantId, int limit, CancellationToken cancellationToken) =>
+        Task.FromResult(Records(
+            Rows().Where(row => row.Claim.ClaimantId == claimantId).OrderByDescending(row => row.Claim.SubmittedAt),
+            claimantId,
+            limit));
+
+    private IEnumerable<(ProfileClaim Claim, Person Person, int Open)> Rows() =>
+        _claims.Values.Select(claim => (claim, people.People[claim.PersonId], _claims.Values.Count(other => other.PersonId == claim.PersonId && other.IsOpen)));
+
+    private IEnumerable<(ProfileClaim Claim, Person Person, int Open)> Open() =>
+        Rows().Where(row => row.Claim.IsOpen).OrderBy(row => row.Claim.SubmittedAt);
+
+    private static ClaimRecords Records(IEnumerable<(ProfileClaim Claim, Person Person, int Open)> rows, AccountId viewerId, int limit)
+    {
+        var list = rows.ToList();
+        return new([.. list.Take(limit).Select(row => ClaimRecord.From(row.Claim, row.Person, viewerId, row.Open))], list.Count > limit);
+    }
 }

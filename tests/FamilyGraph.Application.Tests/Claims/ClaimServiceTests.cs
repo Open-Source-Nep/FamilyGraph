@@ -18,6 +18,7 @@ public class ClaimServiceTests
 
     private readonly InMemoryPeople _people = new();
     private readonly InMemoryClaims _claims;
+    private readonly FixedTimeProvider _time = new(Now);
 
     public ClaimServiceTests()
     {
@@ -29,7 +30,7 @@ public class ClaimServiceTests
     private static Viewer As(AccountId account, bool administrator = false) => new(account, administrator);
 
     private ClaimService Service() =>
-        new(_people, _people, _claims, _claims, _people, _people, new FixedTimeProvider(Now), new ClaimLimits());
+        new(_people, _claims, _claims, _people, _people, _time, new ClaimLimits());
 
     private Person AddPerson(string firstName, AccountId maintainer)
     {
@@ -165,9 +166,9 @@ public class ClaimServiceTests
         var administrator = await Service().GetForPersonAsync(maya.Id, As(Carol, administrator: true), Cancellation);
 
         Assert.Equal("I am Maya.", Assert.Single(maintainer.ToDecide).Evidence);
-        Assert.Equal("I am Maya.", claimant.YourOpenClaim!.Evidence);
+        Assert.Equal("I am Maya.", claimant.YourClaim!.Evidence);
         Assert.Empty(claimant.ToDecide);
-        Assert.Null(other.YourOpenClaim);
+        Assert.Null(other.YourClaim);
         Assert.Empty(other.ToDecide);
         Assert.Null(other.IsClaimed);
         Assert.Empty(administrator.ToDecide);
@@ -211,5 +212,113 @@ public class ClaimServiceTests
         await Assert.ThrowsAsync<ClaimNotFoundException>(() => Service().ApproveAsync(ClaimId.New(), Alice, Cancellation));
         await Assert.ThrowsAsync<PersonNotFoundException>(
             () => Service().SubmitAsync(PersonId.New(), null, As(Bob), Cancellation));
+    }
+
+    [Fact]
+    [Trait("AC", "AC-04.2")]
+    [Trait("AC", "AC-04.8")]
+    public async Task A_rejected_claimant_appeals_and_an_administrator_decides_with_a_rationale()
+    {
+        var maya = AddPerson("Maya", Alice);
+        var claim = await Service().SubmitAsync(maya.Id, "I am Maya.", As(Bob), Cancellation);
+        await Service().RejectAsync(claim.Id, Alice, Cancellation);
+
+        var rejected = (await Service().GetForPersonAsync(maya.Id, As(Bob), Cancellation)).YourClaim!;
+        Assert.True(rejected.MayRequestReview);
+        await Service().RequestReviewAsync(claim.Id, Bob, Cancellation);
+
+        Assert.Empty((await Service().ListToDecideAsync(As(Alice), Cancellation)).Claims);
+        Assert.True((await Service().GetForPersonAsync(maya.Id, As(Alice), Cancellation)).NeedsAdministrator);
+        await Assert.ThrowsAsync<ClaimNotAdministratorException>(() => Service().ListForAdministratorsAsync(As(Carol), Cancellation));
+        var review = Assert.Single((await Service().ListForAdministratorsAsync(As(Carol, administrator: true), Cancellation)).Claims);
+        Assert.Equal((claim.Id, "I am Maya.", true), (review.Id, review.Evidence, review.Appealed));
+
+        await Service().ApproveAsAdministratorAsync(claim.Id, "Her aunt confirmed it.", As(Carol, administrator: true), Cancellation);
+
+        Assert.Equal((Bob, (AccountId?)Bob), (maya.MaintainerId, maya.ClaimedById));
+        Assert.Equal(new ClaimApprovedByAdministrator(claim.Id, maya.Id, Carol, Bob, null), _people.AuditEvents[^1].Event);
+        var mine = Assert.Single((await Service().ListMineAsync(As(Bob), Cancellation)).Claims);
+        Assert.Null(mine.Rationale);
+        Assert.True(mine.DecidedByAdministrator);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-04.6")]
+    public async Task An_unanswered_claim_can_go_to_review_after_the_response_time()
+    {
+        var maya = AddPerson("Maya", Alice);
+        var claim = await Service().SubmitAsync(maya.Id, null, As(Bob), Cancellation);
+        Assert.Equal(Now.AddDays(30), claim.ReviewAvailableAt);
+
+        await Assert.ThrowsAsync<ClaimReviewTooEarlyException>(() => Service().RequestReviewAsync(claim.Id, Bob, Cancellation));
+        _time.Now = Now.AddDays(30);
+        Assert.True((await Service().GetForPersonAsync(maya.Id, As(Bob), Cancellation)).YourClaim!.MayRequestReview);
+        await Service().RequestReviewAsync(claim.Id, Bob, Cancellation);
+
+        var status = (await Service().GetForPersonAsync(maya.Id, As(Bob), Cancellation)).YourClaim!;
+        Assert.True(status.WithAdministrators);
+        Assert.False(status.MayRequestReview);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-04.8")]
+    public async Task After_an_administrator_rejection_the_claimant_waits_before_claiming_again()
+    {
+        var maya = AddPerson("Maya", Alice);
+        await Service().SubmitAsync(maya.Id, null, As(Bob), Cancellation);
+        var second = await Service().SubmitAsync(maya.Id, null, As(Carol), Cancellation);
+        await Service().RejectAsAdministratorAsync(second.Id, "No one confirmed it.", As(Alice, administrator: true), Cancellation);
+
+        await Assert.ThrowsAsync<ClaimWaitingPeriodException>(() => Service().SubmitAsync(maya.Id, null, As(Carol), Cancellation));
+        Assert.Equal(Now.AddDays(90), (await Service().GetForPersonAsync(maya.Id, As(Carol), Cancellation)).ClaimAgainFrom);
+
+        _time.Now = Now.AddDays(90);
+        await Service().SubmitAsync(maya.Id, "New evidence.", As(Carol), Cancellation);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-04.5")]
+    [Trait("AC", "AC-04.9")]
+    public async Task The_claimed_persons_reply_and_the_administrators_question_reach_only_their_readers()
+    {
+        var maya = AddPerson("Maya", Alice);
+        await Service().ClaimAsSelfAsync(maya.Id, Alice, Cancellation);
+        var claim = await Service().SubmitAsync(maya.Id, "I am Maya.", As(Bob), Cancellation);
+        var admin = As(Carol, administrator: true);
+
+        var toRespond = Assert.Single((await Service().ListToRespondAsync(As(Alice), Cancellation)).Claims);
+        Assert.Null(toRespond.Evidence);
+        Assert.Single((await Service().GetForPersonAsync(maya.Id, As(Alice), Cancellation)).ToRespond);
+        await Service().RespondAsync(claim.Id, "That is my cousin.", Alice, Cancellation);
+        await Service().AskForEvidenceAsync(claim.Id, "Who can confirm it?", admin, Cancellation);
+
+        var claimant = (await Service().GetForPersonAsync(maya.Id, As(Bob), Cancellation)).YourClaim!;
+        Assert.Equal(("Who can confirm it?", (string?)null), (claimant.AdministratorQuestion, claimant.MaintainerResponse));
+        var reviewed = Assert.Single((await Service().ListForAdministratorsAsync(admin, Cancellation)).Claims);
+        Assert.Equal(("I am Maya.", "That is my cousin.", (bool?)true), (reviewed.Evidence, reviewed.MaintainerResponse, reviewed.ProfileClaimed));
+
+        await Service().ChangeEvidenceAsync(claim.Id, "My aunt Sita can confirm it.", Bob, Cancellation);
+        Assert.Equal("My aunt Sita can confirm it.", Assert.Single(_claims.All).Evidence);
+    }
+
+    [Fact]
+    [Trait("AC", "AC-04.10")]
+    public async Task Notes_are_erased_after_the_retention_period_but_the_rationale_stays()
+    {
+        var maya = AddPerson("Maya", Alice);
+        var open = AddPerson("Sita", Alice);
+        var claim = await Service().SubmitAsync(maya.Id, "I am Maya.", As(Bob), Cancellation);
+        await Service().SubmitAsync(maya.Id, "Me too.", As(Carol), Cancellation);
+        await Service().RejectAsAdministratorAsync(claim.Id, "Not confirmed.", As(Alice, administrator: true), Cancellation);
+        await Service().SubmitAsync(open.Id, "Still open.", As(Bob), Cancellation);
+
+        _time.Now = Now.AddDays(89);
+        Assert.Equal(0, await Service().EraseExpiredNotesAsync(Cancellation));
+        _time.Now = Now.AddDays(91);
+        Assert.Equal(1, await Service().EraseExpiredNotesAsync(Cancellation));
+
+        var erased = _claims.All.Single(c => c.Id == claim.Id);
+        Assert.Equal((null, "Not confirmed."), (erased.Evidence, erased.Rationale));
+        Assert.All(_claims.All.Where(c => c.IsOpen), c => Assert.NotNull(c.Evidence));
     }
 }

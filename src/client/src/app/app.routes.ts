@@ -73,6 +73,13 @@ export const routes: Routes = [
         loadComponent: () => import('./features/admin/users-page').then((m) => m.UsersPage),
       },
       {
+        path: 'admin/claims',
+        title: $localize`:@@claimsReview.title:Claims`,
+        canActivate: [adminGuard],
+        loadComponent: () =>
+          import('./features/claims/claims-review-page').then((m) => m.ClaimsReviewPage),
+      },
+      {
         path: 'account',
         title: $localize`:@@account.title:Your account`,
         loadComponent: () => import('./features/account/account-page').then((m) => m.AccountPage),

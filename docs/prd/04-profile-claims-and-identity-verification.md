@@ -31,12 +31,19 @@ Let a real person claim their profile without conflating identity verification w
 - **Appeals:** a rejected claim may be appealed once to an administrator. After an administrator rejects it, the claimant may submit a new claim for the same profile after 90 days (configurable), with new evidence.
 - **Already-claimed profiles** may be claimed by someone else only through manual review. The current maintainer is notified and may respond, but does not decide the claim.
 
+## Administrator review (agreed 2026-11-04)
+
+- A claimant may ask administrators to review a claim: once, after the maintainer's rejection (an appeal), or when the maintainer has not decided an open claim within the response time. An administrator's decision is final; after a rejection the claimant waits for the waiting period and claims again.
+- Administrators review claims sent to them, competing claims, and claims on claimed profiles on their own Claims page. They may ask the claimant a question; the claimant answers by changing their note. The maintainer of a claimed profile may add one reply for the administrators.
+- Every administrator decision needs a written reason. Approving one of competing claims rejects the others with the same reason.
+- The question, the note and the reply are erased together with the evidence. An appeal is possible only until then.
+
 ## Evidence
 
 - Evidence is one optional free-text note of at most 2,000 characters: who the claimant is and who can confirm it. No files (agreed 2026-11-04).
 - Submitted evidence is visible only to the claimant, the administrators reviewing the claim, and, for a claim the maintainer decides, that maintainer.
 - Evidence is deleted 90 days after the claim's final decision (configurable).
-- Audit history keeps the claim, its decision and the administrator's rationale, but not the evidence.
+- Audit history keeps the claim, its decision and the administrator's rationale, but not the evidence. The rationale stays on the claim and is shown to administrators only (proposed 2026-11-04, D-052).
 
 ## Manual review
 

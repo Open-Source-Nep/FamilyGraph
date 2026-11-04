@@ -25,13 +25,24 @@ describe('PersonClaim', () => {
     birthDateShown: false,
   });
 
-  const claim = (evidence: string | null): Claim => ({
+  const claim = (evidence: string | null, change: Partial<Claim> = {}): Claim => ({
     id: 'c1',
     person: person(true),
     state: 'Open',
     evidence,
     submittedAt: '2026-11-04T09:00:00Z',
     closedAt: null,
+    withAdministrators: false,
+    appealed: false,
+    decidedByAdministrator: false,
+    administratorQuestion: null,
+    maintainerResponse: null,
+    rationale: null,
+    mayRequestReview: false,
+    reviewAvailableAt: null,
+    profileClaimed: null,
+    openClaimsOnProfile: null,
+    ...change,
   });
 
   const none: ProfileClaimStatus = {
@@ -39,7 +50,9 @@ describe('PersonClaim', () => {
     claimedByYou: false,
     youHaveClaim: false,
     yourClaim: null,
+    claimAgainFrom: null,
     toDecide: [],
+    toRespond: [],
     needsAdministrator: false,
   };
 
@@ -70,6 +83,18 @@ describe('PersonClaim', () => {
             },
             withdraw: (id: string) => {
               calls.push(`withdraw ${id}`);
+              return Promise.resolve();
+            },
+            requestReview: (id: string) => {
+              calls.push(`review ${id}`);
+              return Promise.resolve();
+            },
+            changeEvidence: (id: string, evidence: string | null) => {
+              calls.push(`evidence ${id} ${evidence}`);
+              return Promise.resolve();
+            },
+            respond: (id: string, response: string | null) => {
+              calls.push(`respond ${id} ${response}`);
               return Promise.resolve();
             },
           },
@@ -159,5 +184,79 @@ describe('PersonClaim', () => {
 
     expect(text()).toContain('An administrator decides');
     expect(element().querySelector('button')).toBeNull();
+  });
+
+  it('appeals a rejection to an administrator', async () => {
+    const rejected = claim('note', { state: 'Rejected', mayRequestReview: true });
+    await render(false, { ...none, yourClaim: rejected });
+
+    expect(text()).toContain('The maintainer rejected your claim');
+    status = {
+      ...none,
+      youHaveClaim: true,
+      yourClaim: claim('note', { withAdministrators: true, appealed: true }),
+    };
+    button('Ask an administrator to review it').click();
+    await fixture.whenStable();
+
+    expect(calls).toEqual(['review c1']);
+    expect(text()).toContain('Administrators are reviewing your claim');
+  });
+
+  it('tells the claimant when they may ask an administrator instead', async () => {
+    await render(false, {
+      ...none,
+      youHaveClaim: true,
+      yourClaim: claim('note', { reviewAvailableAt: '2026-12-04T09:00:00Z' }),
+    });
+
+    expect(text()).toContain('you can ask an administrator instead');
+    expect(button('Ask an administrator')).toBeUndefined();
+  });
+
+  it("shows an administrator's question and saves the changed note", async () => {
+    await render(false, {
+      ...none,
+      youHaveClaim: true,
+      yourClaim: claim('note', {
+        withAdministrators: true,
+        administratorQuestion: 'Who can confirm it?',
+      }),
+    });
+
+    expect(text()).toContain('Who can confirm it?');
+    button('Change my note').click();
+    await fixture.whenStable();
+    const note = element().querySelector('textarea')!;
+    note.value = 'My aunt Sita.';
+    note.dispatchEvent(new Event('input'));
+    button('Save note').click();
+    await fixture.whenStable();
+
+    expect(calls).toEqual(['evidence c1 My aunt Sita.']);
+  });
+
+  it('lets the claimed person reply to a claim on their profile', async () => {
+    await render(true, { ...none, claimed: true, claimedByYou: false, toRespond: [claim(null)] });
+
+    expect(text()).toContain('An administrator decides, not you');
+    const reply = element().querySelector('textarea')!;
+    reply.value = 'That is my cousin.';
+    reply.dispatchEvent(new Event('input'));
+    button('Save reply').click();
+    await fixture.whenStable();
+
+    expect(calls).toEqual(['respond c1 That is my cousin.']);
+  });
+
+  it('says when you may claim again after an administrator rejected you', async () => {
+    await render(false, {
+      ...none,
+      yourClaim: claim(null, { state: 'Rejected', decidedByAdministrator: true }),
+      claimAgainFrom: '2027-02-02T09:00:00Z',
+    });
+
+    expect(text()).toContain('You can claim this profile again from');
+    expect(button('Claim this profile')).toBeUndefined();
   });
 });

@@ -60,7 +60,9 @@ public sealed class InMemoryExport(InMemoryAccountStore accounts, InMemoryPeople
             claims.All
                 .OrderBy(claim => claim.Id.Value)
                 .Select(claim => new ExportedClaim(
-                    claim.Id, claim.PersonId, claim.ClaimantId, claim.Evidence, claim.SubmittedAt, claim.State, claim.ClosedById, claim.ClosedAt))
+                    claim.Id, claim.PersonId, claim.ClaimantId, claim.Evidence, claim.SubmittedAt, claim.State, claim.ClosedById, claim.ClosedAt,
+                    claim.ReviewRequestedAt, claim.Appealed, claim.DecidedByAdministrator, claim.Rationale, claim.AdministratorQuestion,
+                    claim.MaintainerResponse, claim.NotesErasedAt))
                 .ToList(),
             people.AuditEvents
                 .Select(entry => new ExportedAuditEvent(

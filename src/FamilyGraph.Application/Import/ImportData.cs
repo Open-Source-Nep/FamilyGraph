@@ -80,7 +80,7 @@ public sealed record ImportHandover(
     Guid? AcceptedById,
     DateTimeOffset? ClosedAt);
 
-/// <summary>An identity claim as exported, with its evidence note (D-051).</summary>
+/// <summary>An identity claim as exported, with its notes and review (D-051, D-052); the review fields are optional.</summary>
 public sealed record ImportClaim(
     Guid Id,
     Guid PersonId,
@@ -89,7 +89,14 @@ public sealed record ImportClaim(
     DateTimeOffset SubmittedAt,
     string? State,
     Guid? ClosedById,
-    DateTimeOffset? ClosedAt);
+    DateTimeOffset? ClosedAt,
+    DateTimeOffset? ReviewRequestedAt = null,
+    bool Appealed = false,
+    bool DecidedByAdministrator = false,
+    string? Rationale = null,
+    string? AdministratorQuestion = null,
+    string? MaintainerResponse = null,
+    DateTimeOffset? NotesErasedAt = null);
 
 /// <summary>An audit history row as exported; <see cref="Data"/> is the event's JSON object, or null when it was not one.</summary>
 public sealed record ImportAuditEvent(

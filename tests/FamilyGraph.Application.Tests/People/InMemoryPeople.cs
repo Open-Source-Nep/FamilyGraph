@@ -341,5 +341,8 @@ internal sealed class InMemoryPeople
 
 internal sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
 {
-    public override DateTimeOffset GetUtcNow() => now;
+    /// <summary>The time it gives; a test may move it on.</summary>
+    public DateTimeOffset Now { get; set; } = now;
+
+    public override DateTimeOffset GetUtcNow() => Now;
 }

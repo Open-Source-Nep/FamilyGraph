@@ -594,6 +594,14 @@ public sealed class ImportService(
                 }
 
                 var evidence = Try(path, () => ClaimEvidence.Normalize(claim.Evidence) ?? "");
+                var review = Try(path, () => new ClaimReview(
+                    claim.ReviewRequestedAt,
+                    claim.Appealed,
+                    claim.DecidedByAdministrator,
+                    claim.Rationale is null ? null : ClaimText.Rationale(claim.Rationale),
+                    claim.AdministratorQuestion is null ? null : ClaimText.Question(claim.AdministratorQuestion),
+                    ClaimText.Response(claim.MaintainerResponse),
+                    claim.NotesErasedAt));
                 if (_problemCount == problems)
                 {
                     var row = claim;
@@ -605,7 +613,8 @@ public sealed class ImportService(
                         row.SubmittedAt,
                         state!,
                         row.ClosedById is { } closedById ? local(closedById) : null,
-                        row.ClosedAt));
+                        row.ClosedAt,
+                        review));
                 }
             }
 

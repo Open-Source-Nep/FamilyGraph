@@ -1,0 +1,117 @@
+<section class="panel wide stack">
+  <div>
+    <h1 i18n="@@claimsReview.title">Claims</h1>
+    <p class="hint" i18n="@@claimsReview.intro">
+      Claims waiting for an administrator. Read the note, look at the family around the profile, ask
+      the claimant if you need more, then decide and give your reason. No check proves who someone
+      is. Your reason is kept with the decision; the notes are erased later.
+    </p>
+  </div>
+
+  @if (error(); as error) {
+    <p class="error" role="alert">{{ error }}</p>
+  }
+  @if (message(); as message) {
+    <p role="status">{{ message }}</p>
+  }
+
+  @if (loading()) {
+    <p class="hint" i18n="@@common.loading">Loading…</p>
+  } @else if (list().length === 0) {
+    <p class="hint" i18n="@@claimsReview.none">No claims are waiting for an administrator.</p>
+  } @else {
+    @for (claim of list(); track claim.id) {
+      <article class="card">
+        <h2>
+          <a [routerLink]="['/people', claim.person.id]">{{ fullName(claim.person) }}</a>
+        </h2>
+        <p>{{ reason(claim) }}</p>
+        <p class="hint" i18n="@@claims.submittedOn">
+          Claimed on {{ claim.submittedAt | localDateTime }}.
+        </p>
+        <h3 i18n="@@claimsReview.note">The claimant's note</h3>
+        @if (claim.evidence; as evidence) {
+          <blockquote class="claim-note">{{ evidence }}</blockquote>
+        } @else {
+          <p class="hint" i18n="@@claims.noNote">The claimant left no note.</p>
+        }
+        @if (claim.maintainerResponse; as response) {
+          <h3 i18n="@@claimsReview.response">The claimed person's reply</h3>
+          <blockquote class="claim-note">{{ response }}</blockquote>
+        } @else if (claim.profileClaimed) {
+          <p class="hint" i18n="@@claimsReview.noResponse">The claimed person has not replied.</p>
+        }
+        @if (claim.administratorQuestion; as question) {
+          <h3 i18n="@@claimsReview.question">Your question</h3>
+          <blockquote class="claim-note">{{ question }}</blockquote>
+        }
+
+        <form class="name-form" (ngSubmit)="ask(claim)">
+          <label>
+            <ng-container i18n="@@claimsReview.askLabel">Ask the claimant for more</ng-container>
+            <textarea
+              name="question-{{ claim.id }}"
+              class="question"
+              rows="2"
+              [maxlength]="maxLength"
+              [ngModel]="draft(claim).question"
+              (ngModelChange)="setDraft(claim, { question: $event })"
+            ></textarea>
+          </label>
+          <div class="actions">
+            <button
+              type="submit"
+              class="secondary"
+              [disabled]="busy() || draft(claim).question.trim() === ''"
+              i18n="@@claimsReview.ask"
+            >
+              Send question
+            </button>
+          </div>
+        </form>
+
+        <form class="name-form" (ngSubmit)="decide(claim, true)">
+          <label>
+            <ng-container i18n="@@claimsReview.rationaleLabel"
+              >Reason for your decision</ng-container
+            >
+            <textarea
+              name="rationale-{{ claim.id }}"
+              class="rationale"
+              rows="3"
+              [maxlength]="maxLength"
+              [ngModel]="draft(claim).rationale"
+              (ngModelChange)="setDraft(claim, { rationale: $event })"
+            ></textarea>
+          </label>
+          <p class="hint" i18n="@@claimsReview.rationaleHint">
+            Required, at most {{ maxLengthText }} characters. Only administrators read it.
+          </p>
+          <div class="actions">
+            <button
+              type="submit"
+              [disabled]="busy() || draft(claim).rationale.trim() === ''"
+              i18n="@@claimsReview.approve"
+            >
+              Approve: this is them
+            </button>
+            <button
+              type="button"
+              class="danger"
+              [disabled]="busy() || draft(claim).rationale.trim() === ''"
+              (click)="decide(claim, false)"
+              i18n="@@claimsReview.reject"
+            >
+              Reject
+            </button>
+          </div>
+        </form>
+      </article>
+    }
+    @if (isTruncated()) {
+      <p class="hint" i18n="@@claimsReview.truncated">
+        More claims are waiting. Decide these to see the rest.
+      </p>
+    }
+  }
+</section>
