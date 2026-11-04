@@ -68,7 +68,7 @@ public sealed record ExportedHandover(
     AccountId? AcceptedById,
     DateTimeOffset? ClosedAt);
 
-/// <summary>An identity claim as stored, with its evidence note (D-051).</summary>
+/// <summary>An identity claim as stored, with its notes and review (D-051, D-052).</summary>
 public sealed record ExportedClaim(
     ClaimId Id,
     PersonId PersonId,
@@ -77,7 +77,14 @@ public sealed record ExportedClaim(
     DateTimeOffset SubmittedAt,
     ClaimState State,
     AccountId? ClosedById,
-    DateTimeOffset? ClosedAt);
+    DateTimeOffset? ClosedAt,
+    DateTimeOffset? ReviewRequestedAt,
+    bool Appealed,
+    bool DecidedByAdministrator,
+    string? Rationale,
+    string? AdministratorQuestion,
+    string? MaintainerResponse,
+    DateTimeOffset? NotesErasedAt);
 
 /// <summary>
 /// An audit history row as stored (D-015): <see cref="Type"/> is the event's name and <see cref="Data"/>

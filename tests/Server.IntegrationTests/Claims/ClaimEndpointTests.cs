@@ -16,6 +16,10 @@ public class ClaimEndpointTests(AccountTestFactory factory) : IClassFixture<Acco
     [InlineData("GET", "/api/claims/to-decide")]
     [InlineData("GET", "/api/claims/mine")]
     [InlineData("POST", "/api/claims/0199f6a2-0000-7000-8000-000000000001/approve")]
+    [InlineData("POST", "/api/claims/0199f6a2-0000-7000-8000-000000000001/review")]
+    [InlineData("GET", "/api/claims/to-respond")]
+    [InlineData("GET", "/api/admin/claims")]
+    [InlineData("POST", "/api/admin/claims/0199f6a2-0000-7000-8000-000000000001/approve")]
     public async Task Claims_require_a_session(string method, string url)
     {
         using var browser = factory.CreateBrowser();
@@ -119,6 +123,78 @@ public class ClaimEndpointTests(AccountTestFactory factory) : IClassFixture<Acco
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
         Assert.Equal("claim.evidence_too_long", await CodeAsync(response));
+    }
+
+    [Fact]
+    [Trait("AC", "AC-04.2")]
+    [Trait("AC", "AC-04.5")]
+    [Trait("AC", "AC-04.8")]
+    public async Task A_rejected_claim_is_appealed_and_an_administrator_decides_it()
+    {
+        var (alice, aliceToken) = await SignInAsync("alice-claim5@example.org");
+        var personId = await CreatePersonAsync(alice, aliceToken, "Maya");
+        var (bob, bobToken) = await SignInAsync("bob-claim5@example.org");
+        var (admin, adminToken) = await SignInAsync(AccountTestFactory.AdministratorEmail);
+        using var submitted = await SendAsync(bob, bobToken, HttpMethod.Post, $"/api/people/{personId}/claims", new { evidence = "I am Maya." });
+        var claim = (await submitted.Content.ReadFromJsonAsync<ClaimResponse>(Cancellation))!;
+        using var rejected = await SendAsync(alice, aliceToken, HttpMethod.Post, $"/api/claims/{claim.Id}/reject");
+
+        using var appeal = await SendAsync(bob, bobToken, HttpMethod.Post, $"/api/claims/{claim.Id}/review");
+        Assert.Equal(HttpStatusCode.NoContent, appeal.StatusCode);
+
+        using var forbidden = await SendAsync(alice, aliceToken, HttpMethod.Get, "/api/admin/claims");
+        Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+        Assert.Equal("claim.not_administrator", await CodeAsync(forbidden));
+        using var list = await SendAsync(admin, adminToken, HttpMethod.Get, "/api/admin/claims");
+        var listed = (await list.Content.ReadFromJsonAsync<ClaimListResponse>(Cancellation))!.Claims.Single(c => c.Id == claim.Id);
+        Assert.Equal(("I am Maya.", true, true), (listed.Evidence, listed.Appealed, listed.WithAdministrators));
+
+        using var noReason = await SendAsync(admin, adminToken, HttpMethod.Post, $"/api/admin/claims/{claim.Id}/reject", new { });
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, noReason.StatusCode);
+        Assert.Equal("claim.rationale_required", await CodeAsync(noReason));
+        using var decided = await SendAsync(admin, adminToken, HttpMethod.Post, $"/api/admin/claims/{claim.Id}/reject", new { rationale = "No one confirmed it." });
+        Assert.Equal(HttpStatusCode.NoContent, decided.StatusCode);
+
+        using var status = await SendAsync(bob, bobToken, HttpMethod.Get, $"/api/people/{personId}/claims");
+        var body = await status.Content.ReadAsStringAsync(Cancellation);
+        Assert.DoesNotContain("No one confirmed it.", body, StringComparison.Ordinal);
+        var bobStatus = (await status.Content.ReadFromJsonAsync<ProfileClaimStatusResponse>(Cancellation))!;
+        Assert.True(bobStatus.YourClaim!.DecidedByAdministrator);
+        Assert.NotNull(bobStatus.ClaimAgainFrom);
+        using var again = await SendAsync(bob, bobToken, HttpMethod.Post, $"/api/people/{personId}/claims", new { });
+        Assert.Equal(HttpStatusCode.Conflict, again.StatusCode);
+        Assert.Equal("claim.waiting_period", await CodeAsync(again));
+    }
+
+    [Fact]
+    [Trait("AC", "AC-04.9")]
+    public async Task The_claimed_person_replies_and_an_administrator_asks_the_claimant()
+    {
+        var (alice, aliceToken) = await SignInAsync("alice-claim6@example.org");
+        var personId = await CreatePersonAsync(alice, aliceToken, "Maya");
+        using var self = await SendAsync(alice, aliceToken, HttpMethod.Post, $"/api/people/{personId}/claim-as-self");
+        var (bob, bobToken) = await SignInAsync("bob-claim6@example.org");
+        var (admin, adminToken) = await SignInAsync(AccountTestFactory.AdministratorEmail);
+        using var submitted = await SendAsync(bob, bobToken, HttpMethod.Post, $"/api/people/{personId}/claims", new { evidence = "secret note" });
+        var claim = (await submitted.Content.ReadFromJsonAsync<ClaimResponse>(Cancellation))!;
+
+        using var toRespond = await SendAsync(alice, aliceToken, HttpMethod.Get, "/api/claims/to-respond");
+        var body = await toRespond.Content.ReadAsStringAsync(Cancellation);
+        Assert.DoesNotContain("secret note", body, StringComparison.Ordinal);
+        using var reply = await SendAsync(alice, aliceToken, HttpMethod.Put, $"/api/claims/{claim.Id}/response", new { response = "Not me." });
+        Assert.Equal(HttpStatusCode.NoContent, reply.StatusCode);
+        using var ask = await SendAsync(admin, adminToken, HttpMethod.Post, $"/api/admin/claims/{claim.Id}/ask", new { question = "Who can confirm it?" });
+        Assert.Equal(HttpStatusCode.NoContent, ask.StatusCode);
+        using var change = await SendAsync(bob, bobToken, HttpMethod.Put, $"/api/claims/{claim.Id}/evidence", new { evidence = "My aunt Sita." });
+        Assert.Equal(HttpStatusCode.NoContent, change.StatusCode);
+
+        using var list = await SendAsync(admin, adminToken, HttpMethod.Get, "/api/admin/claims");
+        var listed = (await list.Content.ReadFromJsonAsync<ClaimListResponse>(Cancellation))!.Claims.Single(c => c.Id == claim.Id);
+        Assert.Equal(("My aunt Sita.", "Not me.", "Who can confirm it?", (bool?)true), (listed.Evidence, listed.MaintainerResponse, listed.AdministratorQuestion, listed.ProfileClaimed));
+        using var approved = await SendAsync(admin, adminToken, HttpMethod.Post, $"/api/admin/claims/{claim.Id}/approve", new { rationale = "Met in person." });
+        Assert.Equal(HttpStatusCode.NoContent, approved.StatusCode);
+        using var person = await SendAsync(bob, bobToken, HttpMethod.Get, $"/api/people/{personId}");
+        Assert.True((await person.Content.ReadFromJsonAsync<PersonResponse>(Cancellation))!.MaintainedByYou);
     }
 
     private async Task<(HttpClient Browser, string Token)> SignInAsync(string email)

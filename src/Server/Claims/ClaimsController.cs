@@ -9,9 +9,10 @@ using Server.Accounts;
 namespace Server.Claims;
 
 /// <summary>
-/// Identity claims (PRD 04, D-051). A signed-in account claims a profile with an optional note; the
-/// maintainer approves or rejects it while it is the profile's only open claim and the profile is
-/// not claimed (otherwise 403 <c>claim.administrator_only</c>). A maintainer may mark a profile as
+/// Identity claims (PRD 04, D-051, D-052). A signed-in account claims a profile with an optional note; the
+/// maintainer approves or rejects it while it is the profile's only open claim, the profile is
+/// not claimed and the claimant has not asked for review (otherwise 403 <c>claim.administrator_only</c>);
+/// administrators decide the rest with a rationale. A maintainer may mark a profile as
 /// themselves. An account with a claimed profile or an open claim cannot claim again (409
 /// <c>claim.account_has_claim</c>). Relationship consent never changes here.
 /// </summary>
@@ -45,6 +46,11 @@ public sealed class ClaimsController(ClaimService claims) : ControllerBase
     public async Task<ClaimListResponse> ListToDecide(CancellationToken cancellationToken) =>
         ClaimListResponse.From(await claims.ListToDecideAsync(User.Viewer(), cancellationToken));
 
+    /// <summary>The open claims on claimed profiles you maintain, for a reply (AC-04.9).</summary>
+    [HttpGet("api/claims/to-respond")]
+    public async Task<ClaimListResponse> ListToRespond(CancellationToken cancellationToken) =>
+        ClaimListResponse.From(await claims.ListToRespondAsync(User.Viewer(), cancellationToken));
+
     /// <summary>Your own claims, newest first.</summary>
     [HttpGet("api/claims/mine")]
     public async Task<ClaimListResponse> ListMine(CancellationToken cancellationToken) =>
@@ -71,6 +77,71 @@ public sealed class ClaimsController(ClaimService claims) : ControllerBase
     public async Task<IActionResult> Withdraw(Guid id, CancellationToken cancellationToken)
     {
         await claims.WithdrawAsync(ToClaimId(id), User.AccountId(), cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Asks administrators to review your claim; 204. An appeal of the maintainer's rejection (once,
+    /// 409 <c>claim.not_appealable</c>, or <c>claim.appeal_too_late</c> after its note was erased), or an
+    /// open claim the maintainer has not answered in <c>Claims:MaintainerResponseDays</c> (409
+    /// <c>claim.review_too_early</c>).
+    /// </summary>
+    [HttpPost("api/claims/{id:guid}/review")]
+    public async Task<IActionResult> RequestReview(Guid id, CancellationToken cancellationToken)
+    {
+        await claims.RequestReviewAsync(ToClaimId(id), User.AccountId(), cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>Changes the note of your open claim; 204. Claimant only.</summary>
+    [HttpPut("api/claims/{id:guid}/evidence")]
+    public async Task<IActionResult> ChangeEvidence(Guid id, ChangeClaimEvidenceRequest request, CancellationToken cancellationToken)
+    {
+        await claims.ChangeEvidenceAsync(ToClaimId(id), request.Evidence, User.AccountId(), cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Replies, as the maintainer of a claimed profile, to an open claim on it; 204. Administrators
+    /// read it and decide. An unclaimed profile is 409 <c>claim.not_claimed_profile</c>.
+    /// </summary>
+    [HttpPut("api/claims/{id:guid}/response")]
+    public async Task<IActionResult> Respond(Guid id, ClaimResponseRequest request, CancellationToken cancellationToken)
+    {
+        await claims.RespondAsync(ToClaimId(id), request.Response, User.AccountId(), cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>The open claims waiting for administrators, with every note. Administrators only (403 <c>claim.not_administrator</c>).</summary>
+    [HttpGet("api/admin/claims")]
+    public async Task<ClaimListResponse> ListForAdministrators(CancellationToken cancellationToken) =>
+        ClaimListResponse.From(await claims.ListForAdministratorsAsync(User.Viewer(), cancellationToken));
+
+    /// <summary>
+    /// Approves a claim waiting for administrators, with a rationale (422 <c>claim.rationale_required</c>);
+    /// the profile's other open claims are rejected; 204. A claim the maintainer still decides is 409
+    /// <c>claim.for_maintainer</c>.
+    /// </summary>
+    [HttpPost("api/admin/claims/{id:guid}/approve")]
+    public async Task<IActionResult> ApproveAsAdministrator(Guid id, ClaimDecisionRequest request, CancellationToken cancellationToken)
+    {
+        await claims.ApproveAsAdministratorAsync(ToClaimId(id), request.Rationale, User.Viewer(), cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>Rejects a claim waiting for administrators, with a rationale; 204.</summary>
+    [HttpPost("api/admin/claims/{id:guid}/reject")]
+    public async Task<IActionResult> RejectAsAdministrator(Guid id, ClaimDecisionRequest request, CancellationToken cancellationToken)
+    {
+        await claims.RejectAsAdministratorAsync(ToClaimId(id), request.Rationale, User.Viewer(), cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>Asks the claimant for more evidence; 204.</summary>
+    [HttpPost("api/admin/claims/{id:guid}/ask")]
+    public async Task<IActionResult> AskForEvidence(Guid id, ClaimQuestionRequest request, CancellationToken cancellationToken)
+    {
+        await claims.AskForEvidenceAsync(ToClaimId(id), request.Question, User.Viewer(), cancellationToken);
         return NoContent();
     }
 

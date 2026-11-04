@@ -234,7 +234,7 @@ public sealed record ExportedHandoverItem(
 }
 
 /// <summary>
-/// An identity claim with its evidence note (D-051). <see cref="State"/> is <c>Open</c>, <c>Approved</c>,
+/// An identity claim with its notes and administrator review (D-051, D-052). <see cref="State"/> is <c>Open</c>, <c>Approved</c>,
 /// <c>Rejected</c>, <c>Withdrawn</c> or <c>Cancelled</c>.
 /// </summary>
 public sealed record ExportedClaimItem(
@@ -245,7 +245,14 @@ public sealed record ExportedClaimItem(
     DateTimeOffset SubmittedAt,
     string State,
     Guid? ClosedById,
-    DateTimeOffset? ClosedAt)
+    DateTimeOffset? ClosedAt,
+    DateTimeOffset? ReviewRequestedAt,
+    bool Appealed,
+    bool DecidedByAdministrator,
+    string? Rationale,
+    string? AdministratorQuestion,
+    string? MaintainerResponse,
+    DateTimeOffset? NotesErasedAt)
 {
     internal static ExportedClaimItem From(ExportedClaim claim) => new(
         claim.Id.Value,
@@ -255,7 +262,14 @@ public sealed record ExportedClaimItem(
         claim.SubmittedAt,
         claim.State.Name,
         claim.ClosedById?.Value,
-        claim.ClosedAt);
+        claim.ClosedAt,
+        claim.ReviewRequestedAt,
+        claim.Appealed,
+        claim.DecidedByAdministrator,
+        claim.Rationale,
+        claim.AdministratorQuestion,
+        claim.MaintainerResponse,
+        claim.NotesErasedAt);
 }
 
 /// <summary>

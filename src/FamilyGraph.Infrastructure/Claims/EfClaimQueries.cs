@@ -13,38 +13,75 @@ internal sealed class EfClaimQueries(FamilyGraphDbContext context) : IClaimQueri
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(limit);
 
-        var open = context.Set<ProfileClaim>().AsNoTracking().Where(claim => claim.State == ClaimState.Open);
-        var rows = await (
-                from claim in open
-                join person in context.Set<Person>().AsNoTracking() on claim.PersonId equals person.Id
-                where person.MaintainerId == maintainerId && person.DeletedAt == null && person.ClaimedById == null
-                    && open.Count(other => other.PersonId == claim.PersonId) == 1
-                orderby claim.SubmittedAt, claim.Id
-                select new { Claim = claim, Person = person })
+        var rows = await OpenClaims().Where(row => row.Claim.ReviewRequestedAt == null && row.Person.MaintainerId == maintainerId
+                    && row.Person.DeletedAt == null && row.Person.ClaimedById == null && row.OpenClaims == 1)
+            .OrderBy(row => row.Claim.SubmittedAt).ThenBy(row => row.Claim.Id)
             .Take(limit + 1)
             .ToListAsync(cancellationToken);
 
-        return Records(rows.Select(row => (row.Claim, row.Person)).ToList(), maintainerId, limit);
+        return Records(rows, maintainerId, limit);
+    }
+
+    public async Task<ClaimRecords> ListToRespondAsync(AccountId maintainerId, int limit, CancellationToken cancellationToken)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(limit);
+
+        var rows = await OpenClaims().Where(row => row.Person.MaintainerId == maintainerId && row.Person.DeletedAt == null && row.Person.ClaimedById != null)
+            .OrderBy(row => row.Claim.SubmittedAt).ThenBy(row => row.Claim.Id)
+            .Take(limit + 1)
+            .ToListAsync(cancellationToken);
+
+        return Records(rows, maintainerId, limit);
+    }
+
+    public async Task<ClaimRecords> ListForAdministratorsAsync(AccountId viewerId, int limit, CancellationToken cancellationToken)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(limit);
+
+        var rows = await OpenClaims().Where(row => row.Person.DeletedAt == null
+                    && (row.Claim.ReviewRequestedAt != null || row.Person.ClaimedById != null || row.OpenClaims > 1))
+            .OrderBy(row => row.Claim.ReviewRequestedAt ?? row.Claim.SubmittedAt).ThenBy(row => row.Claim.Id)
+            .Take(limit + 1)
+            .ToListAsync(cancellationToken);
+
+        return Records(rows, viewerId, limit);
     }
 
     public async Task<ClaimRecords> ListByClaimantAsync(AccountId claimantId, int limit, CancellationToken cancellationToken)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(limit);
 
-        var rows = await (
-                from claim in context.Set<ProfileClaim>().AsNoTracking()
-                where claim.ClaimantId == claimantId
-                join person in context.Set<Person>().AsNoTracking() on claim.PersonId equals person.Id
-                orderby claim.SubmittedAt descending, claim.Id
-                select new { Claim = claim, Person = person })
+        var rows = await AllClaims().Where(row => row.Claim.ClaimantId == claimantId)
+            .OrderByDescending(row => row.Claim.SubmittedAt).ThenBy(row => row.Claim.Id)
             .Take(limit + 1)
             .ToListAsync(cancellationToken);
 
-        return Records(rows.Select(row => (row.Claim, row.Person)).ToList(), claimantId, limit);
+        return Records(rows, claimantId, limit);
     }
 
-    private static ClaimRecords Records(List<(ProfileClaim Claim, Person Person)> rows, AccountId viewerId, int limit) =>
+    private IQueryable<Row> AllClaims() =>
+        from claim in context.Set<ProfileClaim>().AsNoTracking()
+        join person in context.Set<Person>().AsNoTracking() on claim.PersonId equals person.Id
+        select new Row
+        {
+            Claim = claim,
+            Person = person,
+            OpenClaims = context.Set<ProfileClaim>().Count(other => other.PersonId == claim.PersonId && other.State == ClaimState.Open),
+        };
+
+    private IQueryable<Row> OpenClaims() => AllClaims().Where(row => row.Claim.State == ClaimState.Open);
+
+    private static ClaimRecords Records(List<Row> rows, AccountId viewerId, int limit) =>
         new(
-            [.. rows.Take(limit).Select(row => ClaimRecord.From(row.Claim, PersonRecord.From(row.Person, viewerId)))],
+            [.. rows.Take(limit).Select(row => ClaimRecord.From(row.Claim, row.Person, viewerId, row.OpenClaims))],
             rows.Count > limit);
+
+    private sealed class Row
+    {
+        public required ProfileClaim Claim { get; init; }
+
+        public required Person Person { get; init; }
+
+        public required int OpenClaims { get; init; }
+    }
 }

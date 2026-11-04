@@ -29,6 +29,14 @@ namespace FamilyGraph.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("AdministratorQuestion")
+                        .HasColumnType("text")
+                        .HasColumnName("administrator_question");
+
+                    b.Property<bool>("Appealed")
+                        .HasColumnType("boolean")
+                        .HasColumnName("appealed");
+
                     b.Property<Guid>("ClaimantId")
                         .HasColumnType("uuid")
                         .HasColumnName("claimant_id");
@@ -41,13 +49,33 @@ namespace FamilyGraph.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("closed_by_id");
 
+                    b.Property<bool>("DecidedByAdministrator")
+                        .HasColumnType("boolean")
+                        .HasColumnName("decided_by_administrator");
+
                     b.Property<string>("Evidence")
                         .HasColumnType("text")
                         .HasColumnName("evidence");
 
+                    b.Property<string>("MaintainerResponse")
+                        .HasColumnType("text")
+                        .HasColumnName("maintainer_response");
+
+                    b.Property<DateTimeOffset?>("NotesErasedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("notes_erased_at");
+
                     b.Property<Guid>("PersonId")
                         .HasColumnType("uuid")
                         .HasColumnName("person_id");
+
+                    b.Property<string>("Rationale")
+                        .HasColumnType("text")
+                        .HasColumnName("rationale");
+
+                    b.Property<DateTimeOffset?>("ReviewRequestedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("review_requested_at");
 
                     b.Property<int>("State")
                         .IsConcurrencyToken()
@@ -61,6 +89,10 @@ namespace FamilyGraph.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_profile_claims");
 
+                    b.HasIndex("ClosedAt")
+                        .HasDatabaseName("ix_profile_claims_notes_to_erase")
+                        .HasFilter("notes_erased_at IS NULL AND closed_at IS NOT NULL");
+
                     b.HasIndex("PersonId")
                         .HasDatabaseName("ix_profile_claims_person_id");
 
@@ -73,6 +105,8 @@ namespace FamilyGraph.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("ck_profile_claims_evidence_length", "char_length(evidence) <= 2000");
 
                             t.HasCheckConstraint("ck_profile_claims_state", "state IN (1, 2, 3, 4, 5)");
+
+                            t.HasCheckConstraint("ck_profile_claims_texts_length", "char_length(rationale) <= 2000 AND char_length(administrator_question) <= 2000 AND char_length(maintainer_response) <= 2000");
                         });
                 });
 

@@ -112,6 +112,54 @@ public class ClaimPersistenceServicesTests(PostgresFixture postgres)
         Assert.False(await check.ServiceProvider.GetRequiredService<IClaimStore>().AccountHasClaimAsync(bob, Cancellation));
     }
 
+    [Fact]
+    [Trait("AC", "AC-04.2")]
+    [Trait("AC", "AC-04.10")]
+    public async Task An_appeal_is_listed_for_administrators_decided_and_its_notes_erased_later()
+    {
+        var time = new MovableTime(DateTimeOffset.UtcNow);
+        await using var services = await NewServicesAsync(time);
+        var alice = TestData.NewAccount();
+        var bob = TestData.NewAccount();
+        var carol = TestData.NewAccount();
+        var admin = new Viewer(TestData.NewAccount(), IsAdministrator: true);
+        var personId = await CreatePersonAsync(services, alice);
+        var other = await CreatePersonAsync(services, alice);
+        var claim = await InScopeAsync(services, claims => claims.SubmitAsync(personId, "I am Maya.", As(bob), Cancellation));
+        await InScopeAsync(services, claims => claims.SubmitAsync(other, "Me.", As(carol), Cancellation));
+        await RunAsync(services, claims => claims.RejectAsync(claim.Id, alice, Cancellation));
+
+        await RunAsync(services, claims => claims.RequestReviewAsync(claim.Id, bob, Cancellation));
+        var toDecide = await InScopeAsync(services, claims => claims.ListToDecideAsync(As(alice), Cancellation));
+        var review = await InScopeAsync(services, claims => claims.ListForAdministratorsAsync(admin, Cancellation));
+        Assert.Equal([claim.Id], review.Claims.Where(c => c.Person.Id == personId || c.Person.Id == other).Select(c => c.Id));
+        Assert.DoesNotContain(toDecide.Claims, c => c.Id == claim.Id);
+        await RunAsync(services, claims => claims.RejectAsAdministratorAsync(claim.Id, "Not confirmed.", admin, Cancellation));
+        await Assert.ThrowsAsync<ClaimWaitingPeriodException>(
+            () => InScopeAsync(services, claims => claims.SubmitAsync(personId, null, As(bob), Cancellation)));
+
+        time.Now = time.Now.AddDays(91);
+        await RunAsync(services, claims => claims.EraseExpiredNotesAsync(Cancellation));
+
+        await using var scope = services.CreateAsyncScope();
+        var stored = await scope.ServiceProvider.GetRequiredService<IClaimStore>().FindAsync(claim.Id, Cancellation);
+        Assert.Equal((ClaimState.Rejected, (string?)null, "Not confirmed.", true), (stored!.State, stored.Evidence, stored.Rationale, stored.Appealed));
+        Assert.NotNull(stored.NotesErasedAt);
+        var types = await scope.ServiceProvider.GetRequiredService<FamilyGraphDbContext>()
+            .Set<AuditEventRecord>().Where(record => record.SubjectId == personId.Value)
+            .OrderBy(record => record.Id).Select(record => record.Type).ToListAsync(Cancellation);
+        // The test clock stands still, so the rows share a time and their order is not fixed.
+        Assert.Equal(
+            [nameof(ClaimRejected), nameof(ClaimRejectedByAdministrator), nameof(ClaimReviewRequested), nameof(ClaimSubmitted), nameof(PersonCreated)],
+            types.Order(StringComparer.Ordinal));
+    }
+
+    private static async Task RunAsync(ServiceProvider services, Func<ClaimService, Task> action)
+    {
+        await using var scope = services.CreateAsyncScope();
+        await action(scope.ServiceProvider.GetRequiredService<ClaimService>());
+    }
+
     private static async Task<PersonId> CreatePersonAsync(ServiceProvider services, AccountId maintainer)
     {
         await using var scope = services.CreateAsyncScope();
@@ -124,16 +172,23 @@ public class ClaimPersistenceServicesTests(PostgresFixture postgres)
         return await action(scope.ServiceProvider.GetRequiredService<ClaimService>());
     }
 
-    private async Task<ServiceProvider> NewServicesAsync()
+    private async Task<ServiceProvider> NewServicesAsync(TimeProvider? time = null)
     {
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddInfrastructure(await postgres.NewMigratedConnectionStringAsync());
-        services.AddSingleton(TimeProvider.System);
+        services.AddSingleton(time ?? TimeProvider.System);
         services.AddSingleton(new PeopleLimits());
         services.AddSingleton(new ClaimLimits());
         services.AddScoped<PersonService>();
         services.AddScoped<ClaimService>();
         return services.BuildServiceProvider();
+    }
+
+    private sealed class MovableTime(DateTimeOffset now) : TimeProvider
+    {
+        public DateTimeOffset Now { get; set; } = now;
+
+        public override DateTimeOffset GetUtcNow() => Now;
     }
 }

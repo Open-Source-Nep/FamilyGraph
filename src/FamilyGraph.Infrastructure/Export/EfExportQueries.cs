@@ -126,7 +126,14 @@ internal sealed class EfExportQueries(FamilyGraphDbContext context) : IExportQue
                     claim.SubmittedAt,
                     claim.State,
                     claim.ClosedById,
-                    claim.ClosedAt)),
+                    claim.ClosedAt,
+                    claim.ReviewRequestedAt,
+                    claim.Appealed,
+                    claim.DecidedByAdministrator,
+                    claim.Rationale,
+                    claim.AdministratorQuestion,
+                    claim.MaintainerResponse,
+                    claim.NotesErasedAt)),
                 cancellationToken);
 
         public async IAsyncEnumerable<ExportedAuditEvent> AuditEventsAsync([EnumeratorCancellation] CancellationToken cancellationToken)

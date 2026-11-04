@@ -100,7 +100,7 @@ public class ExportPersistenceTests(PostgresFixture postgres)
         Assert.Equal(
             [new ExportedHandover(handover.Id, child.Id, alice, "hash", Now, Now.AddDays(14), HandoverState.Open, null, null)],
             handovers);
-        Assert.Equal([new ExportedClaim(claim.Id, child.Id, idle, "I am Maya.", Now, ClaimState.Open, null, null)], claims);
+        Assert.Equal([new ExportedClaim(claim.Id, child.Id, idle, "I am Maya.", Now, ClaimState.Open, null, null, null, false, false, null, null, null, null)], claims);
         var exported = Assert.Single(history, row => row.Type == nameof(DataExported));
         Assert.Equal((admin, admin.Value, AuditFamily.Administrative), (exported.ActorId, exported.SubjectId, exported.Family));
 
