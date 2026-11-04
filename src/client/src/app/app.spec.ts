@@ -32,7 +32,7 @@ describe('App', () => {
     expect(links).toEqual(['People', 'Approvals', 'Account']);
   });
 
-  it('shows the Users link to administrators', async () => {
+  it('shows the Users and Claims links to administrators', async () => {
     const fixture = TestBed.createComponent(App);
     account.set({
       id: '1',
@@ -43,7 +43,7 @@ describe('App', () => {
     await fixture.whenStable();
     const element = fixture.nativeElement as HTMLElement;
     const links = [...element.querySelectorAll('nav a')].map((link) => link.textContent);
-    expect(links).toEqual(['People', 'Approvals', 'Users', 'Account']);
+    expect(links).toEqual(['People', 'Approvals', 'Users', 'Claims', 'Account']);
   });
 
   it('folds the links behind a menu button that opens and closes (AC-09.19)', async () => {

@@ -22,20 +22,118 @@
         @for (claim of status.toDecide; track claim.id) {
           <app-claim-decision [claim]="claim" [busy]="busy()" (decided)="decide(claim, $event)" />
         }
+      } @else if (status.toRespond.length > 0) {
+        <p i18n="@@claims.someoneClaimsYours">
+          Someone else says this profile is them. An administrator decides, not you. You can tell
+          the administrators what you know; only they read your reply.
+        </p>
+        @for (claim of status.toRespond; track claim.id) {
+          <form class="name-form" (ngSubmit)="respond(claim)">
+            <p class="hint" i18n="@@claims.submittedOn">
+              Claimed on {{ claim.submittedAt | localDateTime }}.
+            </p>
+            <label>
+              <ng-container i18n="@@claims.replyLabel"
+                >Your reply to the administrators</ng-container
+              >
+              <span class="hint" i18n="@@common.optional">(optional)</span>
+              <textarea
+                name="reply-{{ claim.id }}"
+                rows="3"
+                [maxlength]="maxEvidenceLength"
+                [ngModel]="reply(claim)"
+                (ngModelChange)="setReply(claim, $event)"
+              ></textarea>
+            </label>
+            <div class="actions">
+              <button type="submit" [disabled]="busy()" i18n="@@claims.saveReply">
+                Save reply
+              </button>
+            </div>
+          </form>
+        }
       } @else if (status.needsAdministrator) {
         <p class="hint" i18n="@@claims.needsAdministrator">
-          This profile has more than one claim, or is already claimed. An administrator decides
-          these claims.
+          This profile has more than one claim, or a claimant asked for review. An administrator
+          decides these claims.
         </p>
-      } @else if (status.yourClaim; as claim) {
-        <p i18n="@@claims.yourClaimOpen">
-          You claimed this profile on {{ claim.submittedAt | localDateTime }}. Its maintainer has
-          not decided yet.
-        </p>
-        @if (claim.evidence; as evidence) {
+      } @else if (status.yourClaim?.state === 'Open' && status.yourClaim; as claim) {
+        @if (claim.withAdministrators) {
+          <p i18n="@@claims.yourClaimWithAdministrators">
+            You claimed this profile on {{ claim.submittedAt | localDateTime }}. Administrators are
+            reviewing your claim.
+          </p>
+        } @else {
+          <p i18n="@@claims.yourClaimOpen">
+            You claimed this profile on {{ claim.submittedAt | localDateTime }}. Its maintainer has
+            not decided yet.
+          </p>
+        }
+        @if (claim.administratorQuestion; as question) {
+          <p i18n="@@claims.administratorAsks">An administrator asks:</p>
+          <blockquote class="claim-note">{{ question }}</blockquote>
+          <p class="hint" i18n="@@claims.answerInNote">Answer by changing your note.</p>
+        }
+        @if (editing()) {
+          <form class="name-form" (ngSubmit)="saveEvidence(claim)">
+            <label>
+              <ng-container i18n="@@claims.yourNote">Your note</ng-container>
+              <span class="hint" i18n="@@common.optional">(optional)</span>
+              <textarea
+                name="evidence"
+                rows="4"
+                [maxlength]="maxEvidenceLength"
+                [ngModel]="evidence()"
+                (ngModelChange)="evidence.set($event)"
+              ></textarea>
+            </label>
+            <div class="actions">
+              <button type="submit" [disabled]="busy()" i18n="@@claims.saveNote">Save note</button>
+              <button
+                type="button"
+                class="secondary"
+                (click)="editing.set(false)"
+                i18n="@@common.cancel"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        } @else if (claim.evidence; as evidence) {
           <blockquote class="claim-note">{{ evidence }}</blockquote>
         }
+        @if (claim.mayRequestReview) {
+          <p class="hint" i18n="@@claims.reviewNowHint">
+            The maintainer has not answered in time. You can ask an administrator to decide instead.
+          </p>
+        } @else if (claim.reviewAvailableAt; as from) {
+          <p class="hint" i18n="@@claims.reviewLaterHint">
+            If the maintainer has not decided by {{ from | localDateTime }}, you can ask an
+            administrator instead.
+          </p>
+        }
         <div class="actions">
+          @if (claim.mayRequestReview) {
+            <button
+              type="button"
+              [disabled]="busy()"
+              (click)="requestReview(claim)"
+              i18n="@@claims.askAdministrator"
+            >
+              Ask an administrator
+            </button>
+          }
+          @if (!editing()) {
+            <button
+              type="button"
+              class="secondary"
+              [disabled]="busy()"
+              (click)="startEditing(claim)"
+              i18n="@@claims.editNote"
+            >
+              Change my note
+            </button>
+          }
           <button
             type="button"
             class="secondary"
@@ -46,6 +144,26 @@
             Withdraw my claim
           </button>
         </div>
+      } @else if (status.yourClaim?.mayRequestReview && status.yourClaim; as claim) {
+        <p i18n="@@claims.yourClaimRejected">
+          The maintainer rejected your claim. You can ask an administrator to review it, once. They
+          may ask you for more information.
+        </p>
+        <div class="actions">
+          <button
+            type="button"
+            [disabled]="busy()"
+            (click)="requestReview(claim)"
+            i18n="@@claims.appeal"
+          >
+            Ask an administrator to review it
+          </button>
+        </div>
+      } @else if (status.claimAgainFrom; as from) {
+        <p i18n="@@claims.claimAgainFrom">
+          An administrator rejected your claim. You can claim this profile again from
+          {{ from | localDateTime }}, with new information.
+        </p>
       } @else if (canClaimAsSelf()) {
         <p class="hint" i18n="@@claims.selfHint">
           If this profile is you, say so. Then only you maintain it, and it cannot be handed over or

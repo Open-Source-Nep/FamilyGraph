@@ -31,6 +31,10 @@ export class PersonClaim {
   protected readonly status = signal<ProfileClaimStatus | null>(null);
   protected readonly writing = signal(false);
   protected readonly evidence = signal('');
+  /** Whether you are changing the note of your open claim. */
+  protected readonly editing = signal(false);
+  /** Your replies being written, by claim ID, as the claimed person. */
+  protected readonly replies = signal<Record<string, string>>({});
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly notice = signal<string | null>(null);
@@ -46,7 +50,9 @@ export class PersonClaim {
       status.claimedByYou ||
       status.yourClaim !== null ||
       status.toDecide.length > 0 ||
+      status.toRespond.length > 0 ||
       status.needsAdministrator ||
+      status.claimAgainFrom !== null ||
       this.canClaim() ||
       this.canClaimAsSelf()
     );
@@ -70,7 +76,8 @@ export class PersonClaim {
       !this.person().maintainedByYou &&
       status !== null &&
       !status.youHaveClaim &&
-      !status.claimedByYou
+      !status.claimedByYou &&
+      status.claimAgainFrom === null
     );
   });
 
@@ -79,6 +86,8 @@ export class PersonClaim {
       const personId = this.person().id;
       this.status.set(null);
       this.writing.set(false);
+      this.editing.set(false);
+      this.replies.set({});
       this.error.set(null);
       this.notice.set(null);
       void this.load(personId);
@@ -101,6 +110,46 @@ export class PersonClaim {
     await this.run(async () => {
       await this.claims.withdraw(claim.id);
       this.notice.set($localize`:@@claims.withdrawn:You withdrew your claim.`);
+    });
+  }
+
+  protected startEditing(claim: Claim): void {
+    this.evidence.set(claim.evidence ?? '');
+    this.editing.set(true);
+  }
+
+  protected async saveEvidence(claim: Claim): Promise<void> {
+    await this.run(async () => {
+      const note = this.evidence().trim();
+      await this.claims.changeEvidence(claim.id, note === '' ? null : note);
+      this.editing.set(false);
+      this.evidence.set('');
+      this.notice.set($localize`:@@claims.noteSaved:Your note was saved.`);
+    });
+  }
+
+  protected async requestReview(claim: Claim): Promise<void> {
+    await this.run(async () => {
+      await this.claims.requestReview(claim.id);
+      this.notice.set(
+        $localize`:@@claims.reviewRequested:Your claim was sent to the administrators. They may ask you for more information here.`,
+      );
+    });
+  }
+
+  protected reply(claim: Claim): string {
+    return this.replies()[claim.id] ?? claim.maintainerResponse ?? '';
+  }
+
+  protected setReply(claim: Claim, text: string): void {
+    this.replies.update((replies) => ({ ...replies, [claim.id]: text }));
+  }
+
+  protected async respond(claim: Claim): Promise<void> {
+    await this.run(async () => {
+      const text = this.reply(claim).trim();
+      await this.claims.respond(claim.id, text === '' ? null : text);
+      this.notice.set($localize`:@@claims.replySaved:Your reply was saved for the administrators.`);
     });
   }
 
