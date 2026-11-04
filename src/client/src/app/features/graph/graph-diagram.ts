@@ -13,7 +13,6 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 import cytoscape, { Core, ElementDefinition } from 'cytoscape';
-import dagre, { DagreLayoutOptions } from 'cytoscape-dagre';
 
 import { localNumber } from '../../core/i18n/local-format';
 import { fullName, initials } from '../people/person';
@@ -23,17 +22,8 @@ import { familyLayout } from './family-layout';
 import { GraphPerson, LocalViewPerson } from './graph';
 import { ShownGraph, generationLabel } from './shown-graph';
 
-cytoscape.use(dagre);
-
-const layout: DagreLayoutOptions = {
-  name: 'dagre',
-  rankDir: 'TB',
-  nodeSep: 24,
-  rankSep: 56,
-  padding: 24,
-  // The stand-ins for marriages weigh more, so spouses share a row (see treeLayout).
-  edgeWeight: (edge) => (edge.hasClass('layout-only') ? 8 : 1),
-};
+/** The tree's spacing: within a family, between families, and between generations. */
+const treeSpacing = { nodeSep: 24, groupSep: 48, rankSep: 56 };
 
 const dotSize = 12;
 
@@ -102,9 +92,10 @@ interface Hovered {
 }
 
 /**
- * The tree diagram of the shown people (PRD 08, D-024): parents above children, laid out by
- * dagre and drawn by Cytoscape on a canvas. The home page's dots use the family layout instead,
- * which keeps children right below their parents. Spouses share a row, joined by a double line
+ * The tree diagram of the shown people (PRD 08, D-024): parents above children, drawn by
+ * Cytoscape on a canvas. Both the tree and the home page's dots use the family layout, which keeps
+ * couples side by side and children below their parents; the tree keeps each generation on its
+ * row, and the dots settle off the rows. Spouses share a row, joined by a double line
  * that is dotted once the marriage ended (D-031). Adoptive links are dashed and people with relatives
  * not shown have a double border. Each person has their photo or a coloured initial avatar and hovering shows their
  * details. The dots mode (the home page) draws each person as a small coloured dot, with no legend
@@ -318,36 +309,24 @@ export class GraphDiagram {
   }
 
   /**
-   * The tree diagram by dagre, which cannot lay out an edge within a row. Each marriage is
-   * replaced by a tiny stand-in child of both spouses, weighted so that they share a row, and the
-   * stand-ins are removed once the people are placed. Then each row puts brothers and sisters in
-   * birth order, which dagre's crossing reduction may have mixed up (D-039).
+   * The tree diagram by the family layout, one row per generation (D-053). Then each row puts
+   * brothers and sisters in birth order where they stand side by side (D-039).
    */
   private treeLayout(cy: cytoscape.Core, graph: ShownGraph): void {
-    const standIns = cy.add(
-      cy
-        .edges('.marriage')
-        .map((marriage): ElementDefinition[] => {
-          const id = `layout-${marriage.id()}`;
-          return [
-            { group: 'nodes', data: { id }, classes: 'layout-only' },
-            {
-              group: 'edges',
-              data: { source: marriage.source().id(), target: id },
-              classes: 'layout-only',
-            },
-            {
-              group: 'edges',
-              data: { source: marriage.target().id(), target: id },
-              classes: 'layout-only',
-            },
-          ];
-        })
-        .flat(),
+    const width = new Map(cy.nodes().map((node) => [node.id(), node.width()] as const));
+    const positions = familyLayout(
+      orderSiblings(graph.people, graph.links).map((row) => ({
+        id: row.person.id,
+        width: width.get(row.person.id) ?? avatarSize,
+      })),
+      graph.links,
+      { height: avatarSize + gap * 2, ...treeSpacing, settle: false },
+      graph.marriages.map((marriage) => ({
+        spouseId: marriage.firstSpouseId,
+        otherSpouseId: marriage.secondSpouseId,
+      })),
     );
-    standIns.nodes().style({ width: 1, height: 1, label: '', 'background-image': 'none' });
-    cy.elements().not('edge.marriage').layout(layout).run();
-    standIns.remove();
+    cy.layout({ name: 'preset', positions: Object.fromEntries(positions), padding: 24 }).run();
 
     const sets = [...siblingSets(graph.people, graph.links).values()].map((rows) =>
       rows.map((row) => row.person.id),
@@ -398,8 +377,8 @@ export class GraphDiagram {
   }
 
   /**
-   * People and each parent's links in birth order (D-039): dagre places a row's people in the order
-   * it first meets them, so brothers and sisters come out eldest on the left.
+   * People and each parent's links in birth order (D-039), so brothers and sisters start eldest on
+   * the left.
    */
   private elements(graph: ShownGraph): ElementDefinition[] {
     const ids = new Set(graph.people.map((row) => row.person.id));
