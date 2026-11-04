@@ -82,10 +82,99 @@ describe('family layout', () => {
       [{ spouseId: 'ram', otherSpouseId: 'sita' }],
     );
     const [ram, sita] = [positions.get('ram')!, positions.get('sita')!];
-    // People settle off their rows, but spouses stay closer than a row apart.
-    expect(Math.abs(ram.y - sita.y)).toBeLessThan(options.height + options.rankSep);
-    expect(Math.abs(ram.x - sita.x)).toBeLessThan(width * 4);
+    expect(ram.y).toBe(sita.y);
+    expect(Math.abs(ram.x - sita.x)).toBeCloseTo(width + options.nodeSep);
     expect(positions.get('lava')!.y).toBeGreaterThan(sita.y);
+  });
+
+  // Hari and Gita's son Ram married Maya, whose parents Kiran and Lata are shown too; Ram's brother
+  // Shyam married Rita. Bikash married Anju and, before her, Puja, with a child from each.
+  const families = [
+    'hari',
+    'gita',
+    'kiran',
+    'lata',
+    'ram',
+    'shyam',
+    'bikash',
+    'maya',
+    'prakash',
+    'rita',
+    'anju',
+    'puja',
+    'aarav',
+    'kabir',
+    'nabin',
+  ];
+  const familyLinks = [
+    ...['ram', 'shyam', 'bikash'].flatMap((child) => [link('hari', child), link('gita', child)]),
+    ...['maya', 'prakash'].flatMap((child) => [link('kiran', child), link('lata', child)]),
+    link('ram', 'aarav'),
+    link('maya', 'aarav'),
+    link('bikash', 'kabir'),
+    link('anju', 'kabir'),
+    link('bikash', 'nabin'),
+    link('puja', 'nabin'),
+  ];
+  const familyMarriages = [
+    ['hari', 'gita'],
+    ['kiran', 'lata'],
+    ['ram', 'maya'],
+    ['shyam', 'rita'],
+    ['bikash', 'anju'],
+    ['bikash', 'puja'],
+  ].map(([spouseId, otherSpouseId]) => ({ spouseId, otherSpouseId }));
+
+  /** Nobody stands between two spouses on their row. */
+  const expectSpousesTogether = (positions: Map<string, Point>) => {
+    for (const { spouseId, otherSpouseId } of familyMarriages) {
+      const [a, b] = [positions.get(spouseId)!, positions.get(otherSpouseId)!];
+      expect(a.y, `${spouseId} and ${otherSpouseId}`).toBe(b.y);
+      const between = families.filter((id) => {
+        const p = positions.get(id)!;
+        return p.y === a.y && p.x > Math.min(a.x, b.x) && p.x < Math.max(a.x, b.x);
+      });
+      expect(between, `between ${spouseId} and ${otherSpouseId}`).toEqual([]);
+    }
+  };
+
+  it('keeps spouses side by side with nobody between them, settled or not (D-031)', () => {
+    expectSpousesTogether(familyLayout(nodes(families), familyLinks, options, familyMarriages));
+    expectSpousesTogether(
+      familyLayout(nodes(families), familyLinks, { ...options, settle: false }, familyMarriages),
+    );
+  });
+
+  it('puts someone married twice between their two spouses', () => {
+    const positions = familyLayout(
+      nodes(families),
+      familyLinks,
+      { ...options, settle: false },
+      familyMarriages,
+    );
+    const x = (id: string) => positions.get(id)!.x;
+    expect(Math.min(x('anju'), x('puja'))).toBeLessThan(x('bikash'));
+    expect(Math.max(x('anju'), x('puja'))).toBeGreaterThan(x('bikash'));
+  });
+
+  it('keeps every generation on its row without settling, children on the row below', () => {
+    const positions = familyLayout(
+      nodes(families),
+      familyLinks,
+      { ...options, settle: false },
+      familyMarriages,
+    );
+    const row = options.height + options.rankSep;
+    for (const { parentId, childId } of familyLinks) {
+      expect(positions.get(childId)!.y - positions.get(parentId)!.y).toBe(row);
+    }
+    // Each couple's children stand under them.
+    const under = (children: string[], parents: string[]) =>
+      expect(Math.abs(middle(positions, children) - middle(positions, parents))).toBeLessThan(row);
+    under(['aarav'], ['ram', 'maya']);
+    under(['maya', 'prakash'], ['kiran', 'lata']);
+    under(['kabir'], ['bikash', 'anju']);
+    under(['nabin'], ['bikash', 'puja']);
   });
 
   it('places people with no links and ignores links to people not given', () => {

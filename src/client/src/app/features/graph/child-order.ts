@@ -108,10 +108,10 @@ export interface PlacedBox {
 
 /**
  * New centres for one row of the tree, so that each set of brothers and sisters reads eldest on
- * the left (D-039). dagre orders a row to reduce crossings and may mix up siblings. Each sibling
+ * the left (D-039). The layout orders a row to reduce crossings and may mix up siblings. Each sibling
  * comes with the spouses standing right next to them; when those groups stand side by side, they
  * are laid out again in birth order over the same stretch, keeping the gaps. Siblings with someone
- * else between them are left where dagre put them.
+ * else between them are left where the layout put them.
  */
 export function orderRow(
   row: PlacedBox[],
