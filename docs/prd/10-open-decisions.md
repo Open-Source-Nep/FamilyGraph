@@ -24,7 +24,8 @@ This file is intentionally unresolved. Claude Code must not silently invent deci
 - **Decided (2026-10-21):** a maintainer is unavailable after 30 days without response (configurable) or when their account no longer exists. See PRD 04.
 - **Decided (2026-10-21):** parallel claims are allowed; with more than one open claim, an administrator decides them together.
 - **Decided (2026-10-21):** one appeal per claim; after an administrator rejection, a new claim is allowed after 90 days (configurable) with new evidence. Claims on already-claimed profiles go to an administrator, and the current maintainer is notified.
-- **Decided (2026-10-23):** a maintainer may mark a profile they maintain as themselves without approval, recorded as a self-approved identity claim. An account can have at most one claimed profile, and no second claim while it has one or an open claim. The form of claim evidence is still open. To be written into PRD 04 with #25.
+- **Decided (2026-10-23):** a maintainer may mark a profile they maintain as themselves without approval, recorded as a self-approved identity claim. An account can have at most one claimed profile, and no second claim while it has one or an open claim. See PRD 04.
+- **Decided (2026-11-04):** claim evidence is one optional free-text note of at most 2,000 characters; no files. Rejected alternatives: a note plus uploaded files (more personal data to store, limit and erase); no evidence at all. See PRD 04.
 - **Decided (2026-10-21):** evidence is visible to the claimant, reviewing administrators and the deciding maintainer, and is deleted 90 days after the final decision (configurable). Audit keeps the decision and rationale.
 
 ## Privacy and deletion

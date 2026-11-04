@@ -13,6 +13,17 @@ Let a real person claim their profile without conflating identity verification w
 - After claiming, the person can disagree with existing relationships under PRD 03.
 - Identity verification and relationship consent are separate processes.
 
+## Claiming a profile (agreed 2026-10-23 and 2026-11-04)
+
+- Any signed-in account may claim a profile it does not maintain, from the person page, with an optional note.
+- A maintainer may instead mark a profile they maintain as themselves ("This is me"). It needs no approval and is recorded as a self-approved identity claim.
+- An account is at most one person: it has at most one claimed profile, and cannot claim again while it has one or an open claim.
+- A claimant may withdraw an open claim, which frees their account to claim again.
+- A deleted profile cannot be claimed. Deleting a profile cancels its open claims; deleting a claimed profile frees its claimant's account.
+- A claimed profile is maintained only by the claimed person: it cannot be handed over or transferred (PRD 01), and no administrator approves its relationships on its behalf (PRD 03).
+- Who is claimed is told only to the profile's maintainer, administrators and the claimed person.
+- Claims waiting for a maintainer are listed on their Approvals page and on the person page; the claimant sees their claims on both pages too.
+
 ## Unavailability, competing claims and appeals
 
 - The original maintainer is **unavailable** when they have not responded to a claim within 30 days (configurable per instance), or when their account no longer exists. The claimant may then go to manual review.
@@ -22,6 +33,7 @@ Let a real person claim their profile without conflating identity verification w
 
 ## Evidence
 
+- Evidence is one optional free-text note of at most 2,000 characters: who the claimant is and who can confirm it. No files (agreed 2026-11-04).
 - Submitted evidence is visible only to the claimant, the administrators reviewing the claim, and, for a claim the maintainer decides, that maintainer.
 - Evidence is deleted 90 days after the claim's final decision (configurable).
 - Audit history keeps the claim, its decision and the administrator's rationale, but not the evidence.
@@ -54,7 +66,12 @@ Rules:
 - `AC-04.8` A rejected claim can be appealed once. After an administrator rejection, a new claim for the same profile is accepted only after the waiting period.
 - `AC-04.9` A claim on an already-claimed profile is decided only by an administrator, and the current maintainer is notified.
 - `AC-04.10` Evidence is deleted after the retention period while the claim decision and rationale remain in audit history.
+- `AC-04.11` A maintainer can mark a profile they maintain as themselves without approval; it is audited as a self-approved identity claim.
+- `AC-04.12` An account has at most one claimed profile, and cannot claim again while it has one or an open claim.
+- `AC-04.13` A claimant can withdraw an open claim.
+- `AC-04.14` A claim's evidence is one optional note of at most 2,000 characters.
+- `AC-04.15` A deleted profile cannot be claimed, and deleting a profile cancels its open claims.
 
 ## Open details
 
-- How maintainers and claimants are notified is a UI/notification decision.
+- Notification is in the app only for now (proposed 2026-11-04, see D-051): no emails.

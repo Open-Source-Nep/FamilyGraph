@@ -12,6 +12,8 @@
     <p class="error" role="alert">{{ error }}</p>
   }
 
+  <app-claims-overview />
+
   @if (list(); as list) {
     @if (list.links.length === 0 && marriageList()?.marriages?.length === 0) {
       <p i18n="@@approvals.nothingWaiting">

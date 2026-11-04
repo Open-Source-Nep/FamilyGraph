@@ -9,6 +9,7 @@ export interface ImportResult {
   marriages: number;
   images: number;
   handovers: number;
+  claims: number;
   auditEvents: number;
   createdAccounts: number;
   reusedAccounts: number;

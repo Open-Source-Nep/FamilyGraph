@@ -76,7 +76,7 @@ Define when a parent–child relationship is active, inactive, restored, or remo
 
 - An administrator may approve a **pending** side of a parent–child link or a marriage on behalf of its maintainer, whoever maintains it. There is no check that the maintainer is unavailable.
 - Only pending sides. Declining stays with the maintainer, and a side the maintainer declined or withdrew stays theirs to restore.
-- Not for claimed profiles: a claimed person's consent is their own. The check comes with claims (#25); until then every profile is unclaimed.
+- Not for claimed profiles: a claimed person's consent is their own (D-051). Their pending sides are not listed for administrators.
 - The audit history records it as an administrator approval, with the administrator and the maintainer at that time, distinct from the maintainer's own approval.
 - The Approvals page shows administrators every link and marriage waiting for another maintainer, each pending side with "Approve as administrator".
 - See D-040 in `docs/trd/open-decisions.md`.

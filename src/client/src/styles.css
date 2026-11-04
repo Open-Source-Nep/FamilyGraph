@@ -773,3 +773,14 @@ p.back {
     box-shadow: none;
   }
 }
+
+/* A claimant's note (D-051), kept as written. */
+.claim-note {
+  margin: 0.5rem 0;
+  padding: 0.5rem 0.75rem;
+  border-left: 3px solid var(--border-strong);
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

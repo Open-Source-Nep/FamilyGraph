@@ -1,0 +1,54 @@
+@if (notice(); as notice) {
+  <p role="status">{{ notice }}</p>
+}
+@if (error(); as error) {
+  <p class="error" role="alert">{{ error }}</p>
+}
+@if (toDecide()?.claims; as claims) {
+  @if (claims.length > 0) {
+    <h2 i18n="@@claims.toDecideTitle">Claims on your profiles</h2>
+    <p class="hint" i18n="@@claims.toDecideHint">
+      Someone says one of your profiles is them. If you approve, they become its only maintainer.
+      Its relationships and approvals stay as they are.
+    </p>
+    <ul class="links">
+      @for (claim of claims; track claim.id) {
+        <li>
+          <a [routerLink]="['/people', claim.person.id]">{{ fullName(claim.person) }}</a>
+          <app-claim-decision [claim]="claim" [busy]="busy()" (decided)="decide(claim, $event)" />
+        </li>
+      }
+    </ul>
+  }
+}
+@if (mine()?.claims; as claims) {
+  @if (claims.length > 0) {
+    <h2 i18n="@@claims.mineTitle">Your claims</h2>
+    <ul class="links">
+      @for (claim of claims; track claim.id) {
+        <li>
+          <a [routerLink]="['/people', claim.person.id]">{{ fullName(claim.person) }}</a>
+          <div class="hint">
+            {{ stateLabel(claim.state) }} ·
+            <ng-container i18n="@@claims.sentOn"
+              >sent {{ claim.submittedAt | localDateTime }}</ng-container
+            >
+          </div>
+          @if (claim.state === 'Open') {
+            <div class="actions">
+              <button
+                type="button"
+                class="secondary"
+                [disabled]="busy()"
+                (click)="withdraw(claim)"
+                i18n="@@claims.withdraw"
+              >
+                Withdraw my claim
+              </button>
+            </div>
+          }
+        </li>
+      }
+    </ul>
+  }
+}
