@@ -14,6 +14,7 @@ public class ClaimServiceTests
     private static readonly AccountId Alice = new(Guid.NewGuid());
     private static readonly AccountId Bob = new(Guid.NewGuid());
     private static readonly AccountId Carol = new(Guid.NewGuid());
+    private static readonly AccountId Dina = new(Guid.NewGuid());
     private static readonly DateTimeOffset Now = new(2026, 11, 4, 9, 0, 0, TimeSpan.Zero);
 
     private readonly InMemoryPeople _people = new();
@@ -320,5 +321,33 @@ public class ClaimServiceTests
         var erased = _claims.All.Single(c => c.Id == claim.Id);
         Assert.Equal((null, "Not confirmed."), (erased.Evidence, erased.Rationale));
         Assert.All(_claims.All.Where(c => c.IsOpen), c => Assert.NotNull(c.Evidence));
+    }
+
+    [Fact]
+    [Trait("AC", "AC-04.4")]
+    public async Task An_administrator_decision_leaves_relationship_consent_unchanged()
+    {
+        var maya = AddPerson("Maya", Alice);
+        var father = AddPerson("Hari", Carol);
+        var husband = AddPerson("Ram", Carol);
+        var link = ParentChildLink.Create(
+            father, maya, ParentChildType.Biological, Carol, new HashSet<PersonId>(), new AncestorSnapshot(father.Id, new HashSet<PersonId>(), isComplete: true), married: false);
+        var marriage = Marriage.Create(husband, maya, Carol, alreadyMarried: false, directlyRelated: false);
+        link.TakeEvents();
+        marriage.TakeEvents();
+        _people.Links[link.Id] = link;
+        _people.Marriages[marriage.Id] = marriage;
+        await Service().ClaimAsSelfAsync(maya.Id, Alice, Cancellation);
+        var before = (link.ParentApproval, link.ChildApproval, marriage.FirstApproval, marriage.SecondApproval);
+        var rejected = await Service().SubmitAsync(maya.Id, null, As(Bob), Cancellation);
+        var admin = As(Carol, administrator: true);
+        await Service().RejectAsAdministratorAsync(rejected.Id, "Not confirmed.", admin, Cancellation);
+        var approved = await Service().SubmitAsync(maya.Id, null, As(Dina), Cancellation);
+
+        await Service().ApproveAsAdministratorAsync(approved.Id, "Met in person.", admin, Cancellation);
+
+        Assert.Equal((Dina, (AccountId?)Dina), (maya.MaintainerId, maya.ClaimedById));
+        Assert.Equal(before, (link.ParentApproval, link.ChildApproval, marriage.FirstApproval, marriage.SecondApproval));
+        Assert.DoesNotContain(_people.AuditEvents, e => e.Event.Family == AuditFamily.RelationshipConsent);
     }
 }
