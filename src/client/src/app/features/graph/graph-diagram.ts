@@ -26,6 +26,9 @@ import { ShownGraph, generationLabel } from './shown-graph';
 /** The tree's spacing: within a family, between families, and between generations. */
 const treeSpacing = { nodeSep: 24, groupSep: 48, rankSep: 56 };
 
+/** The dots' spacing; they stand in rows like the tree, so children stay below their parents (D-055). */
+const dotSpacing = { nodeSep: 8, groupSep: 24, rankSep: 40 };
+
 /** The least space between two couples' bars at one height. */
 const barMargin = 12;
 
@@ -101,8 +104,7 @@ interface Hovered {
 /**
  * The tree diagram of the shown people (PRD 08, D-024): parents above children, drawn by
  * Cytoscape on a canvas. Both the tree and the home page's dots use the family layout, which keeps
- * couples side by side and children below their parents; the tree keeps each generation on its
- * row, and the dots settle off the rows. Spouses share a row, joined by a double line
+ * couples side by side and children below their parents, each generation on its row (D-055). Spouses share a row, joined by a double line
  * that is dotted once the marriage ended (D-031). A child of a current or former couple has one line, from the
  * middle of the couple's line (D-054). Adoptive links are dashed and people with relatives
  * not shown have a double border. Each person has their photo or a coloured initial avatar and hovering shows their
@@ -221,7 +223,7 @@ export class GraphDiagram {
       });
       if (dots) {
         cy.layout(this.dotsLayout(cy, this.graph())).run();
-        this.placeDotBars(cy);
+        this.placeBars(cy, dotSize, dotSpacing.rankSep);
       } else {
         this.treeLayout(cy, this.graph());
       }
@@ -374,7 +376,7 @@ export class GraphDiagram {
           cy.getElementById(id).position(point);
         }
       }
-      this.placeBars(cy);
+      this.placeBars(cy, avatarSize + gap * 2, treeSpacing.rankSep);
     });
   }
 
@@ -382,7 +384,7 @@ export class GraphDiagram {
    * How far below its couple or lone parent each bar turns towards the children (D-054, D-055):
    * between the two rows, with bars that would run over each other at different heights.
    */
-  private placeBars(cy: cytoscape.Core): void {
+  private placeBars(cy: cytoscape.Core, height: number, rankSep: number): void {
     const rows = new Map<number, cytoscape.NodeSingular[]>();
     cy.edges('.trunk')
       .sources()
@@ -390,7 +392,7 @@ export class GraphDiagram {
         const y = Math.round(source.position('y'));
         rows.set(y, [...(rows.get(y) ?? []), source]);
       });
-    const half = (avatarSize + gap * 2) / 2;
+    const half = height / 2;
     for (const sources of rows.values()) {
       const levels = trunkLevels(
         sources.map((source) => {
@@ -410,27 +412,10 @@ export class GraphDiagram {
         // A turn is measured from the parent's lower side, or from the junction's middle.
         const turn =
           (source.hasClass('junction') ? half : 0) +
-          (treeSpacing.rankSep * (levels.get(source.id())! + 1)) / (heights + 1);
+          (rankSep * (levels.get(source.id())! + 1)) / (heights + 1);
         source.outgoers('edge.trunk').data('turn', Math.round(turn));
       }
     }
-  }
-
-  /**
-   * The dots have no rows, so each bar sits half way down to the nearest of its children (D-055);
-   * the layout keeps children at least half a row below their parents.
-   */
-  private placeDotBars(cy: cytoscape.Core): void {
-    cy.edges('.trunk')
-      .sources()
-      .forEach((source) => {
-        const lines = source.outgoers('edge.trunk');
-        const nearest = Math.min(...lines.targets().map((child) => child.position('y')));
-        // From the parent's lower side, or the junction's middle, to the child's upper side.
-        const space =
-          nearest - source.position('y') - (source.hasClass('junction') ? dotSize / 2 : dotSize);
-        lines.data('turn', Math.max(minTurn, Math.round(space / 2)));
-      });
   }
 
   /**
@@ -463,16 +448,16 @@ export class GraphDiagram {
     return all;
   }
 
-  /** Families grouped under their parents rather than spread out evenly (D-024). */
+  /** The dots in rows by generation, each family's children below their parents (D-055). */
   private dotsLayout(cy: cytoscape.Core, graph: ShownGraph): cytoscape.PresetLayoutOptions {
-    // Brothers and sisters start in birth order before the layout settles (D-039).
+    // Brothers and sisters stand in birth order (D-039).
     const positions = familyLayout(
       orderSiblings(graph.people, graph.links).map((row) => ({
         id: row.person.id,
         width: dotSize,
       })),
       graph.links,
-      { height: dotSize, nodeSep: 8, groupSep: 24, rankSep: 28 },
+      { height: dotSize, ...dotSpacing, settle: false },
       graph.marriages.map((marriage) => ({
         spouseId: marriage.firstSpouseId,
         otherSpouseId: marriage.secondSpouseId,
