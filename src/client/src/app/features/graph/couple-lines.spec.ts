@@ -36,11 +36,12 @@ describe('childLines', () => {
 
     expect(childLines(ids('hari', 'gita', 'ram'), links, [])).toEqual({
       couples: [],
+      lone: [],
       single: links,
     });
   });
 
-  it('keeps the line of a child of only one of the spouses', () => {
+  it("counts a child of only one of the spouses as a lone parent's child", () => {
     const lines = childLines(
       ids('hari', 'gita', 'ram', 'maya'),
       [link('hari', 'ram'), link('gita', 'ram'), link('hari', 'maya')],
@@ -48,15 +49,40 @@ describe('childLines', () => {
     );
 
     expect(lines.couples.map((line) => line.childId)).toEqual(['ram']);
-    expect(lines.single.map((single) => single.id)).toEqual(['hari-maya']);
+    expect(lines.lone.map((lone) => lone.id)).toEqual(['hari-maya']);
+    expect(lines.single).toEqual([]);
   });
 
-  it('keeps both lines when the marriage ended', () => {
-    const links = [link('hari', 'ram'), link('gita', 'ram')];
+  // AC-08.36: the children of one shown parent share that parent's line.
+  it('counts every child with one shown parent as lone, whatever the type', () => {
+    const links = [link('sita', 'ram'), link('sita', 'maya', 'Adoptive'), link('gita', 'far')];
 
-    expect(
-      childLines(ids('hari', 'gita', 'ram'), links, [marriage('hari', 'gita', true)]).single,
-    ).toEqual(links);
+    const lines = childLines(ids('sita', 'ram', 'maya'), links, []);
+
+    expect(lines.lone.map((lone) => lone.id)).toEqual(['sita-ram', 'sita-maya']);
+    expect(lines.single).toEqual([]);
+  });
+
+  // AC-08.36: a former marriage's children share a line from its dotted line.
+  it('joins the links of a child of a former marriage', () => {
+    const lines = childLines(
+      ids('hari', 'gita', 'ram'),
+      [link('hari', 'ram'), link('gita', 'ram')],
+      [marriage('hari', 'gita', true)],
+    );
+
+    expect(lines.couples.map((line) => line.marriageId)).toEqual(['hari+gita']);
+  });
+
+  it('uses the current marriage of a couple who married again', () => {
+    const again = { ...marriage('hari', 'gita'), id: 'again' };
+    const lines = childLines(
+      ids('hari', 'gita', 'ram'),
+      [link('hari', 'ram'), link('gita', 'ram')],
+      [marriage('hari', 'gita', true), again],
+    );
+
+    expect(lines.couples.map((line) => line.marriageId)).toEqual(['again']);
   });
 
   // AC-08.3: an adoptive link stays told apart from a biological one.
@@ -102,7 +128,7 @@ describe('childLines', () => {
     );
 
     expect(lines.couples).toEqual([]);
-    expect(lines.single.map((single) => single.id)).toEqual(['hari-ram']);
+    expect(lines.lone.map((lone) => lone.id)).toEqual(['hari-ram']);
   });
 });
 

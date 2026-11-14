@@ -12,15 +12,18 @@ export interface CoupleLine {
 /** The lines to draw for the shown links: one per child of a married couple, the rest as they are. */
 export interface ChildLines {
   couples: CoupleLine[];
+  /** Links to a child with no other shown parent, whose line the parent's other such children share (D-055). */
+  lone: GraphLink[];
   /** Links that keep their own line from the parent. */
   single: GraphLink[];
 }
 
 /**
- * Joins a child's two links into one line when both parents are shown, are married to each other
- * and are the same kind of parent to the child (D-054). A former marriage, a parent not shown, or
- * one biological and one adoptive parent leave each link its own line, so the dashes of an adoptive
- * link never cover a biological one. Links keep the order they came in.
+ * Joins a child's two links into one line when both parents are shown, are or were married to each
+ * other and are the same kind of parent to the child (D-054, former marriages D-055). A parent not
+ * shown, or one biological and one adoptive parent leave each link its own line, so the dashes of an adoptive
+ * link never cover a biological one. A child with only one shown parent is `lone` (D-055). Links
+ * keep the order they came in.
  */
 export function childLines(
   shownIds: ReadonlySet<string>,
@@ -29,10 +32,10 @@ export function childLines(
 ): ChildLines {
   const pair = (a: string, b: string) => (a < b ? `${a} ${b}` : `${b} ${a}`);
   const married = new Map<string, string>();
-  for (const marriage of marriages) {
+  // A couple married again after a former marriage use the line of the current one.
+  for (const marriage of [...marriages].sort((a, b) => Number(a.isFormer) - Number(b.isFormer))) {
     const key = pair(marriage.firstSpouseId, marriage.secondSpouseId);
     if (
-      !marriage.isFormer &&
       !married.has(key) &&
       shownIds.has(marriage.firstSpouseId) &&
       shownIds.has(marriage.secondSpouseId)
@@ -72,7 +75,9 @@ export function childLines(
       });
     }
   }
-  return { couples, single: shown.filter((link) => !joined.has(link.id)) };
+  const rest = shown.filter((link) => !joined.has(link.id));
+  const lone = (link: GraphLink) => byChild.get(link.childId)!.length === 1;
+  return { couples, lone: rest.filter(lone), single: rest.filter((link) => !lone(link)) };
 }
 
 /** The bar above a couple's children, from its leftmost to its rightmost end. */
