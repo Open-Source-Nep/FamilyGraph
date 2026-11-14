@@ -845,7 +845,7 @@ For each major decision, record:
 
 ### D-054: One line to the children of a married couple
 
-- **Status:** proposed (2026-11-14). Issue #133. Asked for by the user on 2026-11-14: one line for a child whose parents are married, from the middle of the marriage line. The user chose a shared trunk that branches on the graph page over a separate line per child; the rest is proposed with the PR.
+- **Status:** agreed (2026-11-14; former marriages and the dots changed by D-055). Issue #133, merged in #134. Asked for by the user on 2026-11-14: one line for a child whose parents are married, from the middle of the marriage line. The user chose a shared trunk that branches on the graph page over a separate line per child; the rest is proposed with the PR.
 - **Context:** Each link had its own straight line (D-024), so two lines per child ran under every couple and crossed each other (noted in D-053). D-053 keeps a couple side by side with their children below, which makes a line from the couple possible.
 - **Options considered:** one straight line per child from the middle of the marriage line in both views; a shared trunk on the graph page (chosen); Cytoscape compound nodes around a couple; drawing the lines ourselves on a second canvas.
 - **Trade-offs:** A trunk and bar halve the lines and remove the crossings under a couple, but a child's line is no longer told apart from their brothers' and sisters' until its last drop, and bars of neighbouring couples can cross each other's drops. The home dots have no rows after settling, so a bar has nowhere to sit there. An unseen point on the marriage line needs no dependency and no drawing code of our own.
@@ -855,3 +855,16 @@ For each major decision, record:
   - **Tree (graph page):** the couple's lines are taxi edges: one trunk down from the junction to a bar between the two rows, then a drop to each child. Bars of one row that would run over each other, or come within 12 px, sit at different heights (`trunkLevels`, first free height from the left). An adoptive child's line is dashed; where it runs along a biological child's line the solid line shows.
   - **Dots (home page):** one straight line per child from the junction.
 - **Consequences:** Client only; no API change. The text view and the path view are unchanged, so every link is still listed for keyboard and screen reader users (AC-09.2). A child more than one row below their parents gets a long drop that may pass behind another person.
+
+### D-055: Shared trunk for a lone parent's children, former marriages and the home dots
+
+- **Status:** proposed (2026-11-14). Issue #135. Asked for by the user on 2026-11-14, after D-054: the shared branched trunk for single parents and their children, for old marriages too, and on the home graph in place of the straight lines from the middle.
+- **Context:** D-054 gave the children of a current marriage one trunk and left every other link its own straight line, a former marriage's children included.
+- **Options considered:** a trunk for every link of a parent, including children who have a second shown parent; a trunk only for children with no other shown parent (chosen).
+- **Trade-offs:** A child with two shown parents who were never married would get two drops meeting on the child's upper side, one over the other, so those keep straight lines. A person can now have two trunks: one from their marriage line and one from under their own box for children with no other shown parent.
+- **Decision:**
+  - **Former marriages:** `childLines` joins the two links of a child of a former marriage as it does for a current one; the line starts in the middle of the dotted line, in both views. When the same two people have a former and a current marriage, the current one's line is used.
+  - **Lone parent:** a link to a child with no other shown parent is `lone`. On the tree a parent's lone links are taxi edges from the lower side of the parent's box, sharing a trunk and a bar; `placeBars` gives these bars and the couples' bars of a row their heights together.
+  - **Dots (home page):** the same taxi edges for couples and lone parents, replacing D-054's straight lines. The dots have no rows, so each bar sits half way down to the nearest of its children (`placeDotBars`, at least 3 px down); the layout keeps children at least half a row below their parents (D-024).
+  - **Unchanged:** a child with two shown parents who were never married to each other, or with one biological and one adoptive parent, keeps a straight line from each.
+- **Consequences:** Client only; no API change. On the dots, bars of different families are not kept apart and a drop can pass behind another dot. "No other shown parent" depends on the view: loading more people can turn a lone parent's trunk into a couple's line.

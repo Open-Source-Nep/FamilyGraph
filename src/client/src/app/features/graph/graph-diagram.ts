@@ -29,6 +29,9 @@ const treeSpacing = { nodeSep: 24, groupSep: 48, rankSep: 56 };
 /** The least space between two couples' bars at one height. */
 const barMargin = 12;
 
+/** The least way down before a trunk turns into its bar. */
+const minTurn = 3;
+
 const dotSize = 12;
 
 /** Avatar and dot fills, dark enough for white initials. */
@@ -100,7 +103,7 @@ interface Hovered {
  * Cytoscape on a canvas. Both the tree and the home page's dots use the family layout, which keeps
  * couples side by side and children below their parents; the tree keeps each generation on its
  * row, and the dots settle off the rows. Spouses share a row, joined by a double line
- * that is dotted once the marriage ended (D-031). A child of a married couple has one line, from the
+ * that is dotted once the marriage ended (D-031). A child of a current or former couple has one line, from the
  * middle of the couple's line (D-054). Adoptive links are dashed and people with relatives
  * not shown have a double border. Each person has their photo or a coloured initial avatar and hovering shows their
  * details. The dots mode (the home page) draws each person as a small coloured dot, with no legend
@@ -218,6 +221,7 @@ export class GraphDiagram {
       });
       if (dots) {
         cy.layout(this.dotsLayout(cy, this.graph())).run();
+        this.placeDotBars(cy);
       } else {
         this.treeLayout(cy, this.graph());
       }
@@ -375,37 +379,58 @@ export class GraphDiagram {
   }
 
   /**
-   * How far below its couple each bar turns towards the children (D-054): between the two rows,
-   * with bars that would run over each other at different heights.
+   * How far below its couple or lone parent each bar turns towards the children (D-054, D-055):
+   * between the two rows, with bars that would run over each other at different heights.
    */
   private placeBars(cy: cytoscape.Core): void {
     const rows = new Map<number, cytoscape.NodeSingular[]>();
-    cy.nodes('.junction').forEach((junction) => {
-      const y = Math.round(junction.position('y'));
-      rows.set(y, [...(rows.get(y) ?? []), junction]);
-    });
+    cy.edges('.trunk')
+      .sources()
+      .forEach((source) => {
+        const y = Math.round(source.position('y'));
+        rows.set(y, [...(rows.get(y) ?? []), source]);
+      });
     const half = (avatarSize + gap * 2) / 2;
-    for (const junctions of rows.values()) {
+    for (const sources of rows.values()) {
       const levels = trunkLevels(
-        junctions.map((junction) => {
+        sources.map((source) => {
           const ends = [
-            junction.position('x'),
-            ...junction
-              .outgoers()
-              .nodes()
+            source.position('x'),
+            ...source
+              .outgoers('edge.trunk')
+              .targets()
               .map((child) => child.position('x')),
           ];
-          return { id: junction.id(), from: Math.min(...ends), to: Math.max(...ends) };
+          return { id: source.id(), from: Math.min(...ends), to: Math.max(...ends) };
         }),
         barMargin,
       );
       const heights = Math.max(...levels.values()) + 1;
-      for (const junction of junctions) {
+      for (const source of sources) {
+        // A turn is measured from the parent's lower side, or from the junction's middle.
         const turn =
-          half + (treeSpacing.rankSep * (levels.get(junction.id())! + 1)) / (heights + 1);
-        junction.outgoers('edge').data('turn', Math.round(turn));
+          (source.hasClass('junction') ? half : 0) +
+          (treeSpacing.rankSep * (levels.get(source.id())! + 1)) / (heights + 1);
+        source.outgoers('edge.trunk').data('turn', Math.round(turn));
       }
     }
+  }
+
+  /**
+   * The dots have no rows, so each bar sits half way down to the nearest of its children (D-055);
+   * the layout keeps children at least half a row below their parents.
+   */
+  private placeDotBars(cy: cytoscape.Core): void {
+    cy.edges('.trunk')
+      .sources()
+      .forEach((source) => {
+        const lines = source.outgoers('edge.trunk');
+        const nearest = Math.min(...lines.targets().map((child) => child.position('y')));
+        // From the parent's lower side, or the junction's middle, to the child's upper side.
+        const space =
+          nearest - source.position('y') - (source.hasClass('junction') ? dotSize / 2 : dotSize);
+        lines.data('turn', Math.max(minTurn, Math.round(space / 2)));
+      });
   }
 
   /**
@@ -462,7 +487,7 @@ export class GraphDiagram {
 
   /**
    * People and each parent's links in birth order (D-039), so brothers and sisters start eldest on
-   * the left. A child of a married couple gets one line from the couple's junction, an unseen
+   * the left. A child of a current or former couple gets one line from the couple's junction, an unseen
    * point in the middle of their marriage line, in place of a line from each parent (D-054).
    */
   private elements(graph: ShownGraph): ElementDefinition[] {
@@ -505,6 +530,11 @@ export class GraphDiagram {
         },
         classes: 'junction',
       })),
+      ...lines.lone.map((link) => ({
+        group: 'edges' as const,
+        data: { id: link.id, source: link.parentId, target: link.childId, turn: 0 },
+        classes: ['trunk', link.type === 'Adoptive' ? 'adoptive' : ''].join(' '),
+      })),
       ...lines.single.map((link) => ({
         group: 'edges' as const,
         data: { id: link.id, source: link.parentId, target: link.childId },
@@ -518,7 +548,7 @@ export class GraphDiagram {
           target: line.childId,
           turn: 0,
         },
-        classes: ['couple', line.links[0].type === 'Adoptive' ? 'adoptive' : ''].join(' '),
+        classes: ['trunk', line.links[0].type === 'Adoptive' ? 'adoptive' : ''].join(' '),
       })),
       ...graph.marriages
         .filter((marriage) => ids.has(marriage.firstSpouseId) && ids.has(marriage.secondSpouseId))
@@ -621,20 +651,17 @@ export class GraphDiagram {
           'curve-style': 'bezier',
         },
       },
-      // On the tree a couple's children share one line down to a bar, with a drop to each child.
-      ...(dots
-        ? []
-        : [
-            {
-              selector: 'edge.couple',
-              style: {
-                'curve-style': 'taxi' as const,
-                'taxi-direction': 'downward' as const,
-                'taxi-turn': 'data(turn)',
-                'taxi-turn-min-distance': 4,
-              },
-            },
-          ]),
+      // The children of a couple, or of a lone parent, share one line down to a bar, with a drop to
+      // each child.
+      {
+        selector: 'edge.trunk',
+        style: {
+          'curve-style': 'taxi',
+          'taxi-direction': 'downward',
+          'taxi-turn': 'data(turn)',
+          'taxi-turn-min-distance': minTurn,
+        },
+      },
       {
         selector: 'edge.adoptive',
         style: { 'line-style': 'dashed', 'line-dash-pattern': dots ? [3, 3] : [6, 4] },
