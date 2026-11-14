@@ -24,6 +24,7 @@ Enable people to explore a large interconnected family graph without treating de
 - Active marriages are a step in any direction, like parents and children: local views, the overview and paths walk them. Spouses are in the same generation, drawn side by side with a distinct line, and a former marriage is labelled as former.
 - **Home graph size (agreed 2026-10-27):** the home page's dots fill the whole page below the header, at any screen size, without scrolling the page.
 - **Children in birth order (agreed 2026-10-25):** the graph page's tree diagram and text view, and the home page's dots, place each family's children in the order of PRD 02: birth order, then birth dates shown to others, then name. The tree places brothers and sisters with the same parents eldest on the left; the home dots start in that order before they settle. Half siblings are ordered within each set of parents.
+- **One line from a married couple (agreed 2026-11-14):** a child whose two shown parents are married to each other has one line, from the middle of the couple's marriage line, instead of a line from each parent. On the graph page's tree the couple's children share it: one line down to a bar, then a drop to each child. On the home page's dots each child has their own straight line from the middle. Other children keep a line from each parent.
 
 ## Finding people (agreed 2026-10-25)
 
@@ -131,3 +132,4 @@ Kinship words are culture-specific, not translations: Mama is a mother's brother
 - Cycle prevention rules are decided in PRD 02. Traversal must still tolerate cycles defensively.
 - Fan and tree diagram layout and styling are decided with the client graph UI.
 - `AC-08.34` The connection view picks the other person with the searchable people picker: the people shown, your connections, and Public profiles found by name.
+- `AC-08.35` In both diagrams a child whose two shown parents are married to each other has one line from the middle of the marriage line; on the graph page a couple's children share one line down to a bar that branches to each child. A child of one known parent, of unmarried or formerly married parents, or with one biological and one adoptive parent keeps a line from each parent.

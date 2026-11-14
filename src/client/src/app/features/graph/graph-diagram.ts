@@ -18,12 +18,16 @@ import { localNumber } from '../../core/i18n/local-format';
 import { fullName, initials } from '../people/person';
 import { PhotoLoader } from '../people/photo-loader.service';
 import { compareChildren, orderRow, orderSiblings, siblingSets } from './child-order';
+import { childLines, trunkLevels } from './couple-lines';
 import { familyLayout } from './family-layout';
 import { GraphPerson, LocalViewPerson } from './graph';
 import { ShownGraph, generationLabel } from './shown-graph';
 
 /** The tree's spacing: within a family, between families, and between generations. */
 const treeSpacing = { nodeSep: 24, groupSep: 48, rankSep: 56 };
+
+/** The least space between two couples' bars at one height. */
+const barMargin = 12;
 
 const dotSize = 12;
 
@@ -96,7 +100,8 @@ interface Hovered {
  * Cytoscape on a canvas. Both the tree and the home page's dots use the family layout, which keeps
  * couples side by side and children below their parents; the tree keeps each generation on its
  * row, and the dots settle off the rows. Spouses share a row, joined by a double line
- * that is dotted once the marriage ended (D-031). Adoptive links are dashed and people with relatives
+ * that is dotted once the marriage ended (D-031). A child of a married couple has one line, from the
+ * middle of the couple's line (D-054). Adoptive links are dashed and people with relatives
  * not shown have a double border. Each person has their photo or a coloured initial avatar and hovering shows their
  * details. The dots mode (the home page) draws each person as a small coloured dot, with no legend
  * or details; hovering shows only their name. With `addMenu`, right-clicking or pressing and
@@ -159,13 +164,13 @@ export class GraphDiagram {
         boxSelectionEnabled: false,
         autoungrabify: true,
       });
-      cy.on('tap', 'node', (event) => {
+      cy.on('tap', 'node.person', (event) => {
         this.hovered.set(null);
         this.menu.set(null);
         this.selected.emit(event.target.id());
       });
       // A right click, or a long press on a touch screen.
-      cy.on('cxttap taphold', 'node', (event) => this.openMenu(event.target));
+      cy.on('cxttap taphold', 'node.person', (event) => this.openMenu(event.target));
       cy.on('tap cxttap', (event) => {
         if (event.target === cy) {
           this.menu.set(null);
@@ -177,14 +182,14 @@ export class GraphDiagram {
           event.preventDefault();
         }
       });
-      cy.on('mouseover', 'node', (event) => {
+      cy.on('mouseover', 'node.person', (event) => {
         const row = this.graph().people.find((row) => row.person.id === event.target.id());
         const position = event.target.renderedPosition();
         const radius = event.target.renderedOuterHeight() / 2;
         container.style.cursor = 'pointer';
         this.hovered.set(row ? { row, x: position.x, y: position.y - radius } : null);
       });
-      cy.on('mouseout', 'node', () => {
+      cy.on('mouseout', 'node.person', () => {
         container.style.cursor = '';
         this.hovered.set(null);
       });
@@ -212,7 +217,7 @@ export class GraphDiagram {
         cy.add(this.elements(this.graph()));
       });
       if (dots) {
-        cy.layout(this.dotsLayout(this.graph())).run();
+        cy.layout(this.dotsLayout(cy, this.graph())).run();
       } else {
         this.treeLayout(cy, this.graph());
       }
@@ -234,7 +239,7 @@ export class GraphDiagram {
       }
       // Reads the graph so a redraw keeps the selection.
       this.graph();
-      cy.nodes().removeClass('selected');
+      cy.nodes('.person').removeClass('selected');
       if (id) {
         cy.getElementById(id).addClass('selected');
       }
@@ -313,7 +318,7 @@ export class GraphDiagram {
    * brothers and sisters in birth order where they stand side by side (D-039).
    */
   private treeLayout(cy: cytoscape.Core, graph: ShownGraph): void {
-    const width = new Map(cy.nodes().map((node) => [node.id(), node.width()] as const));
+    const width = new Map(cy.nodes('.person').map((node) => [node.id(), node.width()] as const));
     const positions = familyLayout(
       orderSiblings(graph.people, graph.links).map((row) => ({
         id: row.person.id,
@@ -326,7 +331,11 @@ export class GraphDiagram {
         otherSpouseId: marriage.secondSpouseId,
       })),
     );
-    cy.layout({ name: 'preset', positions: Object.fromEntries(positions), padding: 24 }).run();
+    cy.layout({
+      name: 'preset',
+      positions: Object.fromEntries(this.withJunctions(cy, positions)),
+      padding: 24,
+    }).run();
 
     const sets = [...siblingSets(graph.people, graph.links).values()].map((rows) =>
       rows.map((row) => row.person.id),
@@ -341,7 +350,7 @@ export class GraphDiagram {
       }
     }
     const rows = new Map<number, { id: string; x: number; width: number }[]>();
-    cy.nodes().forEach((node) => {
+    cy.nodes('.person').forEach((node) => {
       const y = Math.round(node.position('y'));
       rows.set(y, [
         ...(rows.get(y) ?? []),
@@ -355,11 +364,82 @@ export class GraphDiagram {
           node.position({ x, y: node.position('y') });
         }
       }
+      const moved = new Map(cy.nodes('.person').map((node) => [node.id(), node.position()]));
+      for (const [id, point] of this.withJunctions(cy, moved)) {
+        if (!moved.has(id)) {
+          cy.getElementById(id).position(point);
+        }
+      }
+      this.placeBars(cy);
     });
   }
 
+  /**
+   * How far below its couple each bar turns towards the children (D-054): between the two rows,
+   * with bars that would run over each other at different heights.
+   */
+  private placeBars(cy: cytoscape.Core): void {
+    const rows = new Map<number, cytoscape.NodeSingular[]>();
+    cy.nodes('.junction').forEach((junction) => {
+      const y = Math.round(junction.position('y'));
+      rows.set(y, [...(rows.get(y) ?? []), junction]);
+    });
+    const half = (avatarSize + gap * 2) / 2;
+    for (const junctions of rows.values()) {
+      const levels = trunkLevels(
+        junctions.map((junction) => {
+          const ends = [
+            junction.position('x'),
+            ...junction
+              .outgoers()
+              .nodes()
+              .map((child) => child.position('x')),
+          ];
+          return { id: junction.id(), from: Math.min(...ends), to: Math.max(...ends) };
+        }),
+        barMargin,
+      );
+      const heights = Math.max(...levels.values()) + 1;
+      for (const junction of junctions) {
+        const turn =
+          half + (treeSpacing.rankSep * (levels.get(junction.id())! + 1)) / (heights + 1);
+        junction.outgoers('edge').data('turn', Math.round(turn));
+      }
+    }
+  }
+
+  /**
+   * The positions with each couple's junction in the middle of their marriage line (D-054): half
+   * way between the two people's facing sides, so it sits on the line's middle even when one name
+   * box is wider than the other.
+   */
+  private withJunctions(
+    cy: cytoscape.Core,
+    positions: ReadonlyMap<string, { x: number; y: number }>,
+  ): Map<string, { x: number; y: number }> {
+    const all = new Map(positions);
+    cy.nodes('.junction').forEach((junction) => {
+      const [first, second] = junction.data('spouses') as [string, string];
+      const from = positions.get(first);
+      const to = positions.get(second);
+      if (!from || !to) {
+        return;
+      }
+      const length = Math.hypot(to.x - from.x, to.y - from.y);
+      const start = cy.getElementById(first).width() / 2;
+      const end = cy.getElementById(second).width() / 2;
+      // Overlapping people have no visible line; the middle of their centres will do.
+      const along = length > start + end ? (start + (length - end)) / 2 / length : 0.5;
+      all.set(junction.id(), {
+        x: from.x + (to.x - from.x) * along,
+        y: from.y + (to.y - from.y) * along,
+      });
+    });
+    return all;
+  }
+
   /** Families grouped under their parents rather than spread out evenly (D-024). */
-  private dotsLayout(graph: ShownGraph): cytoscape.PresetLayoutOptions {
+  private dotsLayout(cy: cytoscape.Core, graph: ShownGraph): cytoscape.PresetLayoutOptions {
     // Brothers and sisters start in birth order before the layout settles (D-039).
     const positions = familyLayout(
       orderSiblings(graph.people, graph.links).map((row) => ({
@@ -373,12 +453,17 @@ export class GraphDiagram {
         otherSpouseId: marriage.secondSpouseId,
       })),
     );
-    return { name: 'preset', positions: Object.fromEntries(positions), padding: 16 };
+    return {
+      name: 'preset',
+      positions: Object.fromEntries(this.withJunctions(cy, positions)),
+      padding: 16,
+    };
   }
 
   /**
    * People and each parent's links in birth order (D-039), so brothers and sisters start eldest on
-   * the left.
+   * the left. A child of a married couple gets one line from the couple's junction, an unseen
+   * point in the middle of their marriage line, in place of a line from each parent (D-054).
    */
   private elements(graph: ShownGraph): ElementDefinition[] {
     const ids = new Set(graph.people.map((row) => row.person.id));
@@ -389,6 +474,9 @@ export class GraphDiagram {
       .sort(compareChildren)
       .map(({ link }) => link);
     const measure = this.textWidth();
+    const lines = childLines(ids, links, graph.marriages);
+    const marriages = new Map(graph.marriages.map((marriage) => [marriage.id, marriage]));
+    const junction = (marriageId: string) => `junction:${marriageId}`;
     return [
       ...orderSiblings(graph.people, graph.links).map((row) => ({
         group: 'nodes' as const,
@@ -401,14 +489,36 @@ export class GraphDiagram {
           width: gap * 3 + avatarSize + Math.min(maxLabelWidth, measure(fullName(row.person))),
         },
         classes: [
+          'person',
           row.person.id === graph.centreId ? 'centre' : '',
           row.hasMore ? 'has-more' : '',
         ].join(' '),
       })),
-      ...links.map((link) => ({
+      ...[...new Set(lines.couples.map((line) => line.marriageId))].map((marriageId) => ({
+        group: 'nodes' as const,
+        data: {
+          id: junction(marriageId),
+          spouses: [
+            marriages.get(marriageId)!.firstSpouseId,
+            marriages.get(marriageId)!.secondSpouseId,
+          ],
+        },
+        classes: 'junction',
+      })),
+      ...lines.single.map((link) => ({
         group: 'edges' as const,
         data: { id: link.id, source: link.parentId, target: link.childId },
         classes: link.type === 'Adoptive' ? 'adoptive' : '',
+      })),
+      ...lines.couples.map((line) => ({
+        group: 'edges' as const,
+        data: {
+          id: line.links[0].id,
+          source: junction(line.marriageId),
+          target: line.childId,
+          turn: 0,
+        },
+        classes: ['couple', line.links[0].type === 'Adoptive' ? 'adoptive' : ''].join(' '),
       })),
       ...graph.marriages
         .filter((marriage) => ids.has(marriage.firstSpouseId) && ids.has(marriage.secondSpouseId))
@@ -450,7 +560,7 @@ export class GraphDiagram {
     const nodes: cytoscape.StylesheetJson = dots
       ? [
           {
-            selector: 'node',
+            selector: 'node.person',
             style: {
               shape: 'ellipse',
               width: dotSize,
@@ -461,7 +571,7 @@ export class GraphDiagram {
         ]
       : [
           {
-            selector: 'node',
+            selector: 'node.person',
             style: {
               shape: 'round-rectangle',
               label: 'data(label)',
@@ -493,6 +603,11 @@ export class GraphDiagram {
         ];
     return [
       ...nodes,
+      // Where a couple's children's lines start: a point nobody sees, hovers or selects.
+      {
+        selector: 'node.junction',
+        style: { width: 1, height: 1, opacity: 0, events: 'no' },
+      },
       {
         selector: 'node.selected',
         style: { 'border-color': accent, 'underlay-color': accent, 'underlay-opacity': 0.15 },
@@ -502,10 +617,24 @@ export class GraphDiagram {
         style: {
           width: dots ? 1 : 1.5,
           'line-color': muted,
-          // Taxi edges share segments, which blurs who is whose parent; each link gets its own line.
+          // Each link outside a marriage gets its own straight line, so parents stay unambiguous.
           'curve-style': 'bezier',
         },
       },
+      // On the tree a couple's children share one line down to a bar, with a drop to each child.
+      ...(dots
+        ? []
+        : [
+            {
+              selector: 'edge.couple',
+              style: {
+                'curve-style': 'taxi' as const,
+                'taxi-direction': 'downward' as const,
+                'taxi-turn': 'data(turn)',
+                'taxi-turn-min-distance': 4,
+              },
+            },
+          ]),
       {
         selector: 'edge.adoptive',
         style: { 'line-style': 'dashed', 'line-dash-pattern': dots ? [3, 3] : [6, 4] },
