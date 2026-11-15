@@ -22,10 +22,24 @@
         <ng-container i18n="@@diagram.hasMore">Has relatives not shown</ng-container>
       </li>
     </ul>
-    <button type="button" class="secondary" (click)="fit()" i18n="@@diagram.fit">
-      Fit to screen
-    </button>
+    <div class="actions">
+      <button type="button" class="secondary" (click)="fit()" i18n="@@diagram.fit">
+        Fit to screen
+      </button>
+      <button type="button" class="secondary" [disabled]="saving()" (click)="saveImage()">
+        @if (saving()) {
+          <ng-container i18n="@@diagram.savingImage">Saving image…</ng-container>
+        } @else {
+          <ng-container i18n="@@diagram.saveImage">Download image</ng-container>
+        }
+      </button>
+    </div>
   </div>
+  @if (saveFailed()) {
+    <p class="error" role="alert" i18n="@@diagram.saveImageFailed">
+      The image could not be made. Try again, or show fewer people.
+    </p>
+  }
 }
 <div class="stage" [class.dots]="dots()">
   <div #canvas class="canvas" role="img" [attr.aria-label]="summary()"></div>
