@@ -858,7 +858,7 @@ For each major decision, record:
 
 ### D-055: Shared trunk for a lone parent's children, former marriages and the home dots
 
-- **Status:** proposed (2026-11-14). Issue #135. Asked for by the user on 2026-11-14, after D-054: the shared branched trunk for single parents and their children, for old marriages too, and on the home graph in place of the straight lines from the middle.
+- **Status:** agreed (2026-11-15, PR #136 merged). Issue #135. Asked for by the user on 2026-11-14, after D-054: the shared branched trunk for single parents and their children, for old marriages too, and on the home graph in place of the straight lines from the middle.
 - **Context:** D-054 gave the children of a current marriage one trunk and left every other link its own straight line, a former marriage's children included.
 - **Options considered:** a trunk for every link of a parent, including children who have a second shown parent; a trunk only for children with no other shown parent (chosen).
 - **Trade-offs:** A child with two shown parents who were never married would get two drops meeting on the child's upper side, one over the other, so those keep straight lines. A person can now have two trunks: one from their marriage line and one from under their own box for children with no other shown parent.
@@ -868,3 +868,17 @@ For each major decision, record:
   - **Dots (home page):** the same taxi edges for couples and lone parents, replacing D-054's straight lines. The user then asked (2026-11-14) for children to stand below the middle of their parents and not be moved elsewhere, so the dots no longer settle off their rows: `dotsLayout` runs `familyLayout` with `settle: false` (spacing 8 within a family, 24 between families, 40 between generations) and `placeBars` levels the bars as on the tree. This replaces the "roads on a map" settling of D-024 and D-053 on the home page; `settle` stays in `family-layout.ts`, unused, until the user confirms the look.
   - **Unchanged:** a child with two shown parents who were never married to each other, or with one biological and one adoptive parent, keeps a straight line from each.
 - **Consequences:** Client only; no API change. A couple who each have parents shown stands between the two sets of parents, so those children cannot be in the middle below both. "No other shown parent" depends on the view: loading more people can turn a lone parent's trunk into a couple's line.
+
+### D-056: Saving the graph page's tree as a high-resolution image
+
+- **Status:** proposed (2026-11-15). Issue #137. Asked for by the user on 2026-11-15: make the family graph exportable as a high-resolution image. The user chose a PNG at four times screen sharpness, and the graph page's tree only (not the home dots). The rest is proposed with the PR.
+- **Context:** The tree is drawn by Cytoscape on a canvas, so the browser's print or a screenshot gives only the part in view, at screen sharpness.
+- **Options considered:** PNG from Cytoscape's own `cy.png` (chosen); SVG through `cytoscape-svg`, sharp at any zoom but a new dependency; PDF through a PDF library, a new dependency with a picture inside anyway.
+- **Decision:**
+  - A **Download image** button beside **Fit to screen** saves `cy.png({ full: true })`: every shown person and line, wherever the view is panned or zoomed. Hover details, the menu and the legend are not in the image.
+  - Scale 4, lowered by `scaleFor` only when the image with its margins would pass 16,384 pixels on a side or 120 million pixels, the limits every current browser draws.
+  - Light theme colours on white (`imageColours`), whatever the device's setting, like a printed page (AC-09.18); the stylesheet is swapped for the drawing and restored at once, so the screen does not change. A white margin of 24 diagram pixels frames the tree.
+  - Photos are the data URLs the diagram already shows (D-028), so the canvas can be read; placeholders stay placeholders, because the image holds only what the diagram draws.
+  - The file is named after the centre person, "<name> - family graph.png" (translated), with characters that file systems refuse removed.
+- **Consequences:** Client only; no new dependency, no API change and no audit event (the viewer already sees all of it). A very large tree on a phone may fail to draw; the page then says so.
+

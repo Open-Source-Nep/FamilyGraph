@@ -21,6 +21,7 @@ import { compareChildren, orderRow, orderSiblings, siblingSets } from './child-o
 import { childLines, trunkLevels } from './couple-lines';
 import { familyLayout } from './family-layout';
 import { GraphPerson, LocalViewPerson } from './graph';
+import { framedPng, imageColours, imageFileName, saveFile, scaleFor } from './graph-image';
 import { ShownGraph, generationLabel } from './shown-graph';
 
 /** The tree's spacing: within a family, between families, and between generations. */
@@ -254,6 +255,44 @@ export class GraphDiagram {
 
   protected fit(): void {
     this.cy()?.fit(undefined, 24);
+  }
+
+  /** The image is being made; the button waits until it is saved. */
+  protected readonly saving = signal(false);
+  /** Making the image failed, for example in a browser that cannot draw one this large. */
+  protected readonly saveFailed = signal(false);
+
+  /**
+   * Saves the whole tree shown, not just the part in view, as a sharp PNG (D-056). It is drawn in
+   * the light theme's colours on white, so it reads the same printed or shared; it holds only what
+   * the diagram shows, so placeholders stay placeholders.
+   */
+  protected async saveImage(): Promise<void> {
+    const cy = this.cy();
+    if (!cy || this.saving()) {
+      return;
+    }
+    this.saving.set(true);
+    this.saveFailed.set(false);
+    try {
+      const box = cy.elements().boundingBox();
+      const scale = scaleFor(box.w, box.h);
+      // Cytoscape draws the image at once, so the screen never shows the light colours.
+      cy.style(this.style(false, imageColours));
+      let drawn: Blob;
+      try {
+        drawn = cy.png({ output: 'blob', full: true, scale, bg: imageColours.surface });
+      } finally {
+        cy.style(this.style(false));
+      }
+      const graph = this.graph();
+      const centre = graph.people.find((row) => row.person.id === graph.centreId)?.person;
+      saveFile(await framedPng(drawn, scale), imageFileName(centre ? fullName(centre) : ''));
+    } catch {
+      this.saveFailed.set(true);
+    } finally {
+      this.saving.set(false);
+    }
   }
 
   protected choose(relation: AddRelation): void {
@@ -563,15 +602,21 @@ export class GraphDiagram {
     return getComputedStyle(this.host.nativeElement).fontFamily || 'system-ui, sans-serif';
   }
 
-  /** Colours come from the page's CSS custom properties, so the diagram follows the theme. */
-  private style(dots: boolean): cytoscape.StylesheetJson {
+  /**
+   * Colours come from the page's CSS custom properties, so the diagram follows the theme; the
+   * saved image passes the light theme's colours instead (D-056).
+   */
+  private style(
+    dots: boolean,
+    colours: Partial<typeof imageColours> = {},
+  ): cytoscape.StylesheetJson {
     const css = getComputedStyle(this.host.nativeElement);
     const colour = (name: string, fallback: string) =>
       css.getPropertyValue(name).trim() || fallback;
-    const text = colour('--text', '#1f1f24');
-    const muted = colour('--muted', '#5b5b66');
-    const accent = colour('--accent', '#2f5bd3');
-    const background = colour('--surface', '#ffffff');
+    const text = colours.text ?? colour('--text', '#1f1f24');
+    const muted = colours.muted ?? colour('--muted', '#5b5b66');
+    const accent = colours.accent ?? colour('--accent', '#2f5bd3');
+    const background = colours.surface ?? colour('--surface', '#ffffff');
     const nodes: cytoscape.StylesheetJson = dots
       ? [
           {
